@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db, transaction } from './db.js';
 import { HttpError } from './util.js';
 import { requireAuth } from './auth.js';
+import { bus } from './events.js';
 
 // Alle Beträge in Cent
 export const START_BALANCE = 10_000_00;
@@ -71,6 +72,7 @@ export function settleRound(userId, game, bet, payout, meta = {}) {
     WHERE id = ?
   `).run(balance, bet, payout, payout, userId);
   insertTx.run(userId, 'round', game, payout - bet, bet, payout, balance, JSON.stringify(meta), now);
+  queueMicrotask(() => bus.emit('round', { userId, game, bet, payout, meta, balance }));
   return balance;
 }
 

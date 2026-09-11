@@ -155,10 +155,56 @@ a { color: inherit; text-decoration: none; }
 .strip-item:hover, .strip-item.active { background: rgba(212, 175, 55, 0.18); color: var(--gold-2); transform: translateY(-3px); }
 .strip-icon { font-size: 22px; line-height: 1; }
 .strip-live { position: absolute; top: 4px; right: 8px; color: var(--green); font-size: 10px; }
+.online-badge { color: var(--green); font-weight: 700; }
+.lobby-prompt {
+  position: absolute; left: 50%; bottom: 110px; transform: translateX(-50%) translateY(10px); z-index: 3; pointer-events: none; opacity: 0;
+  transition: opacity 0.2s, transform 0.2s; display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px; border-radius: 14px; background: rgba(6, 8, 12, 0.82); border: 1px solid rgba(212, 175, 55, 0.7);
+  color: #fff; font-size: 16px; font-weight: 800; box-shadow: 0 0 30px rgba(212, 175, 55, 0.25); backdrop-filter: blur(8px);
+}
+.lobby-prompt.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.lobby-prompt .kbd { font-size: 14px; padding: 3px 9px; background: var(--gold); color: #1a1305; border-color: var(--gold-2); }
+.lobby-prompt .prompt-sub { font-size: 12px; color: var(--muted); font-weight: 600; margin-left: 6px; }
+.crosshair {
+  position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; z-index: 2; pointer-events: none;
+  background: rgba(255, 255, 255, 0.7); box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4);
+}
+.lobby-ticker { position: absolute; right: 22px; top: 62px; z-index: 2; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; pointer-events: none; }
+.ticker-item {
+  padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 700; background: rgba(6, 8, 12, 0.75); border: 1px solid var(--line);
+  animation: rise 0.3s ease; transition: opacity 0.8s; backdrop-filter: blur(6px);
+}
+.ticker-item.win { border-color: rgba(46, 204, 113, 0.5); color: #7cf0ae; }
+.ticker-item.lose { border-color: rgba(231, 76, 60, 0.4); color: #ffb0a8; }
+.ticker-item.fade { opacity: 0; }
+.lobby-chat { position: absolute; left: 22px; bottom: 16px; z-index: 3; width: 320px; }
+.lobby-hint .kbd { margin: 0 2px; }
+
+/* Chat */
+.chat { display: flex; flex-direction: column; gap: 6px; border-radius: 12px; background: rgba(6, 8, 12, 0.72); border: 1px solid var(--line); backdrop-filter: blur(8px); overflow: hidden; }
+.chat-list { display: flex; flex-direction: column; gap: 3px; padding: 10px; max-height: 220px; overflow-y: auto; font-size: 12.5px; }
+.chat.compact .chat-list { max-height: 170px; }
+.chat-msg { display: flex; gap: 6px; align-items: baseline; line-height: 1.35; }
+.chat-name { font-weight: 800; color: var(--gold-2); white-space: nowrap; }
+.chat-msg.mine .chat-name { color: #8fb3ff; }
+.chat-text { flex: 1; word-break: break-word; }
+.chat-time { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.chat-msg.system { color: var(--muted); font-style: italic; }
+.chat-msg.system.win { color: #7cf0ae; }
+.chat-msg.system.lose { color: #ffb0a8; }
+.chat-form { display: flex; gap: 6px; padding: 0 8px 8px; }
+.chat-input { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: rgba(0, 0, 0, 0.4); color: var(--text); outline: 0; font-size: 13px; }
+.chat-input:focus { border-color: var(--gold); }
+.game-panel .chat { background: rgba(0, 0, 0, 0.3); }
+.players-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
 @media (max-width: 700px) {
   .lobby-hint { display: none; }
   .strip-name { display: none; }
   .strip-item { min-width: 44px; }
+  .lobby-chat { width: calc(100% - 44px); bottom: 84px; }
+  .lobby-chat .chat-list { max-height: 90px; }
+  .lobby-ticker { display: none; }
 }
 .lobby-content { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 44px 24px 80px; }
 .hero { text-align: center; margin-bottom: 40px; }

@@ -36,6 +36,22 @@ Voraussetzung: Node.js ≥ 22.13 (nutzt das eingebaute `node:sqlite`, keine nati
 | 🎯 Glücksrad | 24 Segmente mit Multiplikatoren bis 5× |
 | 🔺 Hi-Lo | Höher/niedriger-Kette mit wachsendem Multiplikator |
 
+## Lobby & Multiplayer
+
+Die Lobby ist eine begehbare 3D-Casino-Halle im Stil der 2000er (Musterteppich, Kronleuchter, Neon, Bar).
+
+- **Steuerung**: `W A S D` / Pfeiltasten laufen, `Shift` rennen, Maus ziehen zum Umsehen, `Q`/`E` drehen.
+  In der Nähe eines Tisches: `E` oder Klick startet das Spiel. `Enter` fokussiert den Chat.
+- **Andere Spieler** sind als Figuren mit Namensschild sichtbar – beim Herumlaufen und sitzend/stehend an
+  dem Tisch oder Automaten, an dem sie gerade spielen. Gewinne und Verluste erscheinen live über der Figur
+  und im Ticker; im Spiel zeigt „Am Tisch“ die Mitspieler an derselben Station samt Tisch-Chat.
+- **Technik**: WebSocket (`/ws`, Paket `ws`), Auth über das Session-Cookie, Positionen 10 Hz, Chat mit Rate-Limit.
+- **Bots**: Damit die Halle nicht leer ist, laufen standardmäßig 3 als 🤖 markierte Bots herum.
+  Abschalten mit `CASINO_BOTS=0`, mehr mit z. B. `CASINO_BOTS=6`.
+- **Grafikqualität**: Der ⚙-Schalter in der Kopfzeile wechselt zwischen Hoch / Mittel / Niedrig
+  (Pixeldichte, Schatten). Rendering läuft über WebGL auf der GPU – bei ruckelnder Darstellung im Browser die
+  Hardwarebeschleunigung aktivieren (Chrome: `chrome://settings/system`).
+
 ## Konto & Guthaben
 
 - Registrierung mit Benutzername + Passwort (scrypt-gehasht), Sessions per HttpOnly-Cookie.

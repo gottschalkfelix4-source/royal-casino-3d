@@ -8,6 +8,18 @@ import { Tweener, Easing } from './tween.js';
 
 export { THREE, Easing };
 
+/** Grafikqualität (localStorage): high | medium | low */
+export function getQuality() {
+  const q = localStorage.getItem('casino.quality');
+  return ['high', 'medium', 'low'].includes(q) ? q : 'high';
+}
+export function setQuality(q) { localStorage.setItem('casino.quality', q); }
+export const QUALITY = {
+  high: { dpr: 2, shadows: true, shadowMap: 2048 },
+  medium: { dpr: 1.25, shadows: true, shadowMap: 1024 },
+  low: { dpr: 1, shadows: false, shadowMap: 512 },
+};
+
 /**
  * Kapselt Renderer, Szene, Kamera, Render-Loop, Tweens und Picking.
  */
@@ -19,13 +31,14 @@ export class Engine {
     } = opts;
     this.container = container;
     this.disposed = false;
+    this.quality = QUALITY[getQuality()];
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer = new THREE.WebGLRenderer({ antialias: this.quality.dpr < 2 || (window.devicePixelRatio || 1) < 1.5, powerPreference: 'high-performance', stencil: false });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.dpr));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = exposure;
-    this.renderer.shadowMap.enabled = shadows;
+    this.renderer.shadowMap.enabled = shadows && this.quality.shadows;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.domElement.classList.add('three-canvas');
     container.prepend(this.renderer.domElement);
@@ -101,7 +114,7 @@ export class Engine {
     const dir = new THREE.DirectionalLight(0xfff2dc, keyIntensity);
     dir.position.set(...key);
     dir.castShadow = true;
-    dir.shadow.mapSize.set(2048, 2048);
+    dir.shadow.mapSize.set(this.quality.shadowMap, this.quality.shadowMap);
     dir.shadow.camera.left = -shadowSize; dir.shadow.camera.right = shadowSize;
     dir.shadow.camera.top = shadowSize; dir.shadow.camera.bottom = -shadowSize;
     dir.shadow.camera.near = 0.5; dir.shadow.camera.far = 60;

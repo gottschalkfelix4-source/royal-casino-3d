@@ -1,9 +1,11 @@
 import express from 'express';
+import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { attachUser, authRouter } from './auth.js';
 import { walletRouter } from './wallet.js';
 import { gamesRouter } from './games/index.js';
+import { attachRealtime } from './realtime.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -29,6 +31,8 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = Number(process.env.PORT) || 3000;
-app.listen(PORT, () => {
+const server = http.createServer(app);
+attachRealtime(server, { bots: process.env.CASINO_BOTS === undefined ? 3 : Number(process.env.CASINO_BOTS) });
+server.listen(PORT, () => {
   console.log(`🎰 Royal Casino läuft auf http://localhost:${PORT}`);
 });

@@ -1,6 +1,7 @@
 import { Engine } from '../three/engine.js';
 import { h, toast } from '../ui.js';
 import { store, setBalance } from '../state.js';
+import { chatWidget, playersList } from '../chat.js';
 
 /**
  * Basisklasse für alle Spiele: erstellt 3D-Bühne + Seitenpanel,
@@ -33,13 +34,23 @@ export class GameBase {
     this.engine = new Engine(this.stage, this.engineOptions());
     this.buildScene();
     this.buildPanel();
+    this.buildTableSection();
     this.engine.start();
     this.ready().catch((e) => toast(e.message, 'error'));
+  }
+
+  /** Mitspieler an diesem Tisch + Tisch-Chat (Multiplayer) */
+  buildTableSection() {
+    this.players = playersList(this.meta.id);
+    this.chat = chatWidget({ compact: true, filterGame: this.meta.id });
+    this.panel.append(h('div.panel-section', {}, h('div.title', {}, 'Am Tisch'), this.players.el, this.chat.el));
   }
 
   destroy() {
     this.destroyed = true;
     clearTimeout(this.bannerTimer);
+    this.players?.destroy();
+    this.chat?.destroy();
     this.engine?.dispose();
     if (this.root) this.root.className = 'view';
   }

@@ -5,6 +5,10 @@ import { sound } from './sound.js';
 import { getGame } from './games/registry.js';
 import { renderLobby } from './views/lobby.js';
 import { renderProfile, renderLeaderboard } from './views/profile.js';
+import { rt } from './realtime.js';
+import { getQuality, setQuality } from './three/engine.js';
+
+const QUALITY_LABEL = { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' };
 
 const viewEl = document.getElementById('view');
 const topbar = document.getElementById('topbar');
@@ -23,6 +27,7 @@ function renderTopbar() {
     h('a.brand', { href: '#/' }, h('span.logo', {}, '🎰'), 'ROYAL CASINO'),
     h('nav.nav', {}, navLink('#/', 'Lobby'), u && navLink('#/profile', 'Profil'), u && navLink('#/leaderboard', 'Rangliste')),
     h('div.spacer'),
+    h('button.btn.btn-ghost.btn-sm', { onclick: cycleQuality, title: 'Grafikqualität (Pixeldichte, Schatten)' }, `⚙ ${QUALITY_LABEL[getQuality()]}`),
     h('button.btn.btn-ghost.btn-sm', { onclick: toggleSound, title: 'Sound an/aus' }, sound.enabled ? '🔊' : '🔇'),
   );
   if (u) {
@@ -46,6 +51,8 @@ function renderTopbar() {
 
 subscribe(() => {
   const u = store.user;
+  if (u && !rt.ws) rt.connect();
+  if (!u && rt.ws) rt.disconnect();
   const sig = `${u?.id ?? '-'}|${u?.bonus?.available}|${u?.rescue?.available}|${sound.enabled}|${location.hash}`;
   if (sig !== topbarSignature) {
     topbarSignature = sig;
@@ -61,6 +68,14 @@ subscribe(() => {
     pill.classList.add('bump');
   }
 });
+
+function cycleQuality() {
+  const order = ['high', 'medium', 'low'];
+  const next = order[(order.indexOf(getQuality()) + 1) % order.length];
+  setQuality(next);
+  toast(`Grafikqualität: ${QUALITY_LABEL[next]}`, 'info');
+  route(); // Ansicht mit neuer Qualität neu aufbauen
+}
 
 function toggleSound() {
   sound.setEnabled(!sound.enabled);
@@ -167,6 +182,7 @@ async function route() {
   renderTopbar();
   window.scrollTo(0, 0);
 
+  rt.sendGame(hash.startsWith('#/game/') && store.user ? hash.slice(7) : null);
   if (hash.startsWith('#/game/')) {
     const meta = getGame(hash.slice(7));
     if (!meta) { location.hash = '#/'; return; }
