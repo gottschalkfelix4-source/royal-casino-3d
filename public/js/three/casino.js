@@ -465,20 +465,33 @@ function rewardsBoard({ standing = false } = {}) {
   back.position.z = -0.06;
   g.add(back, frame, face);
   if (standing) {
-    // Staffelei-artiger Ständer
-    const legMat = brass;
-    for (const [lx, lz] of [[-w / 2 + 0.1, 0.02], [w / 2 - 0.1, 0.02], [0, 0.45]]) {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 1.9, 10), legMat);
-      leg.position.set(lx, -hgt / 2 - 0.1, lz);
-      if (lz > 0.1) leg.rotation.x = -0.28;
+    // Staffelei: zwei Beine HINTER der Tafel vom Boden bis zur Oberkante, ein schräges Stützbein nach hinten,
+    // vorne nur eine flache Ablageleiste – nichts ragt durch die Tafel.
+    const floorY = -STAND_CENTER_Y;            // Bodenhöhe relativ zur Tafelmitte
+    const topY = hgt / 2 + 0.05;               // Beine enden knapp über der Oberkante
+    const legLen = topY - floorY;
+    for (const lx of [-w / 2 + 0.12, w / 2 - 0.12]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, legLen, 10), brass);
+      leg.position.set(lx, (topY + floorY) / 2, -0.12);
       g.add(leg);
     }
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.05, 0.12), legMat);
-    bar.position.set(0, -hgt / 2 - 0.06, 0.02);
-    g.add(bar);
+    const backZ = -0.95;
+    const rearLen = Math.hypot(legLen, backZ + 0.12);
+    const rear = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, rearLen, 10), brass);
+    rear.position.set(0, (topY + floorY) / 2, (backZ - 0.12) / 2);
+    rear.rotation.x = Math.atan2(-(backZ + 0.12), legLen); // Fuß hinten am Boden, Spitze oben an der Tafel
+    g.add(rear);
+    const crossbar = new THREE.Mesh(new THREE.BoxGeometry(w - 0.1, 0.05, 0.05), brass);
+    crossbar.position.set(0, floorY + 0.6, -0.12);
+    g.add(crossbar);
+    const ledge = new THREE.Mesh(new THREE.BoxGeometry(w + 0.16, 0.05, 0.14), brass);
+    ledge.position.set(0, -hgt / 2 - 0.09, 0.04);
+    g.add(ledge);
   }
   return g;
 }
+/** Höhe der Tafelmitte über dem Boden bei der stehenden Variante */
+const STAND_CENTER_Y = 1.9;
 
 // ---------- Halle ----------
 export function buildCasino(engine) {
