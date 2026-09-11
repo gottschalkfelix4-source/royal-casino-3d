@@ -1,0 +1,9 @@
+node_modules
+data
+.git
+.claude
+.github
+unraid
+scripts
+README.md
+*.md

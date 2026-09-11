@@ -1,0 +1,13 @@
+services:
+  casino:
+    image: ghcr.io/gottschalkfelix4-source/royal-casino-3d:latest
+    # Alternativ lokal bauen statt Image ziehen:
+    # build: .
+    container_name: royal-casino-3d
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      CASINO_BOTS: "3"        # Anzahl der Bots in der Halle (0 = aus)
+    volumes:
+      - ./data:/data          # SQLite-Datenbank (Konten, Guthaben, Verlauf)

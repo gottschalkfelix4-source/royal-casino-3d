@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>royal-casino-3d</Name>
+  <Repository>ghcr.io/gottschalkfelix4-source/royal-casino-3d:latest</Repository>
+  <Registry>https://github.com/gottschalkfelix4-source/royal-casino-3d/pkgs/container/royal-casino-3d</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/gottschalkfelix4-source/royal-casino-3d/issues</Support>
+  <Project>https://github.com/gottschalkfelix4-source/royal-casino-3d</Project>
+  <Overview>Online-Casino mit zwölf 3D-Spielen (Slots, Roulette, Blackjack, Video Poker, Baccarat, Würfel, Plinko, Crash, Mines, Münzwurf, Glücksrad, Hi-Lo), begehbarer Multiplayer-Halle, Benutzerkonten und virtuellem Spielgeld. Kein echtes Geld.&#xD;
+&#xD;
+Das 3D-Rendering läuft im Browser der Besucher (WebGL) – der Container braucht keine GPU. Daten liegen als SQLite-Datei im Pfad /data.&#xD;
+&#xD;
+Hinter einem Reverse Proxy (NPM/SWAG) WebSocket-Support für /ws aktivieren.</Overview>
+  <Category>GameServers: Other:</Category>
+  <WebUI>http://[IP]:[PORT:3000]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/gottschalkfelix4-source/royal-casino-3d/main/unraid/royal-casino-3d.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/gottschalkfelix4-source/royal-casino-3d/main/unraid/icon.svg</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="Web-Port" Target="3000" Default="3000" Mode="tcp" Description="Port der Weboberfläche (http://[IP]:[PORT])" Type="Port" Display="always" Required="true" Mask="false">3000</Config>
+  <Config Name="Daten (SQLite)" Target="/data" Default="/mnt/user/appdata/royal-casino-3d" Mode="rw" Description="Speicherort der Datenbank mit Konten, Guthaben und Spielverlauf" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/royal-casino-3d</Config>
+  <Config Name="Bots in der Halle" Target="CASINO_BOTS" Default="3" Mode="" Description="Anzahl der simulierten Gäste, die durch die Halle laufen (0 = aus, max. 6)" Type="Variable" Display="always" Required="false" Mask="false">3</Config>
+</Container>

@@ -55,6 +55,23 @@ Die Lobby ist eine begehbare 3D-Casino-Halle im Stil der 2000er (Musterteppich, 
   (Pixeldichte, Schatten). Rendering läuft über WebGL auf der GPU – bei ruckelnder Darstellung im Browser die
   Hardwarebeschleunigung aktivieren (Chrome: `chrome://settings/system`).
 
+## Docker & Unraid
+
+Das Rendering läuft im Browser der Besucher (WebGL auf deren GPU); der Server ist nur API + WebSocket + statische
+Dateien und braucht keine GPU.
+
+```bash
+docker compose up -d          # nutzt ghcr.io/gottschalkfelix4-source/royal-casino-3d:latest
+```
+
+- Image: `ghcr.io/gottschalkfelix4-source/royal-casino-3d` (wird per GitHub Actions bei jedem Push auf `main` gebaut, amd64 + arm64)
+- Port `3000`, Datenbank unter `/data` (Volume), `CASINO_BOTS` steuert die Bots
+- **Unraid**: Template unter [`unraid/royal-casino-3d.xml`](unraid/royal-casino-3d.xml). In Unraid unter
+  *Docker → Add Container → Template repositories* die URL
+  `https://github.com/gottschalkfelix4-source/royal-casino-3d/tree/main/unraid` eintragen, oder das XML nach
+  `/boot/config/plugins/dockerMan/templates-user/` kopieren und den Container daraus anlegen.
+- Hinter einem Reverse Proxy (Nginx Proxy Manager, SWAG) muss WebSocket-Support für `/ws` aktiv sein.
+
 ## Konto & Guthaben
 
 - Registrierung mit Benutzername + Passwort (scrypt-gehasht), Sessions per HttpOnly-Cookie.
