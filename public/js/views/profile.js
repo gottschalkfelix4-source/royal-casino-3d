@@ -16,7 +16,7 @@ export async function renderProfile(root) {
   root.className = 'view';
   root.append(loading());
   try {
-    const [{ user }, { history }] = await Promise.all([api.get('/wallet'), api.get('/wallet/history?limit=100')]);
+    const [{ user }, { history }, { sessions }] = await Promise.all([api.get('/wallet'), api.get('/wallet/history?limit=100'), api.get('/auth/sessions')]);
     const s = user.stats;
     const net = s.totalWon - s.totalWagered;
     root.innerHTML = '';
@@ -31,6 +31,7 @@ export async function renderProfile(root) {
         stat('Größter Gewinn', fmt(s.biggestWin), 'gold'),
         stat('Mitglied seit', new Intl.DateTimeFormat('de-DE', { dateStyle: 'medium' }).format(user.createdAt)),
       ),
+      sessionsCard(sessions),
       h('div.card', {},
         h('h2', {}, 'Verlauf'),
         history.length === 0 ? h('div.empty', {}, 'Noch keine Buchungen') :
@@ -53,6 +54,54 @@ export async function renderProfile(root) {
     root.innerHTML = '';
     root.append(h('div.empty', {}, e.message));
   }
+}
+
+/** Sitzungs-Monitor: alle angemeldeten Geräte, live-Status in der Halle, Beenden einzeln oder alle anderen */
+function sessionsCard(sessions) {
+  const rel = (ts) => {
+    const m = Math.round((Date.now() - ts) / 60000);
+    if (m < 1) return 'gerade eben';
+    if (m < 60) return `vor ${m} Min.`;
+    const hrs = Math.round(m / 60);
+    if (hrs < 48) return `vor ${hrs} Std.`;
+    return `vor ${Math.round(hrs / 24)} Tagen`;
+  };
+  const card = h('div.card');
+  const render = (list) => {
+    card.replaceChildren(
+      h('div.row', { style: { justifyContent: 'space-between', marginBottom: '12px' } },
+        h('h2', { style: { margin: 0 } }, `🔐 Aktive Sitzungen (${list.length})`),
+        list.length > 1 ? h('button.btn.btn-red.btn-sm', { onclick: () => endSession(null) }, 'Alle anderen beenden') : null,
+      ),
+      h('div.panel-note', { style: { marginBottom: '10px' } }, 'Jedes Gerät/Browser, in dem du angemeldet bist. In der 3D-Halle kann pro Konto nur eine Sitzung gleichzeitig aktiv sein – beende hier die anderen, wenn du „in einem anderen Tab“ gemeldet bekommst.'),
+      h('div', { style: { overflowX: 'auto' } }, h('table.table', {},
+        h('thead', {}, h('tr', {}, h('th', {}, 'Gerät'), h('th', {}, 'IP'), h('th', {}, 'Angemeldet'), h('th', {}, 'Zuletzt aktiv'), h('th', {}, 'Status'), h('th'))),
+        h('tbody', {}, list.map((s) => h('tr', { class: s.current ? 'me' : '' },
+          h('td', {}, s.device, s.current ? h('span.pill.gold', { style: { marginLeft: '8px' } }, 'dieser Browser') : null),
+          h('td', {}, s.ip || '–'),
+          h('td', {}, dt.format(s.createdAt)),
+          h('td', {}, rel(s.lastSeenAt)),
+          h('td', {}, s.live ? h('span.pill.win', {}, '● in der Halle') : h('span.pill', {}, 'inaktiv')),
+          h('td', { style: { textAlign: 'right' } }, h('button.btn.btn-sm', { class: `btn btn-sm ${s.current ? '' : 'btn-red'}`, onclick: () => endSession(s) }, s.current ? 'Abmelden' : 'Beenden')),
+        ))),
+      )),
+    );
+  };
+  const endSession = async (s) => {
+    try {
+      if (s) {
+        const res = await api.del(`/auth/sessions/${s.id}`);
+        if (res.self) { location.reload(); return; }
+        toast('Sitzung beendet', 'success');
+      } else {
+        const res = await api.del('/auth/sessions');
+        toast(`${res.ended} Sitzung(en) beendet`, 'success');
+      }
+      render((await api.get('/auth/sessions')).sessions);
+    } catch (e) { toast(e.message, 'error'); }
+  };
+  render(sessions);
+  return card;
 }
 
 function describe(t) {

@@ -83,6 +83,9 @@ docker compose up -d          # nutzt ghcr.io/gottschalkfelix4-source/royal-casi
 ## Konto & Guthaben
 
 - Registrierung mit Benutzername + Passwort (scrypt-gehasht), Sessions per HttpOnly-Cookie.
+- **Sitzungs-Monitor** im Profil: alle angemeldeten Geräte (Browser/OS, IP, Anmeldezeit, letzte Aktivität, Live-Status
+  in der Halle), einzeln oder „alle anderen“ beenden – beendete Verbindungen werden sofort getrennt. In der Halle ist
+  pro Konto nur eine Verbindung aktiv; ein zweiter Tab bekommt ein Banner mit „Hier weiterspielen“.
 - Startguthaben 🪙 10.000, Notfall-Guthaben 🪙 1.000 (unter 🪙 1, einmal pro Stunde).
 - **Coins verdienen** („🎁 Belohnungen“ in der Kopfzeile, [server/rewards.js](server/rewards.js)):
   - Tagesbonus 🪙 500, +100 je Tag in Folge bis 🪙 1.500; ein verpasster Tag setzt die Serie zurück

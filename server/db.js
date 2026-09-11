@@ -80,6 +80,10 @@ db.exec(`
 `);
 
 // Spätere Spalten (Migration für bestehende Datenbanken)
+const sessionCols = new Set(db.prepare('PRAGMA table_info(sessions)').all().map((c) => c.name));
+for (const [name, def] of [['user_agent', 'TEXT'], ['ip', 'TEXT'], ['last_seen_at', 'INTEGER']]) {
+  if (!sessionCols.has(name)) db.exec(`ALTER TABLE sessions ADD COLUMN ${name} ${def}`);
+}
 const columns = new Set(db.prepare('PRAGMA table_info(users)').all().map((c) => c.name));
 for (const [name, def] of [
   ['streak', 'INTEGER NOT NULL DEFAULT 0'],

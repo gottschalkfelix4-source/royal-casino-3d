@@ -88,6 +88,7 @@ export const rt = {
       this.emit('disconnect');
       this.emit('players');
       if (ev.code === 4001) { this.emit('replaced'); return; } // in anderem Tab angemeldet – nicht neu verbinden
+      if (ev.code === 4002) { this.emit('revoked'); return; } // Sitzung wurde im Profil beendet
       if (store.user) this.retryTimer = setTimeout(() => this.connect(), 3000);
     };
     ws.onerror = () => ws.close();

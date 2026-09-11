@@ -58,6 +58,27 @@ try {
   r = await api('GET', '/api/auth/me');
   check('me', r.data.user?.username === 'tester');
 
+  console.log('Sitzungen');
+  r = await api('GET', '/api/auth/sessions');
+  check('eigene Sitzung gelistet', r.status === 200 && r.data.sessions.length === 1 && r.data.sessions[0].current === true, JSON.stringify(r.data));
+  const firstCookie = cookie;
+  r = await api('POST', '/api/auth/login', { username: 'tester', password: 'geheim123' }); // zweite Sitzung (neues Cookie)
+  r = await api('GET', '/api/auth/sessions');
+  check('zwei Sitzungen nach zweitem Login', r.data.sessions.length === 2 && r.data.sessions.filter((s) => s.current).length === 1);
+  r = await api('DELETE', '/api/auth/sessions');
+  check('alle anderen beenden', r.status === 200 && r.data.ended === 1);
+  const secondCookie = cookie;
+  cookie = firstCookie;
+  r = await api('GET', '/api/auth/me');
+  check('beendete Sitzung ist ungültig', r.data.user === null);
+  cookie = secondCookie;
+  r = await api('GET', '/api/auth/sessions');
+  const mine = r.data.sessions[0];
+  r = await api('DELETE', `/api/auth/sessions/${mine.id}`);
+  check('eigene Sitzung beenden (Abmelden)', r.status === 200 && r.data.self === true);
+  r = await api('POST', '/api/auth/login', { username: 'tester', password: 'geheim123' });
+  check('erneut anmelden', r.status === 200);
+
   console.log('Wallet');
   r = await api('POST', '/api/rewards/daily');
   check('daily bonus (Tag 1 = 500)', r.status === 200 && r.data.amount === 500_00 && r.data.streak === 1 && r.data.user.balance === 1_050_000, JSON.stringify(r.data));

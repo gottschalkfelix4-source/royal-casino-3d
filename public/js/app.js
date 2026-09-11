@@ -55,7 +55,25 @@ function renderTopbar() {
 }
 
 voice.onChange(() => { topbarSignature = ''; renderTopbar(); });
-rt.on('replaced', () => toast('Du bist in einem anderen Tab/Fenster im Casino – dieser Tab ist jetzt offline. Neu laden, um hier weiterzuspielen.', 'error', 8000));
+// Verbindung von anderem Tab/Gerät übernommen: Banner mit "Hier weiterspielen" statt nur Meldung
+let offlineBanner = null;
+const hideOffline = () => { offlineBanner?.remove(); offlineBanner = null; };
+rt.on('replaced', () => {
+  hideOffline();
+  offlineBanner = h('div.offline-banner', {},
+    h('span', {}, '⚠️ Dein Konto ist gerade in einem anderen Tab oder auf einem anderen Gerät in der Halle – dieser Tab ist offline.'),
+    h('button.btn.btn-gold.btn-sm', { onclick: () => { hideOffline(); rt.connect(); } }, '▶ Hier weiterspielen'),
+    h('a.btn.btn-sm', { href: '#/profile', onclick: hideOffline }, 'Sitzungen verwalten'),
+  );
+  document.body.append(offlineBanner);
+});
+rt.on('connect', hideOffline);
+rt.on('revoked', async () => {
+  hideOffline();
+  toast('Diese Sitzung wurde beendet.', 'error', 6000);
+  await refreshUser();
+  if (!store.user) route();
+});
 rt.on('reward', (m) => {
   if (typeof m.balance === 'number') setBalance(m.balance);
   if (m.kind === 'achievement') { sound.play('bigwin'); toast(`🏅 Erfolg „${m.title}“: +🪙 ${fmt(m.amount)}`, 'gold', 6000); }
@@ -186,7 +204,7 @@ async function refreshUser() {
   if (!store.user) return;
   try {
     const { user } = await api.get('/auth/me');
-    if (user) setUser(user);
+    setUser(user); // null, wenn die Sitzung serverseitig beendet wurde
   } catch { /* ignorieren */ }
 }
 

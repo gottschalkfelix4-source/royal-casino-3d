@@ -465,6 +465,13 @@ input[type='range'] { width: 100%; accent-color: var(--gold); }
 .news-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.3); }
 .news-icon { font-size: 26px; line-height: 1; }
 
+.offline-banner {
+  position: fixed; left: 50%; top: 76px; transform: translateX(-50%); z-index: 150;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; max-width: min(760px, calc(100vw - 32px));
+  padding: 12px 16px; border-radius: 14px; background: rgba(60, 20, 20, 0.94); border: 1px solid rgba(231, 76, 60, 0.7);
+  font-size: 13px; font-weight: 600; box-shadow: var(--shadow); animation: rise 0.25s ease;
+}
+
 /* ---------- Modals & Toasts ---------- */
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;

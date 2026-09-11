@@ -1,7 +1,7 @@
 import { WebSocketServer } from 'ws';
 import { db } from './db.js';
 import { parseCookies } from './util.js';
-import { bus } from './events.js';
+import { bus, live } from './events.js';
 import { GAME_IDS, STATION_POS, HALL_BOUNDS } from './stations.js';
 import { pickup } from './rewards.js';
 
@@ -27,18 +27,19 @@ export function attachRealtime(server, { bots = 3 } = {}) {
     const token = parseCookies(req.headers.cookie)['sid'];
     const user = token ? selectUser.get(token, Date.now()) : null;
     if (!user) { socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n'); socket.destroy(); return; }
-    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, user));
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, user, token));
   });
 
-  wss.on('connection', (ws, user) => {
+  wss.on('connection', (ws, user, token) => {
     const prev = players.get(user.id);
     // Gleicher Account in zweitem Tab: alte Verbindung sauber schließen (Code 4001 = ersetzt, kein Reconnect)
-    if (prev?.ws) { try { prev.ws.close(4001, 'replaced'); } catch { prev.ws.terminate(); } }
+    if (prev?.ws) { live.tokens.delete(prev.token); try { prev.ws.close(4001, 'replaced'); } catch { prev.ws.terminate(); } }
     const p = {
-      ws, id: user.id, name: user.username, x: (Math.random() - 0.5) * 4, z: 12 + Math.random(), ry: 0,
+      ws, token, id: user.id, name: user.username, x: (Math.random() - 0.5) * 4, z: 12 + Math.random(), ry: 0,
       anim: 'idle', game: prev?.game ?? null, lastChat: 0, alive: true,
     };
     players.set(p.id, p);
+    live.tokens.add(token);
     send(ws, { t: 'welcome', id: p.id, players: [...players.values()].map(pub), coins: [...coins.values()] });
     broadcast({ t: 'join', player: pub(p) }, p.id);
 
@@ -88,6 +89,7 @@ export function attachRealtime(server, { bots = 3 } = {}) {
     });
     ws.on('close', () => {
       if (players.get(p.id)?.ws !== ws) return; // bereits durch neue Verbindung ersetzt
+      live.tokens.delete(token);
       players.delete(p.id);
       broadcast({ t: 'leave', id: p.id });
     });
@@ -107,6 +109,10 @@ export function attachRealtime(server, { bots = 3 } = {}) {
 
   // Belohnungs-Benachrichtigungen an den betreffenden Spieler
   bus.on('notify', ({ userId, msg }) => { const p = players.get(userId); if (p?.ws) send(p.ws, msg); });
+  // Sitzung im Profil beendet -> zugehörige Hallen-Verbindung trennen (Code 4002 = Sitzung beendet)
+  bus.on('session-revoked', ({ token }) => {
+    for (const p of players.values()) if (p.ws && p.token === token) { try { p.ws.close(4002, 'revoked'); } catch { p.ws.terminate(); } }
+  });
 
   // ---------- Chips zum Einsammeln in der Halle ----------
   const coins = new Map();
