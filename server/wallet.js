@@ -19,6 +19,9 @@ const dailyAmountFor = (u) => {
   return Math.min(1500_00, 500_00 + 100_00 * (streak - 1));
 };
 
+/** Version der "Was ist neu"-Meldung – bei Änderung sehen alle Nutzer sie einmalig erneut */
+export const NEWS_VERSION = '2026-09-rewards';
+
 export function publicUser(u) {
   const now = Date.now();
   const nextBonusAt = new Date(todayStr() + 'T00:00:00Z').getTime() + 86400000;
@@ -34,6 +37,7 @@ export function publicUser(u) {
       biggestWin: u.biggest_win,
     },
     createdAt: u.created_at,
+    news: u.news_seen === NEWS_VERSION ? null : NEWS_VERSION,
     bonus: {
       available: u.last_daily_day !== todayStr(),
       nextAt: nextBonusAt,
@@ -132,6 +136,11 @@ walletRouter.post('/rescue', (req, res) => {
     return getUser(u.id);
   });
   res.json({ user: publicUser(user), amount: RESCUE_AMOUNT });
+});
+
+walletRouter.post('/news-seen', (req, res) => {
+  db.prepare('UPDATE users SET news_seen = ? WHERE id = ?').run(NEWS_VERSION, req.user.id);
+  res.json({ ok: true });
 });
 
 walletRouter.get('/history', (req, res) => {

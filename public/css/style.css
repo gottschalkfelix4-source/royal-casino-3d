@@ -459,7 +459,11 @@ input[type='range'] { width: 100%; accent-color: var(--gold); }
 .rw-ach-title { font-weight: 800; font-size: 12px; }
 .rw-ach-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .rw-ach-reward { font-size: 11px; color: var(--gold-2); font-weight: 700; margin-top: 4px; }
-.modal.wide, .modal:has(.rewards) { width: min(620px, calc(100vw - 32px)); }
+.modal.wide, .modal:has(.rewards), .modal:has(.news) { width: min(620px, calc(100vw - 32px)); }
+.news { display: flex; flex-direction: column; gap: 12px; }
+.news-intro { margin: 0; font-weight: 600; }
+.news-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: rgba(212, 175, 55, 0.08); border: 1px solid rgba(212, 175, 55, 0.3); }
+.news-icon { font-size: 26px; line-height: 1; }
 
 /* ---------- Modals & Toasts ---------- */
 .modal-backdrop {

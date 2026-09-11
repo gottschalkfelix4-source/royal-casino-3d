@@ -88,6 +88,7 @@ for (const [name, def] of [
   ['pickup_today', 'INTEGER NOT NULL DEFAULT 0'],
   ['pickups_total', 'INTEGER NOT NULL DEFAULT 0'],
   ['win_streak', 'INTEGER NOT NULL DEFAULT 0'],
+  ['news_seen', 'TEXT'],
 ]) {
   if (!columns.has(name)) db.exec(`ALTER TABLE users ADD COLUMN ${name} ${def}`);
 }

@@ -7,6 +7,7 @@ import { fmt } from '../ui.js';
 import { sound } from '../sound.js';
 import { rt } from '../realtime.js';
 import { voice } from '../voice.js';
+import { openRewards } from '../rewards.js';
 
 const EYE = 1.62;
 const gameName = (id) => GAMES.find((g) => g.id === id)?.name ?? id;
@@ -67,7 +68,7 @@ class Hall {
     engine.renderer.shadowMap.needsUpdate = true;
     this.frame = 0;
     this.casino = buildCasino(engine);
-    this.hitboxes = this.casino.stations.map((s) => s.hitbox);
+    this.hitboxes = [...this.casino.stations.map((s) => s.hitbox), ...this.casino.interactives.map((i) => i.hitbox)];
 
     // Eingaben (nur im Modus 'walk' wirksam)
     const canvas = engine.renderer.domElement;
@@ -156,12 +157,13 @@ class Hall {
     engine.start();
   }
 
-  stationOf(hitbox) { return this.casino.stations.find((s) => s.hitbox === hitbox); }
+  stationOf(hitbox) { return this.casino.stations.find((s) => s.hitbox === hitbox) ?? this.casino.interactives.find((i) => i.hitbox === hitbox); }
   stationById(id) { return this.casino?.stations.find((s) => s.id === id); }
 
   enter(station) {
     if (!station) return;
     sound.play('click');
+    if (station.action === 'rewards') { openRewards(); return; }
     location.hash = `#/game/${station.id}`;
   }
 
@@ -368,6 +370,10 @@ class Hall {
         const d = Math.hypot(s.position.x - me.pos.x, s.position.z - me.pos.z) - s.radius;
         if (d < bestD) { bestD = d; best = s; }
       }
+      for (const i of this.casino.interactives) {
+        const d = Math.hypot(i.position.x - me.pos.x, i.position.z - me.pos.z) - 1.0;
+        if (d < bestD) { bestD = d; best = i; }
+      }
       if (best !== this.nearStation) { this.nearStation = best; this.emit('near', best); }
       // Chips einsammeln: drüberlaufen genügt
       for (const c of this.coins.values()) {
@@ -404,6 +410,14 @@ class Hall {
     for (const s of this.casino.stations) {
       const active = this.mode === 'walk' && (s === this.hovered || s === this.nearStation);
       s.ring.material.opacity += ((active ? 0.6 + Math.sin(this.hoverTime * 5) * 0.25 : 0) - s.ring.material.opacity) * 0.15;
+    }
+    // Kollision mit den Info-Tafeln
+    if (this.mode === 'walk') {
+      for (const i of this.casino.interactives) {
+        const dx = me.pos.x - i.position.x; const dz = me.pos.z - i.position.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist < 1.1 && dist > 0.001) { me.pos.x = i.position.x + (dx / dist) * 1.1; me.pos.z = i.position.z + (dz / dist) * 1.1; }
+      }
     }
 
     for (const [id, a] of this.avatars) {

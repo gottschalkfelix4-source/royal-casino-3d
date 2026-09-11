@@ -3,6 +3,25 @@ import { h, fmt, toast, openModal } from './ui.js';
 import { setUser } from './state.js';
 import { sound } from './sound.js';
 
+/** Die vier Wege, Coins zu verdienen – für Tafel und "Was ist neu" */
+export const EARN_WAYS = [
+  { icon: '📅', title: 'Tagesbonus', text: '🪙 500 pro Tag, +100 für jeden Tag in Folge – bis 🪙 1.500. Serie halten!' },
+  { icon: '📋', title: 'Tagesaufgaben', text: 'Jeden Tag 3 Aufgaben (z. B. „3 Runden Blackjack“). Fortschritt läuft automatisch, Belohnung 🪙 100–400.' },
+  { icon: '🪙', title: 'Chips in der Halle', text: 'Leuchtende Chips liegen in der Halle – drüberlaufen sammelt 🪙 10–50 ein. Bis 🪙 500 am Tag.' },
+  { icon: '🏆', title: 'Erfolge', text: '13 einmalige Boni: erste Runde, 100 Runden, 10×-Gewinn, alle 12 Spiele, 5 Siege in Folge … bis 🪙 2.500.' },
+];
+
+/** Einmalige "Was ist neu"-Meldung nach dem Update (Server merkt sich pro Konto, dass sie gezeigt wurde). */
+export function openNews() {
+  const body = h('div.news', {},
+    h('p.news-intro', {}, 'Ab sofort kannst du dir dein Guthaben wieder aufbauen – auf vier Wegen:'),
+    ...EARN_WAYS.map((w) => h('div.news-row', {}, h('span.news-icon', {}, w.icon), h('div', {}, h('div.rw-title', {}, w.title), h('div.panel-note', {}, w.text)))),
+    h('p.panel-note', {}, 'Alles findest du jederzeit unter „🎁 Belohnungen“ oben rechts – und auf der Tafel am Eingang der Halle.'),
+    h('button.btn.btn-gold.btn-big', { onclick: () => { close(); openRewards(); } }, '🎁 Belohnungen ansehen'),
+  );
+  const { close } = openModal({ title: '✨ Neu: Coins verdienen', body, onClose: () => api.post('/wallet/news-seen').catch(() => {}) });
+}
+
 /** Belohnungs-Übersicht: Tagesbonus mit Serie, Tagesaufgaben, Chips, Erfolge */
 export async function openRewards() {
   const body = h('div.rewards');

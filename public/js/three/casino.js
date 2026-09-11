@@ -419,6 +419,67 @@ function pedestal() {
   return g;
 }
 
+/** Info-Tafel: "So verdienst du Coins" */
+function rewardsBoardTexture() {
+  const W = 1024; const H = 1280;
+  const { canvas, ctx } = makeCanvas(W, H);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#1a1410'); g.addColorStop(1, '#0d0a08');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 10; ctx.strokeRect(28, 28, W - 56, H - 56);
+  ctx.strokeStyle = 'rgba(212,175,55,0.45)'; ctx.lineWidth = 3; ctx.strokeRect(48, 48, W - 96, H - 96);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#f5d97a'; ctx.font = '900 66px Cinzel, Georgia, serif';
+  ctx.shadowColor = '#d4af37'; ctx.shadowBlur = 24;
+  ctx.fillText('SO VERDIENST DU', W / 2, 130);
+  ctx.fillText('COINS', W / 2, 205);
+  ctx.shadowBlur = 0;
+  const rows = [
+    ['📅', 'Tagesbonus', '500 Coins pro Tag, +100 je Tag in Folge', 'bis zu 1.500 – Serie nicht reißen lassen!'],
+    ['📋', 'Tagesaufgaben', 'Jeden Tag 3 neue Aufgaben, z. B. „3× Blackjack“', '100–400 Coins pro erfüllter Aufgabe'],
+    ['🪙', 'Chips in der Halle', 'Leuchtende Chips liegen herum – einfach', 'drüberlaufen: 10–50 Coins, bis 500 am Tag'],
+    ['🏆', 'Erfolge', '13 einmalige Boni: 100 Runden, 10×-Gewinn,', 'alle Spiele, 5 Siege in Folge … bis 2.500'],
+  ];
+  rows.forEach(([icon, title, l1, l2], i) => {
+    const y = 300 + i * 225;
+    ctx.fillStyle = 'rgba(212,175,55,0.08)'; roundRect(ctx, 70, y - 20, W - 140, 195, 18); ctx.fill();
+    ctx.strokeStyle = 'rgba(212,175,55,0.35)'; ctx.lineWidth = 2; roundRect(ctx, 70, y - 20, W - 140, 195, 18); ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.font = `86px ${EMOJI_FONT}`; ctx.fillStyle = '#fff'; ctx.fillText(icon, 100, y + 78);
+    ctx.fillStyle = '#f5d97a'; ctx.font = '800 48px Inter, Arial'; ctx.fillText(title, 230, y + 30);
+    ctx.fillStyle = '#e8e2d2'; ctx.font = '500 34px Inter, Arial'; ctx.fillText(l1, 230, y + 92); ctx.fillText(l2, 230, y + 140);
+  });
+  ctx.textAlign = 'center'; ctx.fillStyle = '#8fb3ff'; ctx.font = '600 32px Inter, Arial';
+  ctx.fillText('Tafel anklicken oder oben rechts „🎁 Belohnungen“ öffnen', W / 2, H - 90);
+  return canvasTexture(canvas);
+}
+
+function rewardsBoard({ standing = false } = {}) {
+  const g = new THREE.Group();
+  const w = standing ? 1.5 : 2.2; const hgt = w * 1.25;
+  const tex = rewardsBoardTexture();
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(w, hgt), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.55, roughness: 0.5 }));
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(w + 0.12, hgt + 0.12, 0.06), brass);
+  frame.position.z = -0.035;
+  const back = new THREE.Mesh(new THREE.BoxGeometry(w + 0.14, hgt + 0.14, 0.04), bodyBlack);
+  back.position.z = -0.06;
+  g.add(back, frame, face);
+  if (standing) {
+    // Staffelei-artiger Ständer
+    const legMat = brass;
+    for (const [lx, lz] of [[-w / 2 + 0.1, 0.02], [w / 2 - 0.1, 0.02], [0, 0.45]]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, 1.9, 10), legMat);
+      leg.position.set(lx, -hgt / 2 - 0.1, lz);
+      if (lz > 0.1) leg.rotation.x = -0.28;
+      g.add(leg);
+    }
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.05, 0.12), legMat);
+    bar.position.set(0, -hgt / 2 - 0.06, 0.02);
+    g.add(bar);
+  }
+  return g;
+}
+
 // ---------- Halle ----------
 export function buildCasino(engine) {
   const { scene } = engine;
@@ -675,6 +736,26 @@ export function buildCasino(engine) {
   }
   animated.push((dt, t) => { pd.userData.spin.rotation.y += dt * 2; pd.userData.spin.position.y = 1.5 + Math.sin(t * 2) * 0.1; });
 
+  // Info-Tafeln "So verdienst du Coins": Staffelei am Eingang (im Blick vom Spawnpunkt) + Wandtafel rechts
+  const interactives = [];
+  const addBoard = (board, x, y, z, rotY, hit) => {
+    board.position.set(x, y, z); board.rotation.y = rotY;
+    scene.add(board);
+    const hitbox = new THREE.Mesh(new THREE.BoxGeometry(...hit), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    hitbox.position.set(x, y, z); hitbox.rotation.y = rotY;
+    hitbox.userData.action = 'rewards';
+    scene.add(hitbox);
+    const label = textSprite('🎁 Coins verdienen', { size: 56, color: '#f5d97a', bg: 'rgba(0,0,0,0.6)', height: 0.42 });
+    label.position.set(x, y + hit[1] / 2 + 0.35, z);
+    scene.add(label);
+    interactives.push({ action: 'rewards', name: '🎁 Coins verdienen', hitbox, position: new THREE.Vector3(x, y, z) });
+  };
+  addBoard(rewardsBoard({ standing: true }), 3.9, 1.9, 10.6, Math.atan2(-3.9, 2.4), [1.7, 2.1, 0.4]);
+  addBoard(rewardsBoard(), w / 2 - 0.1, 2.3, 10, -Math.PI / 2, [0.3, 2.9, 2.4]);
+  const boardSpot = new THREE.SpotLight(0xffe6c4, 120, 8, 0.6, 0.8, 2);
+  boardSpot.position.set(3.4, 4.5, 11.6); boardSpot.target.position.set(3.9, 1.9, 10.6);
+  scene.add(boardSpot, boardSpot.target);
+
   // Croupiers hinter den Tischen (Blickrichtung zu den Spielern)
   const DEALERS = [['blackjack', 'Croupier Max', 0, -1.7], ['baccarat', 'Croupier Lea', 0, -1.6], ['roulette', 'Croupier Tom', 0.6, -1.5], ['dice', 'Croupier Ana', 0, -1.5]];
   for (const [id, name, lx, lz] of DEALERS) {
@@ -694,5 +775,5 @@ export function buildCasino(engine) {
     new THREE.Vector3(14, 2.2, 0), new THREE.Vector3(9, 2.5, 10),
   ], true, 'centripetal', 0.6);
 
-  return { stations, animated, path, center: new THREE.Vector3(0, 1.2, 0) };
+  return { stations, interactives, animated, path, center: new THREE.Vector3(0, 1.2, 0) };
 }

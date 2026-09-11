@@ -52,7 +52,8 @@ export function renderLobby(root, { openAuth }) {
   const offs = [
     hall.on('near', (best) => {
       prompt.classList.toggle('show', !!best);
-      if (best) prompt.replaceChildren(h('span.kbd', {}, 'E'), ` ${best.name} spielen`, h('span.prompt-sub', {}, `${rt.playersAt(best.id).length} Mitspieler am Tisch`));
+      if (best?.action) prompt.replaceChildren(h('span.kbd', {}, 'E'), ` ${best.name}`);
+      else if (best) prompt.replaceChildren(h('span.kbd', {}, 'E'), ` ${best.name} spielen`, h('span.prompt-sub', {}, `${rt.playersAt(best.id).length} Mitspieler am Tisch`));
     }),
     hall.on('hover', (station) => strip.querySelectorAll('.strip-item').forEach((el) => el.classList.toggle('active', el.dataset.id === station?.id))),
     hall.on('ticker', pushTicker),
