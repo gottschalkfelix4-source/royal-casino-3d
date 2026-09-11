@@ -22,6 +22,8 @@ const PANTS = [0x1f2a44, 0x2c2c34, 0x3b2f2f, 0x1a1a1a, 0x4a4a52, 0x2f3b2f];
 const geoCache = new Map();
 const geo = (key, make) => { if (!geoCache.has(key)) geoCache.set(key, make()); return geoCache.get(key); };
 const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.75, ...o });
+/** Stoff mit leichtem Sheen (Textil-Glanz an den Kanten) */
+const cloth = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.9, sheen: 0.5, sheenRoughness: 0.8, sheenColor: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.3), ...o });
 const shadow = (m) => { m.castShadow = true; return m; };
 
 /**
@@ -45,11 +47,11 @@ export function createAvatar({ name, bot = false, dealer = false }) {
   const heightScale = 0.94 + rnd() * 0.12;
   const build = 0.92 + rnd() * 0.18;
 
-  const skin = mat(skinColor, { roughness: 0.6 });
-  const hair = mat(hairColor, { roughness: 0.5 });
-  const shirt = mat(shirtColor, { roughness: outfit === 'suit' ? 0.5 : 0.8 });
-  const pants = mat(pantsColor, { roughness: 0.85 });
-  const shoes = mat(dealer || outfit === 'suit' ? 0x0d0d0d : pick(rnd, [0xffffff, 0x111111, 0x8a5a2a, 0xe74c3c]), { roughness: 0.5 });
+  const skin = new THREE.MeshPhysicalMaterial({ color: skinColor, roughness: 0.62, clearcoat: 0.08, clearcoatRoughness: 0.6, sheen: 0.15, sheenColor: new THREE.Color(0xffd9c0) });
+  const hair = new THREE.MeshPhysicalMaterial({ color: hairColor, roughness: 0.45, clearcoat: 0.3, clearcoatRoughness: 0.4 });
+  const shirt = outfit === 'suit' ? mat(shirtColor, { roughness: 0.5 }) : cloth(shirtColor);
+  const pants = cloth(pantsColor, { sheen: 0.25 });
+  const shoes = new THREE.MeshPhysicalMaterial({ color: dealer || outfit === 'suit' ? 0x0d0d0d : pick(rnd, [0xffffff, 0x111111, 0x8a5a2a, 0xe74c3c]), roughness: 0.35, clearcoat: 0.7, clearcoatRoughness: 0.3 });
   const sleeveMat = outfit === 'tshirt' || outfit === 'dress' ? skin : shirt;
 
   // ---------- Beine (Hüfte -> Knie -> Fuß) ----------
@@ -255,20 +257,22 @@ export function createAvatar({ name, bot = false, dealer = false }) {
   g.userData.setPose = (p) => {
     if (pose === p) return;
     pose = p;
+    // Vorzeichen: positive X-Rotation schwenkt ein hängendes Glied nach VORN (-Z), negative nach hinten;
+    // beim Oberkörper (über dem Gelenk) ist es umgekehrt.
     if (p === 'sit') {
       root.position.y = -0.36;
-      legL.hip.rotation.x = legR.hip.rotation.x = -Math.PI / 2 + 0.05;
-      legL.knee.rotation.x = legR.knee.rotation.x = Math.PI / 2 - 0.05;
+      legL.hip.rotation.x = legR.hip.rotation.x = Math.PI / 2 - 0.05;   // Oberschenkel waagerecht nach vorn
+      legL.knee.rotation.x = legR.knee.rotation.x = -(Math.PI / 2 - 0.05); // Unterschenkel senkrecht nach unten
       legL.hip.rotation.z = 0.08; legR.hip.rotation.z = -0.08;
-      armL.shoulder.rotation.x = armR.shoulder.rotation.x = -1.0;
-      armL.elbow.rotation.x = armR.elbow.rotation.x = -0.5;
-      torso.rotation.x = 0.08;
+      armL.shoulder.rotation.x = armR.shoulder.rotation.x = 0.9;         // Arme nach vorn auf den Tisch
+      armL.elbow.rotation.x = armR.elbow.rotation.x = 0.45;
+      torso.rotation.x = -0.08;                                          // leicht vorgebeugt
     } else {
       root.position.y = 0;
       legL.hip.rotation.set(0, 0, 0); legR.hip.rotation.set(0, 0, 0);
       legL.knee.rotation.set(0, 0, 0); legR.knee.rotation.set(0, 0, 0);
       armL.shoulder.rotation.set(0, 0, 0.06); armR.shoulder.rotation.set(0, 0, -0.06);
-      armL.elbow.rotation.set(-0.15, 0, 0); armR.elbow.rotation.set(-0.15, 0, 0);
+      armL.elbow.rotation.set(0.15, 0, 0); armR.elbow.rotation.set(0.15, 0, 0);
       torso.rotation.x = 0;
     }
   };
@@ -288,14 +292,16 @@ export function createAvatar({ name, bot = false, dealer = false }) {
       const s = Math.sin(phase); const c = Math.cos(phase);
       damp(legL.hip.rotation, 'x', s * 0.6, 0.5);
       damp(legR.hip.rotation, 'x', -s * 0.6, 0.5);
-      damp(legL.knee.rotation, 'x', Math.max(0, -c) * 1.1, 0.5);
-      damp(legR.knee.rotation, 'x', Math.max(0, c) * 1.1, 0.5);
+      // Knie beugt sich nach hinten, während das Bein nach vorn schwingt
+      damp(legL.knee.rotation, 'x', -Math.max(0, c) * 1.1, 0.5);
+      damp(legR.knee.rotation, 'x', -Math.max(0, -c) * 1.1, 0.5);
       damp(armL.shoulder.rotation, 'x', -s * 0.45, 0.5);
       damp(armR.shoulder.rotation, 'x', s * 0.45, 0.5);
-      damp(armL.elbow.rotation, 'x', -0.25 - Math.max(0, -s) * 0.45, 0.5);
-      damp(armR.elbow.rotation, 'x', -0.25 - Math.max(0, s) * 0.45, 0.5);
+      // Ellbogen beugt sich nach vorn, stärker beim vorderen Arm
+      damp(armL.elbow.rotation, 'x', 0.25 + Math.max(0, -s) * 0.45, 0.5);
+      damp(armR.elbow.rotation, 'x', 0.25 + Math.max(0, s) * 0.45, 0.5);
       root.position.y = Math.abs(s) * 0.035;
-      torso.rotation.x = 0.05;
+      torso.rotation.x = -0.05;
       torso.rotation.z = -s * 0.03;
       chest.scale.y = 1;
     } else {
@@ -303,8 +309,8 @@ export function createAvatar({ name, bot = false, dealer = false }) {
       for (const j of [legL.hip, legR.hip, legL.knee, legR.knee]) damp(j.rotation, 'x', 0, 0.15);
       damp(armL.shoulder.rotation, 'x', Math.sin(phase) * 0.04, 0.1);
       damp(armR.shoulder.rotation, 'x', -Math.sin(phase) * 0.04, 0.1);
-      damp(armL.elbow.rotation, 'x', -0.15, 0.1);
-      damp(armR.elbow.rotation, 'x', -0.15, 0.1);
+      damp(armL.elbow.rotation, 'x', 0.15, 0.1);
+      damp(armR.elbow.rotation, 'x', 0.15, 0.1);
       damp(root.position, 'y', 0, 0.2);
       damp(torso.rotation, 'x', 0, 0.1);
       damp(torso.rotation, 'z', Math.sin(phase * 0.5) * 0.015, 0.1);
@@ -319,16 +325,17 @@ export function createAvatar({ name, bot = false, dealer = false }) {
     const cycle = dealPhase % 7;
     const dealing = cycle < 2.0;
     const k = dealing ? Math.sin((cycle / 2.0) * Math.PI * 3) : 0;
-    armR.shoulder.rotation.x = -0.9 + k * 0.35;
-    armR.shoulder.rotation.z = -0.4 - k * 0.35;
-    armR.elbow.rotation.x = -1.0 + k * 0.5;
-    armL.shoulder.rotation.x = -0.85;
-    armL.shoulder.rotation.z = 0.35;
-    armL.elbow.rotation.x = -1.2;
+    // Arme nach vorn über den Tisch; rechte Hand streckt beim Geben aus und zieht zurück
+    armR.shoulder.rotation.x = 0.8 + k * 0.4;
+    armR.shoulder.rotation.z = -0.35 - k * 0.3;
+    armR.elbow.rotation.x = 1.1 - k * 0.6;
+    armL.shoulder.rotation.x = 0.75;
+    armL.shoulder.rotation.z = 0.3;
+    armL.elbow.rotation.x = 1.25;
     torso.rotation.y = Math.sin(t * 0.7) * 0.08 + (dealing ? k * 0.1 : 0);
-    torso.rotation.x = 0.06;
+    torso.rotation.x = -0.08;
     head.rotation.y = Math.sin(t * 0.5) * 0.3 - torso.rotation.y;
-    head.rotation.x = dealing ? 0.18 : 0.05;
+    head.rotation.x = dealing ? -0.22 : -0.06; // Blick nach unten auf den Tisch
     chest.scale.y = 1 + Math.sin(t * 1.5) * 0.012;
   };
 

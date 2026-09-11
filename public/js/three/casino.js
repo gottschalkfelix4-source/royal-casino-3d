@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { makeCanvas, canvasTexture, roundRect, goldMaterial, woodTexture, feltTexture, textSprite, createChip, createCard, createDie } from './assets.js';
+import { makeCanvas, canvasTexture, roundRect, goldMaterial, woodTexture, woodNormal, feltTexture, feltNormal, normalMapFromCanvas, textSprite, createChip, createCard, createDie } from './assets.js';
 import { createAvatar } from './avatars.js';
 
 /**
@@ -38,7 +38,25 @@ function carpetTexture() {
   const img = ctx.getImageData(0, 0, S, S);
   for (let i = 0; i < img.data.length; i += 4) { const n = (Math.random() - 0.5) * 18; img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n; }
   ctx.putImageData(img, 0, 0);
-  return canvasTexture(canvas, { repeat: [10, 7.5], anisotropy: 16 });
+  const normal = normalMapFromCanvas(canvas, { strength: 2.2, repeat: [10, 7.5] });
+  return { map: canvasTexture(canvas, { repeat: [10, 7.5], anisotropy: 16 }), normal };
+}
+
+/** Weicher Kontaktschatten (dunkler Verlauf) unter Möbeln – ersetzt teure Ambient Occlusion */
+let shadowTex = null;
+function contactShadow(w, d, opacity = 0.55) {
+  if (!shadowTex) {
+    const { canvas, ctx } = makeCanvas(256, 256);
+    const g = ctx.createRadialGradient(128, 128, 20, 128, 128, 128);
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.6, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+    shadowTex = new THREE.CanvasTexture(canvas);
+  }
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2;
+  m.position.y = 0.012;
+  m.renderOrder = 1;
+  return m;
 }
 
 function ceilingTexture() {
@@ -139,8 +157,8 @@ const SCREENS = {
 
 // ---------- Bausteine ----------
 const brass = goldMaterial({ roughness: 0.32 });
-const velvet = new THREE.MeshStandardMaterial({ color: 0x3a0a14, roughness: 0.95 });
-const darkWood = new THREE.MeshStandardMaterial({ map: woodTexture(), color: 0x8a6a4a, roughness: 0.45 });
+const velvet = new THREE.MeshPhysicalMaterial({ color: 0x3a0a14, roughness: 0.9, sheen: 0.8, sheenRoughness: 0.6, sheenColor: new THREE.Color(0x8a2a44) });
+const darkWood = new THREE.MeshPhysicalMaterial({ map: woodTexture(), normalMap: woodNormal(), normalScale: new THREE.Vector2(0.5, 0.5), color: 0x8a6a4a, roughness: 0.35, clearcoat: 0.6, clearcoatRoughness: 0.25 });
 const chrome = new THREE.MeshStandardMaterial({ color: 0xd8d8e0, metalness: 1, roughness: 0.2 });
 const bodyRed = new THREE.MeshPhysicalMaterial({ color: 0x7a0f22, metalness: 0.5, roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.1 });
 const bodyBlack = new THREE.MeshPhysicalMaterial({ color: 0x14141a, metalness: 0.6, roughness: 0.35, clearcoat: 1 });
@@ -186,7 +204,7 @@ function slotMachine(screenTex) {
 /** Spieltisch: shape 'rect' | 'oval' | 'half' (Halbkreis wie Blackjack) */
 function gameTable({ shape = 'rect', w = 3, d = 1.8, felt = '#0f5a3a', rail = true } = {}) {
   const g = new THREE.Group();
-  const feltMat = new THREE.MeshStandardMaterial({ map: feltTexture(felt), roughness: 0.95 });
+  const feltMat = new THREE.MeshStandardMaterial({ map: feltTexture(felt), normalMap: feltNormal(), normalScale: new THREE.Vector2(0.4, 0.4), roughness: 0.95 });
   let topGeo;
   if (shape === 'oval') topGeo = new THREE.CylinderGeometry(1, 1, 0.1, 48).scale(w / 2, 1, d / 2);
   else if (shape === 'half') topGeo = new THREE.CylinderGeometry(1, 1, 0.1, 48, 1, false, 0, Math.PI).scale(w / 2, 1, d);
@@ -409,9 +427,17 @@ export function buildCasino(engine) {
   const stations = [];
 
   // Boden, Decke, Wände
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: carpetTexture(), roughness: 0.95 }));
+  const carpet = carpetTexture();
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: carpet.map, normalMap: carpet.normal, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.98 }));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
   scene.add(floor);
+  // Lichtvouten entlang der Decke (indirektes warmes Licht, Bloom)
+  const coveMat = new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xffb860, emissiveIntensity: 1.6 });
+  for (const [len, x, z, rot] of [[w - 2, 0, -d / 2 + 0.5, 0], [w - 2, 0, d / 2 - 0.5, 0], [d - 2, -w / 2 + 0.5, 0, Math.PI / 2], [d - 2, w / 2 - 0.5, 0, Math.PI / 2]]) {
+    const cove = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.12), coveMat);
+    cove.position.set(x, h - 0.12, z); cove.rotation.y = rot;
+    scene.add(cove);
+  }
   const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: ceilingTexture(), roughness: 0.9 }));
   ceiling.rotation.x = Math.PI / 2; ceiling.position.y = h;
   scene.add(ceiling);
@@ -462,8 +488,12 @@ export function buildCasino(engine) {
     light.position.set(x, 5.0, z);
     scene.add(light);
   }
-  // Säulen
-  for (const [x, z] of [[-12, -9], [12, -9], [-12, 9], [12, 9], [-4, -9], [4, -9]]) scene.add(column(x, z));
+  // Säulen (mit Kontaktschatten)
+  for (const [x, z] of [[-12, -9], [12, -9], [-12, 9], [12, 9], [-4, -9], [4, -9]]) {
+    scene.add(column(x, z));
+    const cs = contactShadow(2.2, 2.2, 0.6); cs.position.set(x, 0.012, z); scene.add(cs);
+  }
+  const barShadow = contactShadow(11, 5, 0.5); barShadow.position.set(-13, 0.012, -12.2); scene.add(barShadow);
 
   // Neon-Schriftzug an der Rückwand
   const neon = emissivePlane(12, 3, neonTexture('ROYAL CASINO', '#ff2d6f', '★ 24 STUNDEN GEÖFFNET ★'), 2.2);
@@ -506,6 +536,9 @@ export function buildCasino(engine) {
     scene.add(ring);
     const st = { id, name, group, hitbox, label, ring, position: new THREE.Vector3(x, 1, z), seats: worldSeats, radius: Math.max(hit[0], hit[2]) / 2, mount: null };
     stations.push(st);
+    const cs = contactShadow(hit[0] * 1.5, hit[2] * 1.5, 0.5);
+    cs.position.set(x, 0.012, z); cs.rotation.z = rotY;
+    scene.add(cs);
     return st;
   };
   /** Montagepunkt für die Spielszene: type 'table' (auf der Platte, y nach oben) oder 'screen' (Bildschirm, +z zum Spieler) */

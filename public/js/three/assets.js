@@ -19,6 +19,37 @@ export function canvasTexture(canvas, { repeat = null, anisotropy = 8 } = {}) {
   return tex;
 }
 
+/**
+ * Normal-Map aus einem Canvas (Helligkeit = Höhe). strength: Ausprägung der Unebenheit.
+ * Gibt Oberflächen sichtbare Struktur unter Licht, ohne zusätzliche Geometrie.
+ */
+export function normalMapFromCanvas(source, { strength = 1.5, repeat = null } = {}) {
+  const w = source.width; const h = source.height;
+  const src = source.getContext('2d').getImageData(0, 0, w, h).data;
+  const height = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) height[i] = (src[i * 4] * 0.299 + src[i * 4 + 1] * 0.587 + src[i * 4 + 2] * 0.114) / 255;
+  const { canvas, ctx } = makeCanvas(w, h);
+  const out = ctx.createImageData(w, h);
+  const at = (x, y) => height[((y + h) % h) * w + ((x + w) % w)];
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const dx = (at(x + 1, y) - at(x - 1, y)) * strength;
+      const dy = (at(x, y + 1) - at(x, y - 1)) * strength;
+      const len = Math.hypot(dx, dy, 1);
+      const o = (y * w + x) * 4;
+      out.data[o] = ((-dx / len) * 0.5 + 0.5) * 255;
+      out.data[o + 1] = ((dy / len) * 0.5 + 0.5) * 255;
+      out.data[o + 2] = ((1 / len) * 0.5 + 0.5) * 255;
+      out.data[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.anisotropy = 8;
+  if (repeat) { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(repeat[0], repeat[1]); }
+  return tex;
+}
+
 export function roundRect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -66,6 +97,25 @@ export function feltTexture(color = '#0f5a3a') {
   });
 }
 
+/** Feine Gewebestruktur als Normal-Map für Filz */
+export function feltNormal() {
+  return cached('felt:normal', () => {
+    const { canvas, ctx } = makeCanvas(256, 256);
+    const img = ctx.createImageData(256, 256);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = 120 + Math.random() * 40 + (((i / 4) % 2) ? 6 : -6);
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    return normalMapFromCanvas(canvas, { strength: 1.2, repeat: [12, 12] });
+  });
+}
+
+/** Holzmaserung als Normal-Map */
+export function woodNormal() {
+  return cached('wood:normal', () => normalMapFromCanvas(woodTexture().image, { strength: 1.0, repeat: [2, 2] }));
+}
+
 export function woodTexture() {
   return cached('wood', () => {
     const { canvas, ctx } = makeCanvas(512, 512);
@@ -91,7 +141,7 @@ export function buildTable(scene, { width = 14, depth = 9, felt = '#0f5a3a', y =
   const group = new THREE.Group();
   const top = new THREE.Mesh(
     new THREE.PlaneGeometry(width, depth),
-    new THREE.MeshStandardMaterial({ map: feltTexture(felt), roughness: 0.95, metalness: 0 })
+    new THREE.MeshStandardMaterial({ map: feltTexture(felt), normalMap: feltNormal(), normalScale: new THREE.Vector2(0.35, 0.35), roughness: 0.95, metalness: 0 })
   );
   top.rotation.x = -Math.PI / 2;
   top.position.y = y;
