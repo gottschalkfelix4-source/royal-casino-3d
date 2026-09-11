@@ -761,7 +761,7 @@ export function buildCasino(engine) {
     const label = textSprite('🎁 Coins verdienen', { size: 56, color: '#f5d97a', bg: 'rgba(0,0,0,0.6)', height: 0.42 });
     label.position.set(x, y + hit[1] / 2 + 0.35, z);
     scene.add(label);
-    interactives.push({ action: 'rewards', name: '🎁 Coins verdienen', hitbox, position: new THREE.Vector3(x, y, z) });
+    interactives.push({ id: `board-${interactives.length}`, action: 'rewards', name: '🎁 Coins verdienen', hitbox, position: new THREE.Vector3(x, y, z) });
   };
   addBoard(rewardsBoard({ standing: true }), 3.9, 1.9, 10.6, Math.atan2(-3.9, 2.4), [1.7, 2.1, 0.4]);
   addBoard(rewardsBoard(), w / 2 - 0.1, 2.3, 10, -Math.PI / 2, [0.3, 2.9, 2.4]);

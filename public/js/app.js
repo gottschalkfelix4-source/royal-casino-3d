@@ -62,6 +62,7 @@ rt.on('reward', (m) => {
   else if (m.kind === 'mission_done') { sound.play('win'); toast(`📋 Aufgabe erfüllt: ${m.title} – 🪙 ${fmt(m.amount)} unter „Belohnungen“ abholen`, 'gold', 6000); }
   else if (m.kind === 'pickup') { sound.play('coin'); toast(`🪙 Chip gefunden: +${fmt(m.amount)} (heute ${fmt(m.today)} / 500,00)`, 'success', 2500); }
   else if (m.kind === 'pickup_cap') toast('Tageslimit für Chips erreicht (🪙 500) – morgen geht es weiter', 'info');
+  else if (m.kind === 'pickup_far') toast('Zu weit weg – geh näher an den Chip heran', 'info', 1800);
 });
 
 let newsShownFor = null;

@@ -68,7 +68,8 @@ class Hall {
     engine.renderer.shadowMap.needsUpdate = true;
     this.frame = 0;
     this.casino = buildCasino(engine);
-    this.hitboxes = [...this.casino.stations.map((s) => s.hitbox), ...this.casino.interactives.map((i) => i.hitbox)];
+    this.baseHitboxes = [...this.casino.stations.map((s) => s.hitbox), ...this.casino.interactives.map((i) => i.hitbox)];
+    this.hitboxes = this.baseHitboxes;
 
     // Eingaben (nur im Modus 'walk' wirksam)
     const canvas = engine.renderer.domElement;
@@ -113,7 +114,12 @@ class Hall {
       if (this.mode !== 'walk') return;
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key === 'Enter') { this.emit('chatfocus'); e.preventDefault(); return; }
-      if (e.key.toLowerCase() === 'e' && this.nearStation) { this.enter(this.nearStation); return; }
+      if (e.key.toLowerCase() === 'e') {
+        // E: erst Chip in Reichweite, sonst Tisch/Tafel
+        const coin = this.nearestCoin(4.5);
+        if (coin) { this.pickupCoin(coin); return; }
+        if (this.nearStation) { this.enter(this.nearStation); return; }
+      }
       this.keys.add(e.key.toLowerCase());
       if (['arrowup', 'arrowdown', ' '].includes(e.key.toLowerCase())) e.preventDefault();
     });
@@ -145,7 +151,7 @@ class Hall {
       rt.on('coin_taken', (m) => {
         const c = this.coins.get(m.id);
         if (c && m.by !== rt.me && m.value) floatText(engine, c.mesh.position.clone(), `${m.name} +🪙 ${fmt(m.value)}`, '#ffd76a');
-        this.removeCoin(m.id);
+        this.removeCoin(m.id, { fly: m.by === rt.me });
       }),
     ];
     this.coins = new Map();
@@ -157,7 +163,11 @@ class Hall {
     engine.start();
   }
 
-  stationOf(hitbox) { return this.casino.stations.find((s) => s.hitbox === hitbox) ?? this.casino.interactives.find((i) => i.hitbox === hitbox); }
+  stationOf(hitbox) {
+    if (hitbox.userData.coinId) { const c = this.coins.get(hitbox.userData.coinId); return c ? this.coinTarget(c) : null; }
+    return this.casino.stations.find((s) => s.hitbox === hitbox) ?? this.casino.interactives.find((i) => i.hitbox === hitbox);
+  }
+  coinTarget(c) { return { id: `coin-${c.id}`, action: 'coin', coin: c, name: `Chip aufheben (🪙 ${Math.round(c.value / 100)})` }; }
   stationById(id) { return this.casino?.stations.find((s) => s.id === id); }
 
   enter(station) {
@@ -286,27 +296,53 @@ class Hall {
     glow.position.set(c.x, 1.5, c.z);
     const halo = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.6, 32), new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }));
     halo.rotation.x = -Math.PI / 2; halo.position.set(c.x, 0.02, c.z);
-    this.engine.scene.add(mesh, beam, glow, halo);
-    this.coins.set(c.id, { ...c, mesh, beam, glow, halo, phase: Math.random() * 6 });
+    // Großzügige Klickfläche (anklicken sammelt ebenfalls ein)
+    const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 2.4, 12), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
+    hit.position.set(c.x, 1.2, c.z);
+    hit.userData.coinId = c.id;
+    this.engine.scene.add(mesh, beam, glow, halo, hit);
+    this.coins.set(c.id, { ...c, mesh, beam, glow, halo, hit, phase: Math.random() * 6 });
+    this.hitboxes = [...this.baseHitboxes, ...[...this.coins.values()].map((k) => k.hit)];
   }
-  removeCoin(id) {
+  removeCoin(id, { fly = false } = {}) {
     const c = this.coins.get(id);
     if (!c) return;
-    for (const o of [c.mesh, c.beam, c.glow, c.halo]) {
-      this.engine.scene.remove(o);
-      if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); }
-      else if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); }
-    }
     this.coins.delete(id);
     this.pendingPickup.delete(id);
+    this.hitboxes = [...this.baseHitboxes, ...[...this.coins.values()].map((k) => k.hit)];
+    const dispose = () => {
+      for (const o of [c.mesh, c.beam, c.glow, c.halo, c.hit]) {
+        this.engine.scene.remove(o);
+        if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); }
+        else if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); }
+      }
+    };
+    if (!fly) { dispose(); return; }
+    // Chip fliegt zur Kamera und verschwindet
+    for (const o of [c.beam, c.glow, c.halo, c.hit]) this.engine.scene.remove(o);
+    const from = c.mesh.position.clone();
+    this.engine.tween(450, (k) => {
+      c.mesh.position.lerpVectors(from, this.engine.camera.position, k);
+      c.mesh.scale.setScalar(1 - k * 0.8);
+      c.mesh.rotation.y += 0.4;
+    }).then(dispose);
   }
-  /** Chip aufheben (Server prüft Entfernung) */
+  /** Chip aufheben (Server prüft Entfernung, max. 6 m) */
   pickupCoin(c) {
     if (!c || this.pendingPickup.has(c.id) || !rt.connected) return;
     this.pendingPickup.add(c.id);
-    rt.sendPos(this.me.pos.x, this.me.pos.z, this.me.yaw, 'idle'); // Server kennt die aktuelle Position
+    rt.sendPos(this.me.pos.x, this.me.pos.z, this.me.yaw, this.me.moving ? 'walk' : 'idle'); // Server kennt die aktuelle Position
     rt.send({ t: 'pickup', id: c.id });
-    setTimeout(() => this.pendingPickup.delete(c.id), 3000); // falls der Server ablehnt, erneut möglich
+    sound.play('chip');
+    setTimeout(() => this.pendingPickup.delete(c.id), 2500); // falls der Server ablehnt, erneut möglich
+  }
+  nearestCoin(maxDist) {
+    let best = null; let bestD = maxDist;
+    for (const c of this.coins.values()) {
+      const d = Math.hypot(c.x - this.me.pos.x, c.z - this.me.pos.z);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    return best;
   }
 
   /** Weltposition eines Spielers (für Sprachchat-Entfernung) */
@@ -391,13 +427,14 @@ class Hall {
         const d = Math.hypot(i.position.x - me.pos.x, i.position.z - me.pos.z) - 1.0;
         if (d < bestD) { bestD = d; best = i; }
       }
-      // Chips: drüberlaufen sammelt automatisch ein; in der Nähe zusätzlich E-Prompt
-      for (const c of this.coins.values()) {
-        const d = Math.hypot(c.x - me.pos.x, c.z - me.pos.z);
-        if (d < 1.5) this.pickupCoin(c);
-        else if (d - 0.6 < bestD) { bestD = d - 0.6; best = { action: 'coin', coin: c, name: `Chip aufheben (🪙 ${Math.round(c.value / 100)})`, id: `coin-${c.id}` }; }
+      // Chips: drüberlaufen (2,2 m) sammelt automatisch ein; im Umkreis von 4,5 m hat der Chip Vorrang beim E-Prompt
+      const coin = this.nearestCoin(4.5);
+      if (coin) {
+        const d = Math.hypot(coin.x - me.pos.x, coin.z - me.pos.z);
+        if (d < 2.2) this.pickupCoin(coin);
+        best = this.coinTarget(coin);
       }
-      if (best?.id !== this.nearStation?.id) { this.nearStation = best; this.emit('near', best); }
+      if ((best?.id ?? null) !== (this.nearStation?.id ?? null)) { this.nearStation = best; this.emit('near', best); }
     } else if (this.mode === 'spectate' && this.spectateCam) {
       // Sitzend am Tisch: Kamera auf dem eigenen Platz, leichtes Atmen; Maus-Drag zum Umsehen
       const c = this.spectateCam;

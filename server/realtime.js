@@ -78,7 +78,7 @@ export function attachRealtime(server, { bots = 3 } = {}) {
         // Chip in der Halle einsammeln: muss existieren und in Reichweite der zuletzt gemeldeten Position liegen
         const coin = coins.get(String(msg.id));
         if (!coin || p.game) return;
-        if (Math.hypot(coin.x - p.x, coin.z - p.z) > 3.2) return;
+        if (Math.hypot(coin.x - p.x, coin.z - p.z) > 6.5) { send(ws, { t: 'reward', kind: 'pickup_far' }); return; }
         coins.delete(coin.id);
         const result = pickup(p.id, coin.value);
         broadcast({ t: 'coin_taken', id: coin.id, by: p.id, name: p.name, value: result ? result.amount : 0 });
