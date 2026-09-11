@@ -53,12 +53,17 @@ class Hall {
     key.shadow.mapSize.set(engine.quality.shadowMap, engine.quality.shadowMap);
     key.shadow.bias = -0.0004;
     engine.scene.add(key, key.target);
-    for (const [x, z, c] of [[-14, -6, 0xffb070], [14, -6, 0xc59bff], [-14, 8, 0xffd76a], [14, 8, 0x4d9cff], [0, -11, 0xff2d6f]]) {
-      const s = new THREE.SpotLight(c, 350, 0, 1.0, 0.8, 2);
+    // Wenige Akzentlichter: jedes Licht kostet in jedem Pixel Rechenzeit
+    for (const [x, z, c] of [[-14, 0, 0xffb070], [14, 0, 0xc59bff], [0, -11, 0xff2d6f]]) {
+      const s = new THREE.SpotLight(c, 380, 0, 1.0, 0.8, 2);
       s.position.set(x, 6.2, z);
       s.target.position.set(x, 0, z);
       engine.scene.add(s, s.target);
     }
+    // Schatten der Halle nur alle 3 Frames neu berechnen (Figuren bewegen sich langsam genug)
+    engine.renderer.shadowMap.autoUpdate = false;
+    engine.renderer.shadowMap.needsUpdate = true;
+    this.frame = 0;
     this.casino = buildCasino(engine);
     this.hitboxes = this.casino.stations.map((s) => s.hitbox);
 
@@ -148,7 +153,8 @@ class Hall {
     this.layer.classList.toggle('interactive', mode === 'walk');
     this.canvas.style.cursor = mode === 'walk' ? 'grab' : '';
     // Im Hintergrund sparsamer rendern
-    this.engine.setPixelRatioCap(mode === 'walk' ? 2 : 1);
+    // Bloom + große Halle: Pixeldichte in der Lobby auf 1,5 begrenzen, im Hintergrund auf 1
+    this.engine.setPixelRatioCap(mode === 'walk' ? 1.5 : 1);
     if (mode === 'spectate' && this.spectateStation) {
       const st = this.spectateStation;
       // Kamera an einen freien Platz, leicht zurück und über Augenhöhe
@@ -201,6 +207,7 @@ class Hall {
   update(dt, t) {
     const { engine, me, keys } = this;
     for (const fn of this.casino.animated) fn(dt, t);
+    if ((this.frame++ % 3) === 0) engine.renderer.shadowMap.needsUpdate = true;
 
     if (this.mode === 'walk') {
       const speed = (keys.has('shift') ? 5.5 : 3.2) * dt;

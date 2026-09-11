@@ -260,7 +260,8 @@ function chandelier(x, z, y = 5.4) {
   const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 6), brass);
   chain.position.y = 0.9;
   g.add(chain);
-  const crystalMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.6, roughness: 0.05, metalness: 0, emissive: 0xfff2cc, emissiveIntensity: 0.35, transparent: true, opacity: 0.9 });
+  // Kein "transmission": das würde pro Frame einen zusätzlichen Renderpass der ganzen Szene auslösen
+  const crystalMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0.1, clearcoat: 1, emissive: 0xfff2cc, emissiveIntensity: 0.4, transparent: true, opacity: 0.85 });
   const crystalGeo = new THREE.OctahedronGeometry(0.07, 0);
   const crystals = new THREE.Group();
   for (let i = 0; i < 28; i++) {
@@ -281,9 +282,6 @@ function chandelier(x, z, y = 5.4) {
     bulbs.add(b);
   }
   g.add(bulbs);
-  const light = new THREE.PointLight(0xffd9a0, 30, 16, 2);
-  light.position.y = -0.2;
-  g.add(light);
   g.position.set(x, y, z);
   g.userData.crystals = crystals;
   return g;
@@ -323,7 +321,7 @@ function bar(x, z) {
   const colors = [0x35c7ff, 0xff4d6d, 0x7cf0ae, 0xffd76a, 0xc59bff, 0xff8c42];
   for (let i = 0; i < 14; i++) {
     const c = colors[i % colors.length];
-    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.5, 12), new THREE.MeshPhysicalMaterial({ color: c, emissive: c, emissiveIntensity: 0.6, transmission: 0.4, roughness: 0.1, transparent: true, opacity: 0.85 }));
+    const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.5, 12), new THREE.MeshPhysicalMaterial({ color: c, emissive: c, emissiveIntensity: 0.6, roughness: 0.1, clearcoat: 1, transparent: true, opacity: 0.85 }));
     bottle.position.set(-3.3 + i * 0.5, 1.3 + (i % 2) * 0.7, -1.32);
     g.add(bottle);
   }
@@ -396,7 +394,7 @@ function pedestal() {
   const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 48), goldMaterial({ roughness: 0.25 }));
   coin.position.y = 1.5;
   coin.rotation.x = Math.PI / 2;
-  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 1.3, 32, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, roughness: 0.05, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 1.3, 32, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xcfe6ff, roughness: 0.05, metalness: 0.1, clearcoat: 1, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false }));
   glass.position.y = 1.65;
   g.add(base, ring, coin, glass);
   g.userData.spin = coin;
@@ -452,12 +450,17 @@ export function buildCasino(engine) {
       scene.add(s);
     }
   }
-  // Kronleuchter
+  // Kronleuchter (Licht kommt von wenigen Punktlichtern, nicht von jedem Leuchter)
   for (const [x, z] of [[-8, -4], [8, -4], [-8, 6], [8, 6], [0, 1]]) {
     const c = chandelier(x, z, x === 0 ? 5.6 : 5.3);
     if (x === 0) c.scale.setScalar(1.5);
     scene.add(c);
     animated.push((dt, t) => { c.userData.crystals.rotation.y = t * 0.15; });
+  }
+  for (const [x, z] of [[-8, 1], [8, 1], [0, -8]]) {
+    const light = new THREE.PointLight(0xffd9a0, 40, 20, 2);
+    light.position.set(x, 5.0, z);
+    scene.add(light);
   }
   // Säulen
   for (const [x, z] of [[-12, -9], [12, -9], [-12, 9], [12, 9], [-4, -9], [4, -9]]) scene.add(column(x, z));
