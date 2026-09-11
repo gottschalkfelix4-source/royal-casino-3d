@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Tweener, Easing } from './tween.js';
 
 export { THREE, Easing };
@@ -11,7 +15,7 @@ export class Engine {
   constructor(container, opts = {}) {
     const {
       fov = 45, position = [0, 6, 10], target = [0, 0, 0], background = 0x07090d,
-      shadows = true, exposure = 1.0, envIntensity = 0.7, fog = null,
+      shadows = true, exposure = 1.0, envIntensity = 0.7, fog = null, bloom = null,
     } = opts;
     this.container = container;
     this.disposed = false;
@@ -40,6 +44,16 @@ export class Engine {
     this.scene.environmentIntensity = envIntensity;
     pmrem.dispose();
 
+    // Optionale Nachbearbeitung (Bloom für Neon, Lampen, Leuchtschriften)
+    if (bloom) {
+      this.composer = new EffectComposer(this.renderer);
+      this.composer.setPixelRatio(this.renderer.getPixelRatio());
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), bloom.strength ?? 0.5, bloom.radius ?? 0.5, bloom.threshold ?? 0.85);
+      this.composer.addPass(this.bloomPass);
+      this.composer.addPass(new OutputPass());
+    }
+
     this.clock = new THREE.Clock();
     this.tweener = new Tweener();
     this.updaters = new Set();
@@ -57,6 +71,7 @@ export class Engine {
     const w = this.container.clientWidth || 1;
     const hgt = this.container.clientHeight || 1;
     this.renderer.setSize(w, hgt, false);
+    this.composer?.setSize(w, hgt);
     this.camera.aspect = w / hgt;
     this.camera.updateProjectionMatrix();
     this.applyFit();
@@ -126,7 +141,8 @@ export class Engine {
         this.camera.position.y += (Math.random() - 0.5) * s;
         this.shakeAmount *= 0.88;
       }
-      this.renderer.render(this.scene, this.camera);
+      if (this.composer) this.composer.render();
+      else this.renderer.render(this.scene, this.camera);
     };
     loop();
   }
@@ -183,6 +199,7 @@ export class Engine {
       }
     });
     this.scene.environment?.dispose?.();
+    this.composer?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

@@ -1,109 +1,141 @@
 import { Engine, THREE } from '../three/engine.js';
-import { createChip, createCard, createDie, goldMaterial, CHIP_STYLES } from '../three/assets.js';
+import { buildCasino } from '../three/casino.js';
 import { GAMES } from '../games/registry.js';
 import { store, subscribe } from '../state.js';
 import { h, fmt } from '../ui.js';
 import { sound } from '../sound.js';
 
-const heroText = (user) => (user
-  ? `Willkommen zurück, ${user.username}! Dein Guthaben: 🪙 ${fmt(user.balance)}`
-  : 'Zwölf Spiele in 3D, virtuelles Spielgeld, kein Risiko. Registriere dich und erhalte 🪙 10.000 Startguthaben.');
-
-/** Lobby: 3D-Hintergrund mit schwebenden Chips, Karten, Würfeln + Spielauswahl. */
+/**
+ * Lobby: begehbare 3D-Casino-Halle. Die Kamera schwebt auf einem Rundweg durch die Halle,
+ * Tische und Automaten sind anklickbar und führen direkt ins Spiel.
+ */
 export function renderLobby(root, { openAuth }) {
   root.innerHTML = '';
   root.className = 'view';
-  const bg = h('div.lobby-bg');
+  const stage = h('div.lobby-stage');
   const user = store.user;
 
-  const heroP = h('p', {}, heroText(user));
-  const unsubscribe = subscribe((s) => { heroP.textContent = heroText(s.user); });
-  const hero = h('div.hero', {},
-    h('h1', {}, 'ROYAL CASINO'),
-    heroP,
-    user ? null : h('div.hero-actions', {},
-      h('button.btn.btn-gold.btn-big', { style: { width: 'auto' }, onclick: () => openAuth('register') }, '🎁 Kostenlos registrieren'),
-      h('button.btn.btn-big', { style: { width: 'auto' }, onclick: () => openAuth('login') }, 'Anmelden'),
-    ),
-  );
+  // ---------- HTML-Overlay ----------
+  const welcome = h('div.lobby-welcome');
+  const renderWelcome = (u) => {
+    welcome.replaceChildren(...[
+      h('div.lobby-title', {}, 'ROYAL CASINO'),
+      h('div.lobby-sub', {}, u
+        ? `Willkommen zurück, ${u.username} · 🪙 ${fmt(u.balance)}`
+        : 'Zwölf Spiele · Virtuelles Spielgeld · 🪙 10.000 Startguthaben'),
+      u ? null : h('div.row', { style: { marginTop: '10px' } },
+        h('button.btn.btn-gold', { onclick: () => openAuth('register') }, '🎁 Registrieren'),
+        h('button.btn', { onclick: () => openAuth('login') }, 'Anmelden'),
+      ),
+    ].filter(Boolean));
+  };
+  renderWelcome(user);
+  const unsubscribe = subscribe((s) => renderWelcome(s.user));
 
-  const grid = h('div.game-grid', {}, GAMES.map((g) => {
-    const live = store.activeGames.includes(g.id);
-    const card = h('a.game-card', { href: `#/game/${g.id}`, style: { '--accent': g.accent } },
-      h('div.icon', {}, g.icon),
-      h('h3', {}, g.name),
-      h('p', {}, g.tagline),
-      live ? h('span.tag.live', {}, '● LÄUFT') : h('span.tag', {}, '3D'),
-    );
-    card.style.setProperty('--accent', g.accent);
-    card.addEventListener('mousemove', (e) => {
-      const r = card.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5;
-      const y = (e.clientY - r.top) / r.height - 0.5;
-      card.style.transform = `perspective(700px) rotateY(${x * 12}deg) rotateX(${-y * 12}deg) translateY(-4px)`;
-    });
-    card.addEventListener('mouseleave', () => { card.style.transform = ''; });
-    card.addEventListener('mouseenter', () => sound.play('click'));
-    return card;
-  }));
-
-  const content = h('div.lobby-content', {}, hero, grid);
-  const lobby = h('div.lobby', {}, bg, content);
+  const hint = h('div.lobby-hint', {}, '🖱️ Klicke auf einen Tisch oder Automaten · Maus bewegen zum Umsehen');
+  const strip = h('div.lobby-strip', {}, GAMES.map((g) =>
+    h('a.strip-item', { href: `#/game/${g.id}`, title: g.name, dataset: { id: g.id }, onmouseenter: () => highlightById(g.id), onmouseleave: () => highlightById(null) },
+      h('span.strip-icon', {}, g.icon), h('span.strip-name', {}, g.name),
+      store.activeGames.includes(g.id) ? h('span.strip-live', {}, '●') : null)
+  ));
+  const tooltip = h('div.lobby-tooltip');
+  const lobby = h('div.lobby', {}, stage, welcome, hint, tooltip, strip);
   root.append(lobby);
 
-  // ---------- 3D-Hintergrund ----------
-  const engine = new Engine(bg, { fov: 50, position: [0, 0, 14], target: [0, 0, 0], background: 0x07090d, shadows: false, exposure: 0.9, fog: [10, 40] });
-  engine.addLights({ keyIntensity: 1.6, hemi: 0.4, fill: 0.5 });
-  engine.addSpot({ position: [0, 12, 8], target: [0, 0, 0], intensity: 600, angle: 0.7, color: 0xffe2a8 });
+  // ---------- 3D ----------
+  const engine = new Engine(stage, {
+    fov: 62, position: [0, 2.3, 13.5], target: [0, 1.2, 0], background: 0x05040a,
+    shadows: true, exposure: 1.05, envIntensity: 0.35, fog: [14, 46],
+    bloom: { strength: 0.42, radius: 0.55, threshold: 0.85 },
+  });
+  engine.scene.fog = new THREE.FogExp2(0x0a0610, 0.028);
+  const hemi = new THREE.HemisphereLight(0xffe0c0, 0x2a0a10, 0.35);
+  engine.scene.add(hemi);
+  const key = new THREE.SpotLight(0xffe6c4, 900, 0, 0.9, 0.7, 2);
+  key.position.set(0, 6.2, 2);
+  key.target.position.set(0, 0, 0);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.bias = -0.0004;
+  engine.scene.add(key, key.target);
+  for (const [x, z, c] of [[-14, -6, 0xffb070], [14, -6, 0xc59bff], [-14, 8, 0xffd76a], [14, 8, 0x4d9cff], [0, -11, 0xff2d6f]]) {
+    const s = new THREE.SpotLight(c, 350, 0, 1.0, 0.8, 2);
+    s.position.set(x, 6.2, z);
+    s.target.position.set(x, 0, z);
+    engine.scene.add(s, s.target);
+  }
 
-  const floaters = [];
-  const rnd = (a, b) => a + Math.random() * (b - a);
-  const place = (obj, scale = 1) => {
-    obj.position.set(rnd(-16, 16), rnd(-9, 9), rnd(-18, -3));
-    obj.rotation.set(rnd(0, Math.PI * 2), rnd(0, Math.PI * 2), rnd(0, Math.PI * 2));
-    obj.scale.setScalar(scale);
-    floaters.push({ obj, spin: new THREE.Vector3(rnd(-0.4, 0.4), rnd(-0.4, 0.4), rnd(-0.4, 0.4)), bob: rnd(0, Math.PI * 2), drift: rnd(0.2, 0.6) });
-    engine.scene.add(obj);
-  };
-  for (let i = 0; i < 14; i++) place(createChip(CHIP_STYLES[i % CHIP_STYLES.length].value), rnd(1.2, 2.0));
-  const suits = ['S', 'H', 'D', 'C'];
-  for (let i = 0; i < 8; i++) place(createCard({ r: 1 + Math.floor(Math.random() * 13), s: suits[i % 4] }), rnd(1.0, 1.5));
-  for (let i = 0; i < 5; i++) place(createDie(0.8), rnd(0.9, 1.4));
-  const coin = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.12, 48), goldMaterial());
-  place(coin, 1.2);
-
-  // Funkelnde Partikel
-  const starGeo = new THREE.BufferGeometry();
-  const N = 400;
-  const pos = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) { pos[i * 3] = rnd(-30, 30); pos[i * 3 + 1] = rnd(-15, 15); pos[i * 3 + 2] = rnd(-30, 5); }
-  starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xd4af37, size: 0.08, transparent: true, opacity: 0.7 }));
-  engine.scene.add(stars);
-
+  const casino = buildCasino(engine);
+  const hitboxes = casino.stations.map((s) => s.hitbox);
+  let hovered = null;
+  let hoverTime = 0;
+  let pathT = 0;
   let mx = 0; let my = 0;
-  const onMove = (e) => { mx = (e.clientX / window.innerWidth - 0.5) * 2; my = (e.clientY / window.innerHeight - 0.5) * 2; };
-  window.addEventListener('mousemove', onMove);
+  const lookTarget = casino.center.clone();
+  const desired = new THREE.Vector3();
+  const camPos = new THREE.Vector3();
+
+  const setHover = (station) => {
+    if (hovered === station) return;
+    hovered = station;
+    engine.renderer.domElement.style.cursor = station ? 'pointer' : '';
+    strip.querySelectorAll('.strip-item').forEach((el) => el.classList.toggle('active', el.dataset.id === station?.id));
+    if (station) { sound.play('tick'); tooltip.textContent = `${station.name} – klicken zum Spielen`; tooltip.classList.add('show'); }
+    else tooltip.classList.remove('show');
+  };
+  const highlightById = (id) => setHover(casino.stations.find((s) => s.id === id) ?? null);
+
+  const canvas = engine.renderer.domElement;
+  const onMove = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
+    my = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
+    tooltip.style.left = `${e.clientX - rect.left + 16}px`;
+    tooltip.style.top = `${e.clientY - rect.top + 16}px`;
+    const hit = engine.pick(e, hitboxes, false)[0];
+    setHover(hit ? casino.stations.find((s) => s.hitbox === hit.object) : null);
+  };
+  const onClick = (e) => {
+    const hit = engine.pick(e, hitboxes, false)[0];
+    if (!hit) return;
+    sound.play('click');
+    location.hash = `#/game/${hit.object.userData.gameId}`;
+  };
+  canvas.addEventListener('pointermove', onMove);
+  canvas.addEventListener('click', onClick);
+  canvas.addEventListener('pointerleave', () => setHover(null));
 
   engine.onUpdate((dt, t) => {
-    for (const f of floaters) {
-      f.obj.rotation.x += f.spin.x * dt;
-      f.obj.rotation.y += f.spin.y * dt;
-      f.obj.rotation.z += f.spin.z * dt;
-      f.obj.position.y += Math.sin(t * f.drift + f.bob) * 0.004;
-      f.obj.position.x += Math.cos(t * f.drift * 0.7 + f.bob) * 0.003;
+    for (const fn of casino.animated) fn(dt, t);
+    // Kamera-Rundgang (langsamer, wenn etwas fokussiert ist)
+    pathT = (pathT + dt * (hovered ? 0.0015 : 0.0055)) % 1;
+    casino.path.getPointAt(pathT, camPos);
+    engine.camera.position.lerp(camPos, 0.05);
+    const ahead = casino.path.getPointAt((pathT + 0.06) % 1);
+    desired.copy(ahead).lerp(casino.center, 0.55);
+    if (hovered) desired.lerp(hovered.position, 0.6);
+    desired.x += mx * 2.5;
+    desired.y += -my * 1.2 + 0.2;
+    lookTarget.lerp(desired, 0.04);
+    engine.camera.lookAt(lookTarget);
+    // Hover-Effekte
+    hoverTime += dt;
+    for (const s of casino.stations) {
+      const active = s === hovered;
+      s.ring.material.opacity += ((active ? 0.7 + Math.sin(hoverTime * 6) * 0.25 : 0) - s.ring.material.opacity) * 0.15;
+      const target = active ? 1.35 : 1;
+      s.label.scale.x += (s.label.userData.baseX * target - s.label.scale.x) * 0.15;
+      s.label.scale.y += (s.label.userData.baseY * target - s.label.scale.y) * 0.15;
     }
-    stars.rotation.y = t * 0.01;
-    engine.camera.position.x += (mx * 1.2 - engine.camera.position.x) * 0.03;
-    engine.camera.position.y += (-my * 0.8 - engine.camera.position.y) * 0.03;
-    engine.camera.lookAt(0, 0, 0);
   });
+  for (const s of casino.stations) { s.label.userData.baseX = s.label.scale.x; s.label.userData.baseY = s.label.scale.y; }
   engine.start();
 
   return {
     destroy() {
       unsubscribe();
-      window.removeEventListener('mousemove', onMove);
+      canvas.removeEventListener('pointermove', onMove);
+      canvas.removeEventListener('click', onClick);
       engine.dispose();
     },
   };
