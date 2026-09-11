@@ -259,6 +259,7 @@ export function createAvatar({ name, bot = false, dealer = false }) {
     pose = p;
     // Vorzeichen: positive X-Rotation schwenkt ein hängendes Glied nach VORN (-Z), negative nach hinten;
     // beim Oberkörper (über dem Gelenk) ist es umgekehrt.
+    label.position.y = (2.0 * heightScale + (accessory === 'hat' ? 0.15 : 0)) - (p === 'sit' ? 0.36 : 0);
     if (p === 'sit') {
       root.position.y = -0.36;
       legL.hip.rotation.x = legR.hip.rotation.x = Math.PI / 2 - 0.05;   // Oberschenkel waagerecht nach vorn

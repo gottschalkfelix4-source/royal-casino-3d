@@ -31,7 +31,8 @@ export function attachRealtime(server, { bots = 3 } = {}) {
 
   wss.on('connection', (ws, user) => {
     const prev = players.get(user.id);
-    if (prev?.ws) { prev.ws.terminate(); }
+    // Gleicher Account in zweitem Tab: alte Verbindung sauber schließen (Code 4001 = ersetzt, kein Reconnect)
+    if (prev?.ws) { try { prev.ws.close(4001, 'replaced'); } catch { prev.ws.terminate(); } }
     const p = {
       ws, id: user.id, name: user.username, x: (Math.random() - 0.5) * 4, z: 12 + Math.random(), ry: 0,
       anim: 'idle', game: prev?.game ?? null, lastChat: 0, alive: true,
@@ -74,10 +75,11 @@ export function attachRealtime(server, { bots = 3 } = {}) {
       }
     });
     ws.on('close', () => {
-      if (players.get(p.id)?.ws !== ws) return;
+      if (players.get(p.id)?.ws !== ws) return; // bereits durch neue Verbindung ersetzt
       players.delete(p.id);
       broadcast({ t: 'leave', id: p.id });
     });
+    ws.on('error', () => {});
   });
 
   // Verbindungen prüfen
@@ -114,25 +116,29 @@ export function attachRealtime(server, { bots = 3 } = {}) {
       const now = Date.now();
       for (const b of botList) {
         if (b.game) {
-          if (now > b.until) { b.game = null; b.until = now + 8000 + Math.random() * 12000; b.target = [b.x + (Math.random() - 0.5) * 8, b.z + (Math.random() - 0.5) * 8]; broadcast({ t: 'game', id: b.id, game: null }); }
+          // Am Tisch sitzen, danach wieder losgehen
+          if (now > b.until) { b.game = null; b.until = now + 8000 + Math.random() * 12000; b.target = null; b.wantGame = null; broadcast({ t: 'game', id: b.id, game: null }); }
           continue;
         }
-        if (now > b.until) {
-          const game = GAME_IDS[Math.floor(Math.random() * GAME_IDS.length)];
-          const [sx, sz] = STATION_POS[game];
-          b.x = sx; b.z = sz + 1.5; b.anim = 'idle';
-          b.game = game;
-          b.until = now + 20000 + Math.random() * 30000;
-          broadcast({ t: 'pos', id: b.id, x: r2(b.x), z: r2(b.z), ry: b.ry, anim: 'idle' });
-          broadcast({ t: 'game', id: b.id, game });
-          continue;
+        if (!b.wantGame && now > b.until) {
+          // Nächstes Ziel: zu einer Station laufen und dort Platz nehmen (kein Teleport)
+          b.wantGame = GAME_IDS[Math.floor(Math.random() * GAME_IDS.length)];
+          const [sx, sz] = STATION_POS[b.wantGame];
+          b.target = [sx, sz + 2.2];
         }
         if (!b.target || Math.hypot(b.target[0] - b.x, b.target[1] - b.z) < 0.3) {
+          if (b.wantGame) {
+            b.game = b.wantGame; b.wantGame = null; b.anim = 'idle';
+            b.until = now + 20000 + Math.random() * 30000;
+            broadcast({ t: 'pos', id: b.id, x: r2(b.x), z: r2(b.z), ry: r2(b.ry), anim: 'idle' });
+            broadcast({ t: 'game', id: b.id, game: b.game });
+            continue;
+          }
           b.target = [(Math.random() - 0.5) * 2 * (HALL_BOUNDS.x - 3), (Math.random() - 0.5) * 2 * (HALL_BOUNDS.z - 3)];
         }
         const dx = b.target[0] - b.x; const dz = b.target[1] - b.z;
         const len = Math.hypot(dx, dz) || 1;
-        const step = 1.1 * 0.1;
+        const step = Math.min(len, 1.1 * 0.1);
         b.x += (dx / len) * step; b.z += (dz / len) * step;
         b.ry = Math.atan2(-dx, -dz);
         b.anim = 'walk';

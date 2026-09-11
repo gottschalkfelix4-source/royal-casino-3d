@@ -71,13 +71,14 @@ export const rt = {
           this.emit(msg.t, msg);
       }
     };
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
       if (this.ws !== ws) return;
       this.ws = null;
       this.connected = false;
       this.players.clear();
       this.emit('disconnect');
       this.emit('players');
+      if (ev.code === 4001) { this.emit('replaced'); return; } // in anderem Tab angemeldet – nicht neu verbinden
       if (store.user) this.retryTimer = setTimeout(() => this.connect(), 3000);
     };
     ws.onerror = () => ws.close();

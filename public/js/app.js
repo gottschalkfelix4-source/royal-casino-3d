@@ -53,6 +53,7 @@ function renderTopbar() {
 }
 
 voice.onChange(() => { topbarSignature = ''; renderTopbar(); });
+rt.on('replaced', () => toast('Du bist in einem anderen Tab/Fenster im Casino – dieser Tab ist jetzt offline. Neu laden, um hier weiterzuspielen.', 'error', 8000));
 
 subscribe(() => {
   const u = store.user;
