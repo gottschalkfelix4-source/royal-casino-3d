@@ -164,6 +164,7 @@ class Hall {
     if (!station) return;
     sound.play('click');
     if (station.action === 'rewards') { openRewards(); return; }
+    if (station.action === 'coin') { this.pickupCoin(station.coin); return; }
     location.hash = `#/game/${station.id}`;
   }
 
@@ -272,24 +273,40 @@ class Hall {
   // ---------- Chips in der Halle ----------
   addCoin(c) {
     if (this.coins.has(c.id)) return;
-    const mesh = createChip(c.value);
-    mesh.scale.setScalar(1.6);
-    mesh.position.set(c.x, 0.35, c.z);
-    mesh.rotation.x = Math.PI / 2 - 0.3;
-    const glow = textSprite(`🪙 ${Math.round(c.value / 100)}`, { size: 44, color: '#ffd76a', bg: 'rgba(0,0,0,0.55)', height: 0.26 });
-    glow.position.set(c.x, 0.95, c.z);
-    const halo = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 32), new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.45, side: THREE.DoubleSide }));
+    // Aufrecht stehender, langsam drehender Chip, der über dem Boden schwebt – mit Lichtsäule und Bodenring
+    const mesh = new THREE.Group();
+    const chip = createChip(c.value);
+    chip.scale.setScalar(1.1);
+    chip.rotation.x = Math.PI / 2;
+    mesh.add(chip);
+    mesh.position.set(c.x, 0.75, c.z);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, 2.6, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+    beam.position.set(c.x, 1.3, c.z);
+    const glow = textSprite(`🪙 ${Math.round(c.value / 100)} · aufheben`, { size: 44, color: '#ffd76a', bg: 'rgba(0,0,0,0.6)', height: 0.28 });
+    glow.position.set(c.x, 1.5, c.z);
+    const halo = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.6, 32), new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }));
     halo.rotation.x = -Math.PI / 2; halo.position.set(c.x, 0.02, c.z);
-    this.engine.scene.add(mesh, glow, halo);
-    this.coins.set(c.id, { ...c, mesh, glow, halo, phase: Math.random() * 6 });
+    this.engine.scene.add(mesh, beam, glow, halo);
+    this.coins.set(c.id, { ...c, mesh, beam, glow, halo, phase: Math.random() * 6 });
   }
   removeCoin(id) {
     const c = this.coins.get(id);
     if (!c) return;
-    for (const o of [c.mesh, c.glow, c.halo]) { this.engine.scene.remove(o); if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); } }
-    c.halo.geometry.dispose(); c.halo.material.dispose();
+    for (const o of [c.mesh, c.beam, c.glow, c.halo]) {
+      this.engine.scene.remove(o);
+      if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); }
+      else if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); }
+    }
     this.coins.delete(id);
     this.pendingPickup.delete(id);
+  }
+  /** Chip aufheben (Server prüft Entfernung) */
+  pickupCoin(c) {
+    if (!c || this.pendingPickup.has(c.id) || !rt.connected) return;
+    this.pendingPickup.add(c.id);
+    rt.sendPos(this.me.pos.x, this.me.pos.z, this.me.yaw, 'idle'); // Server kennt die aktuelle Position
+    rt.send({ t: 'pickup', id: c.id });
+    setTimeout(() => this.pendingPickup.delete(c.id), 3000); // falls der Server ablehnt, erneut möglich
   }
 
   /** Weltposition eines Spielers (für Sprachchat-Entfernung) */
@@ -374,15 +391,13 @@ class Hall {
         const d = Math.hypot(i.position.x - me.pos.x, i.position.z - me.pos.z) - 1.0;
         if (d < bestD) { bestD = d; best = i; }
       }
-      if (best !== this.nearStation) { this.nearStation = best; this.emit('near', best); }
-      // Chips einsammeln: drüberlaufen genügt
+      // Chips: drüberlaufen sammelt automatisch ein; in der Nähe zusätzlich E-Prompt
       for (const c of this.coins.values()) {
-        if (!this.pendingPickup.has(c.id) && Math.hypot(c.x - me.pos.x, c.z - me.pos.z) < 1.0 && rt.connected) {
-          this.pendingPickup.add(c.id);
-          rt.sendPos(me.pos.x, me.pos.z, me.yaw, 'idle'); // Server kennt die aktuelle Position
-          rt.send({ t: 'pickup', id: c.id });
-        }
+        const d = Math.hypot(c.x - me.pos.x, c.z - me.pos.z);
+        if (d < 1.5) this.pickupCoin(c);
+        else if (d - 0.6 < bestD) { bestD = d - 0.6; best = { action: 'coin', coin: c, name: `Chip aufheben (🪙 ${Math.round(c.value / 100)})`, id: `coin-${c.id}` }; }
       }
+      if (best?.id !== this.nearStation?.id) { this.nearStation = best; this.emit('near', best); }
     } else if (this.mode === 'spectate' && this.spectateCam) {
       // Sitzend am Tisch: Kamera auf dem eigenen Platz, leichtes Atmen; Maus-Drag zum Umsehen
       const c = this.spectateCam;
@@ -402,9 +417,10 @@ class Hall {
     if ((this.frame % 10) === 0) voice.updateVolumes((id) => this.positionOf(id), this.myPosition());
 
     for (const c of this.coins.values()) {
-      c.mesh.rotation.z += dt * 1.8;
-      c.mesh.position.y = 0.35 + Math.sin(t * 2.5 + c.phase) * 0.08;
-      c.halo.material.opacity = 0.3 + Math.sin(t * 3 + c.phase) * 0.15;
+      c.mesh.rotation.y += dt * 2.2;
+      c.mesh.position.y = 0.75 + Math.sin(t * 2.5 + c.phase) * 0.1;
+      c.halo.material.opacity = 0.35 + Math.sin(t * 3 + c.phase) * 0.15;
+      c.beam.material.opacity = 0.12 + Math.sin(t * 2 + c.phase) * 0.05;
     }
     this.hoverTime += dt;
     for (const s of this.casino.stations) {

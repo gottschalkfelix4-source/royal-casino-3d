@@ -78,7 +78,7 @@ export function attachRealtime(server, { bots = 3 } = {}) {
         // Chip in der Halle einsammeln: muss existieren und in Reichweite der zuletzt gemeldeten Position liegen
         const coin = coins.get(String(msg.id));
         if (!coin || p.game) return;
-        if (Math.hypot(coin.x - p.x, coin.z - p.z) > 2.0) return;
+        if (Math.hypot(coin.x - p.x, coin.z - p.z) > 3.2) return;
         coins.delete(coin.id);
         const result = pickup(p.id, coin.value);
         broadcast({ t: 'coin_taken', id: coin.id, by: p.id, name: p.name, value: result ? result.amount : 0 });
@@ -111,13 +111,14 @@ export function attachRealtime(server, { bots = 3 } = {}) {
   // ---------- Chips zum Einsammeln in der Halle ----------
   const coins = new Map();
   let coinSeq = 1;
-  const nearStation = (x, z) => Object.values(STATION_POS).some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 3.2);
+  // Nur auf frei begehbarer Fläche: Abstand zu Tischen (inkl. Kollisionsradius), nicht an den Wänden, nicht in der Bar
+  const nearStation = (x, z) => Object.entries(STATION_POS).some(([id, [sx, sz]]) => Math.hypot(sx - x, sz - z) < (id === 'slots' ? 5.2 : 3.8));
   const spawnCoin = () => {
     if (coins.size >= 6) return;
-    for (let tries = 0; tries < 20; tries++) {
-      const x = (Math.random() - 0.5) * 2 * (HALL_BOUNDS.x - 2);
-      const z = (Math.random() - 0.5) * 2 * (HALL_BOUNDS.z - 2);
-      if (nearStation(x, z) || (z < -10 && x < -8)) continue; // nicht in Tischen/Bar
+    for (let tries = 0; tries < 40; tries++) {
+      const x = (Math.random() - 0.5) * 2 * 12.5;
+      const z = (Math.random() - 0.5) * 2 * 11;
+      if (nearStation(x, z) || (z < -9.5 && x < -7.5) || (z > 8 && Math.abs(x) < 3.2 && x > 2)) continue;
       const coin = { id: String(coinSeq++), x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, value: [10_00, 10_00, 20_00, 25_00, 50_00][Math.floor(Math.random() * 5)] };
       coins.set(coin.id, coin);
       broadcast({ t: 'coin', coin });
