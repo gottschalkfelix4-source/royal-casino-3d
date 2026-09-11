@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { makeCanvas, canvasTexture, roundRect, goldMaterial, woodTexture, woodNormal, feltTexture, feltNormal, normalMapFromCanvas, textSprite, createChip, createCard, createDie } from './assets.js';
 import { createAvatar } from './avatars.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { createPalm, createFicus } from './plants.js';
+import { buildRouletteWheel } from './roulettewheel.js';
 
 /**
  * Prozedural gebaute Casino-Halle im Stil der 2000er: Musterteppich, Kronleuchter,
@@ -244,76 +247,199 @@ function emissivePlane(w, h, tex, intensity = 1.6) {
   return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: intensity, roughness: 0.3 }));
 }
 
+const glassMat = () => new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.03, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.02, transparent: true, opacity: 0.16, depthWrite: false, envMapIntensity: 1.6 });
+const bezelMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0a0c, roughness: 0.15, clearcoat: 1, clearcoatRoughness: 0.05 });
+const ledMat = (color) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.6 });
+
+/** Spielautomat: abgerundetes Hochglanz-Gehäuse, Chromleisten, versenkter Bildschirm hinter Glas, Tastenfeld, LED-Kanten, Münzschale, gepolsterter Hocker */
 function slotMachine(screenTex) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.95, 1.8, 0.8), bodyRed);
+  const body = new THREE.Mesh(new RoundedBoxGeometry(0.95, 1.8, 0.8, 4, 0.06), bodyRed);
   body.position.y = 0.9; body.castShadow = true; body.receiveShadow = true;
   g.add(body);
-  const screen = emissivePlane(0.72, 0.72, screenTex, 1.4);
-  screen.position.set(0, 1.35, 0.41);
+  // Bildschirm mit schwarzer Blende und Glas
+  const bezel = new THREE.Mesh(new RoundedBoxGeometry(0.82, 0.82, 0.05, 3, 0.03), bezelMat);
+  bezel.position.set(0, 1.35, 0.4);
+  g.add(bezel);
+  const screen = emissivePlane(0.7, 0.7, screenTex, 1.3);
+  screen.position.set(0, 1.35, 0.428);
   g.add(screen);
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.4), bodyBlack);
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.78, 0.78), glassMat());
+  glass.position.set(0, 1.35, 0.44);
+  g.add(glass);
+  for (const [w, hgt, x, y] of [[0.9, 0.03, 0, 1.78], [0.9, 0.03, 0, 0.92], [0.03, 0.86, -0.43, 1.35], [0.03, 0.86, 0.43, 1.35]]) {
+    const t = new THREE.Mesh(new THREE.BoxGeometry(w, hgt, 0.02), chrome);
+    t.position.set(x, y, 0.41);
+    g.add(t);
+  }
+  // LED-Kanten seitlich
+  for (const x of [-0.475, 0.475]) {
+    const led = new THREE.Mesh(new THREE.BoxGeometry(0.02, 1.6, 0.02), ledMat(0x35c7ff));
+    led.position.set(x, 0.95, 0.4);
+    g.add(led);
+  }
+  // Tastenfeld (geneigt) mit Tasten
+  const deck = new THREE.Mesh(new RoundedBoxGeometry(0.9, 0.1, 0.4, 3, 0.03), bezelMat);
   deck.position.set(0, 0.86, 0.5); deck.rotation.x = -0.35;
   g.add(deck);
-  const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.04, 16), new THREE.MeshStandardMaterial({ color: 0xff3b3b, emissive: 0xff2020, emissiveIntensity: 1.2 }));
-  btn.position.set(0.25, 0.94, 0.55); btn.rotation.x = -0.35;
-  g.add(btn);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.45, 0.5), bodyBlack);
+  const btnColors = [0x2ecc71, 0xf1c40f, 0x3b82f6];
+  btnColors.forEach((c, i) => {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.03, 16), ledMat(c));
+    b.position.set(-0.3 + i * 0.14, 0.92, 0.5); b.rotation.x = -0.35;
+    g.add(b);
+  });
+  const spin = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.07, 0.04, 20), ledMat(0xff2d2d));
+  spin.position.set(0.27, 0.93, 0.5); spin.rotation.x = -0.35;
+  g.add(spin);
+  // Münzschale
+  const tray = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.12), chrome);
+  tray.position.set(0, 0.4, 0.44);
+  const trayIn = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.06, 0.09), bezelMat);
+  trayIn.position.set(0, 0.42, 0.46);
+  g.add(tray, trayIn);
+  // Topper mit Leuchtschrift
+  const top = new THREE.Mesh(new RoundedBoxGeometry(0.95, 0.45, 0.5, 3, 0.05), bodyBlack);
   top.position.set(0, 2.02, -0.1);
   g.add(top);
   const sign = emissivePlane(0.85, 0.32, neonTexture('777', '#ffd76a'), 1.8);
   sign.position.set(0, 2.02, 0.16);
   g.add(sign);
-  const trim = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.05, 0.85), brass);
+  const trim = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.04, 0.85), brass);
   trim.position.y = 1.8;
   g.add(trim);
-  // Hocker
-  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.08, 20), velvet);
+  // Gepolsterter Hocker
+  const seat = new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.1, 0.42, 3, 0.05), velvet);
   seat.position.set(0, 0.62, 0.95); seat.castShadow = true;
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 10), chrome);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 12), chrome);
   pole.position.set(0, 0.3, 0.95);
-  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 20), chrome);
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 24), chrome);
   foot.position.set(0, 0.015, 0.95);
   g.add(seat, pole, foot);
   return g;
 }
 
-/** Spieltisch: shape 'rect' | 'oval' | 'half' (Halbkreis wie Blackjack) */
-function gameTable({ shape = 'rect', w = 3, d = 1.8, felt = '#0f5a3a', rail = true } = {}) {
+/** Aufdruck auf dem Filz je Spiel (Wettfelder, Texte) – transparente Deko-Ebene über dem Tisch */
+function layoutTexture(kind, W = 1024, H = 512) {
+  const { canvas, ctx } = makeCanvas(W, H);
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(245,225,150,0.9)'; ctx.fillStyle = 'rgba(245,225,150,0.9)'; ctx.lineWidth = 4;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if (kind === 'blackjack') {
+    ctx.font = '700 44px Cinzel, Georgia, serif'; ctx.fillText('BLACKJACK ZAHLT 3 ZU 2', W / 2, 150);
+    ctx.font = '600 26px Inter, Arial'; ctx.fillText('DEALER MUSS BEI 17 STEHEN · VERSICHERUNG ZAHLT 2 ZU 1', W / 2, 200);
+    ctx.beginPath(); ctx.arc(W / 2, -260, 560, Math.PI * 0.28, Math.PI * 0.72); ctx.stroke();
+    for (let i = 0; i < 5; i++) { const a = Math.PI * (0.33 + i * 0.085); ctx.beginPath(); ctx.arc(W / 2 + Math.cos(a) * 470, -260 + Math.sin(a) * 470, 34, 0, Math.PI * 2); ctx.stroke(); }
+  } else if (kind === 'baccarat') {
+    ctx.font = '700 40px Cinzel, Georgia, serif';
+    [['PLAYER', '1 : 1'], ['TIE', '8 : 1'], ['BANKER', '0,95 : 1']].forEach(([t, o], i) => {
+      const x = 200 + i * 312;
+      roundRect(ctx, x - 120, 300, 240, 130, 18); ctx.stroke();
+      ctx.fillText(t, x, 345); ctx.font = '600 26px Inter, Arial'; ctx.fillText(o, x, 395); ctx.font = '700 40px Cinzel, Georgia, serif';
+    });
+    ctx.font = '600 24px Inter, Arial'; ctx.fillText('PUNTO BANCO', W / 2, 120);
+  } else if (kind === 'roulette') {
+    // Tableau rechts (links steht der Kessel)
+    const x0 = 470; const y0 = 110; const cw = 42; const ch = 90;
+    ctx.lineWidth = 3;
+    for (let c = 0; c < 12; c++) for (let r = 0; r < 3; r++) ctx.strokeRect(x0 + c * cw, y0 + r * ch, cw, ch);
+    ctx.strokeRect(x0 - 50, y0, 50, ch * 3);
+    ctx.font = '700 26px Inter, Arial';
+    for (let c = 0; c < 12; c++) for (let r = 0; r < 3; r++) ctx.fillText(String(c * 3 + (3 - r)), x0 + c * cw + cw / 2, y0 + r * ch + ch / 2);
+    ctx.fillText('0', x0 - 25, y0 + ch * 1.5);
+    ctx.font = '600 18px Inter, Arial';
+    ['1. 12', '2. 12', '3. 12'].forEach((t, i) => { ctx.strokeRect(x0 + i * cw * 4, y0 + ch * 3, cw * 4, 40); ctx.fillText(t, x0 + i * cw * 4 + cw * 2, y0 + ch * 3 + 20); });
+    ['1–18', 'GERADE', 'ROT', 'SCHWARZ', 'UNGERADE', '19–36'].forEach((t, i) => { ctx.strokeRect(x0 + i * cw * 2, y0 + ch * 3 + 40, cw * 2, 40); ctx.fillText(t, x0 + i * cw * 2 + cw, y0 + ch * 3 + 60); });
+  } else if (kind === 'dice') {
+    ctx.font = '700 34px Cinzel, Georgia, serif';
+    roundRect(ctx, 60, 300, 260, 120, 14); ctx.stroke(); ctx.fillText('KLEIN 4–10', 190, 360);
+    roundRect(ctx, W - 320, 300, 260, 120, 14); ctx.stroke(); ctx.fillText('GROSS 11–17', W - 190, 360);
+    ctx.font = '600 22px Inter, Arial';
+    for (let i = 0; i < 14; i++) { const x = 60 + i * 65; ctx.strokeRect(x, 120, 60, 70); ctx.fillText(String(4 + i), x + 30, 145); ctx.fillText(['60', '30', '17', '12', '8', '6', '6', '6', '6', '8', '12', '17', '30', '60'][i] + ':1', x + 30, 172); }
+    ctx.font = '700 30px Cinzel, Georgia, serif'; ctx.fillText('SIC BO', W / 2, 60);
+  }
+  return canvasTexture(canvas);
+}
+
+/** Chip-Rack mit Stapeln auf der Dealer-Seite */
+function chipRack() {
+  const g = new THREE.Group();
+  const tray = new THREE.Mesh(new RoundedBoxGeometry(1.0, 0.08, 0.28, 2, 0.02), darkWood);
+  tray.position.y = 0.03;
+  g.add(tray);
+  [1000_00, 500_00, 100_00, 25_00, 5_00].forEach((v, i) => {
+    for (let k = 0; k < 6; k++) {
+      const c = createChip(v);
+      c.scale.setScalar(0.22);
+      c.position.set(-0.4 + i * 0.2, 0.07 + k * 0.019, 0);
+      c.rotation.y = k * 0.3;
+      g.add(c);
+    }
+  });
+  return g;
+}
+
+/** Spieltisch: shape 'rect' | 'oval' | 'half' (Halbkreis wie Blackjack); layout = Filzaufdruck */
+function gameTable({ shape = 'rect', w = 3, d = 1.8, felt = '#0f5a3a', rail = true, layout = null, rack = true } = {}) {
   const g = new THREE.Group();
   const feltMat = new THREE.MeshStandardMaterial({ map: feltTexture(felt), normalMap: feltNormal(), normalScale: new THREE.Vector2(0.4, 0.4), roughness: 0.95 });
+  const leather = new THREE.MeshPhysicalMaterial({ color: 0x3a0a14, roughness: 0.55, clearcoat: 0.45, clearcoatRoughness: 0.35, normalMap: feltNormal(), normalScale: new THREE.Vector2(0.25, 0.25), sheen: 0.4, sheenColor: new THREE.Color(0x8a2a44) });
   let topGeo;
-  if (shape === 'oval') topGeo = new THREE.CylinderGeometry(1, 1, 0.1, 48).scale(w / 2, 1, d / 2);
-  else if (shape === 'half') topGeo = new THREE.CylinderGeometry(1, 1, 0.1, 48, 1, false, 0, Math.PI).scale(w / 2, 1, d);
-  else topGeo = new THREE.BoxGeometry(w, 0.1, d);
+  if (shape === 'oval') topGeo = new THREE.CylinderGeometry(1, 1, 0.1, 64).scale(w / 2, 1, d / 2);
+  else if (shape === 'half') topGeo = new THREE.CylinderGeometry(1, 1, 0.1, 64, 1, false, 0, Math.PI).scale(w / 2, 1, d);
+  else topGeo = new RoundedBoxGeometry(w, 0.1, d, 2, 0.03);
   const top = new THREE.Mesh(topGeo, feltMat);
   top.position.y = 0.9; top.castShadow = true; top.receiveShadow = true;
   if (shape === 'half') top.rotation.y = -Math.PI / 2; // runde Seite zu den Spielern (+z)
   g.add(top);
-  const base = new THREE.Mesh(shape === 'rect' ? new THREE.BoxGeometry(w * 0.9, 0.8, d * 0.9) : new THREE.CylinderGeometry(Math.min(w, d) * 0.35, Math.min(w, d) * 0.4, 0.85, 24), darkWood);
+  // Goldene Zierlinie am Filzrand
+  const pin = new THREE.Mesh(
+    shape === 'rect' ? new THREE.RingGeometry(1, 1, 4) : new THREE.RingGeometry(0.93, 0.945, 64, 1, 0, shape === 'half' ? Math.PI : Math.PI * 2),
+    new THREE.MeshStandardMaterial({ color: 0xe6c26a, metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide }),
+  );
+  if (shape !== 'rect') { pin.rotation.x = -Math.PI / 2; pin.rotation.z = shape === 'half' ? Math.PI : 0; pin.scale.set(shape === 'half' ? w / 2 : w / 2, shape === 'half' ? d : d / 2, 1); pin.position.y = 0.952; g.add(pin); }
+  else {
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(w - 0.3, 0.004, d - 0.3), new THREE.MeshStandardMaterial({ color: 0xe6c26a, metalness: 0.7, roughness: 0.35 }));
+    const inner = new THREE.Mesh(new THREE.BoxGeometry(w - 0.34, 0.006, d - 0.34), feltMat);
+    edge.position.y = 0.951; inner.position.y = 0.952;
+    g.add(edge, inner);
+  }
+  if (layout) {
+    const decal = new THREE.Mesh(new THREE.PlaneGeometry(shape === 'half' ? w * 0.9 : w - 0.4, shape === 'half' ? d * 0.9 : d - 0.4), new THREE.MeshStandardMaterial({ map: layoutTexture(layout), transparent: true, roughness: 0.95, depthWrite: false }));
+    decal.rotation.x = -Math.PI / 2; decal.position.set(0, 0.955, shape === 'half' ? d * 0.42 : 0);
+    g.add(decal);
+  }
+  const base = new THREE.Mesh(shape === 'rect' ? new RoundedBoxGeometry(w * 0.9, 0.8, d * 0.9, 2, 0.04) : new THREE.CylinderGeometry(Math.min(w, d) * 0.35, Math.min(w, d) * 0.4, 0.85, 32), darkWood);
   base.position.y = 0.43; base.castShadow = true;
   g.add(base);
+  const plinth = new THREE.Mesh(shape === 'rect' ? new THREE.BoxGeometry(w * 0.95, 0.06, d * 0.95) : new THREE.CylinderGeometry(Math.min(w, d) * 0.45, Math.min(w, d) * 0.45, 0.06, 32), brass);
+  plinth.position.y = 0.03;
+  g.add(plinth);
   if (rail) {
     let railMesh;
     if (shape === 'rect') {
       railMesh = new THREE.Group();
-      const mk = (len, x, z, rot) => { const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, len, 4, 12), velvet); m.rotation.z = Math.PI / 2; m.rotation.y = rot; m.position.set(x, 0.99, z); railMesh.add(m); };
+      const mk = (len, x, z, rot) => { const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, len, 6, 16), leather); m.rotation.z = Math.PI / 2; m.rotation.y = rot; m.position.set(x, 0.99, z); m.castShadow = true; railMesh.add(m); };
       mk(w, 0, d / 2, 0); mk(w, 0, -d / 2, 0); mk(d, w / 2, 0, Math.PI / 2); mk(d, -w / 2, 0, Math.PI / 2);
     } else if (shape === 'oval') {
-      railMesh = new THREE.Mesh(new THREE.TorusGeometry(1, 0.09, 12, 64).scale(w / 2, d / 2, 1), velvet);
+      railMesh = new THREE.Mesh(new THREE.TorusGeometry(1, 0.09, 14, 80).scale(w / 2, d / 2, 1), leather);
       railMesh.rotation.x = Math.PI / 2; railMesh.position.y = 0.99;
     } else {
-      railMesh = new THREE.Mesh(new THREE.TorusGeometry(1, 0.09, 12, 48, Math.PI).scale(w / 2, d, 1), velvet);
+      railMesh = new THREE.Mesh(new THREE.TorusGeometry(1, 0.09, 14, 60, Math.PI).scale(w / 2, d, 1), leather);
       railMesh.rotation.x = Math.PI / 2; railMesh.position.y = 0.99;
     }
     g.add(railMesh);
+  }
+  if (rack && layout && layout !== 'roulette') {
+    const r = chipRack();
+    r.position.set(0, 0.95, shape === 'half' ? -0.05 : -d / 2 + 0.3);
+    g.add(r);
   }
   return g;
 }
 
 function stool(x, z) {
   const g = new THREE.Group();
-  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.08, 20), velvet);
+  const seat = new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.1, 0.42, 3, 0.05), velvet);
   seat.position.y = 0.66; seat.castShadow = true;
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.64, 10), chrome);
   pole.position.y = 0.32;
@@ -324,23 +450,43 @@ function stool(x, z) {
   return g;
 }
 
+/** Arcade-Automat: Hochglanzgehäuse mit Chromrahmen, Bildschirm hinter Glas, Leuchtmarquee, Tastenfeld, LED-Sockel */
 function cabinet(screenTex, title, color) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 2.1, 0.9), bodyBlack);
+  const body = new THREE.Mesh(new RoundedBoxGeometry(1.1, 2.1, 0.9, 4, 0.05), bodyBlack);
   body.position.y = 1.05; body.castShadow = true;
   g.add(body);
-  const screen = emissivePlane(0.85, 0.85, screenTex, 1.5);
-  screen.position.set(0, 1.35, 0.46);
+  const bezel = new THREE.Mesh(new RoundedBoxGeometry(0.98, 0.98, 0.05, 3, 0.03), bezelMat);
+  bezel.position.set(0, 1.35, 0.45);
+  g.add(bezel);
+  const screen = emissivePlane(0.85, 0.85, screenTex, 1.4);
+  screen.position.set(0, 1.35, 0.478);
   g.add(screen);
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.92), glassMat());
+  glass.position.set(0, 1.35, 0.49);
+  g.add(glass);
+  for (const [w, hgt, x, y] of [[1.02, 0.03, 0, 1.85], [1.02, 0.03, 0, 0.85], [0.03, 1.0, -0.5, 1.35], [0.03, 1.0, 0.5, 1.35]]) {
+    const t = new THREE.Mesh(new THREE.BoxGeometry(w, hgt, 0.02), chrome);
+    t.position.set(x, y, 0.46);
+    g.add(t);
+  }
   const marquee = emissivePlane(1.0, 0.3, neonTexture(title, color), 1.7);
   marquee.position.set(0, 1.95, 0.46);
   g.add(marquee);
-  const deck = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.1, 0.35), bodyRed);
+  const deck = new THREE.Mesh(new RoundedBoxGeometry(1.0, 0.1, 0.35, 3, 0.03), bodyRed);
   deck.position.set(0, 0.82, 0.55); deck.rotation.x = -0.3;
   g.add(deck);
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.04, 0.94), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.2 }));
+  [0x2ecc71, 0xf1c40f, 0xff2d2d].forEach((c, i) => {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.03, 16), ledMat(c));
+    b.position.set(-0.2 + i * 0.2, 0.88, 0.56); b.rotation.x = -0.3;
+    g.add(b);
+  });
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.14, 0.04, 0.94), ledMat(color));
   stripe.position.y = 0.3;
   g.add(stripe);
+  const plinth = new THREE.Mesh(new THREE.BoxGeometry(1.16, 0.05, 0.96), chrome);
+  plinth.position.y = 0.025;
+  g.add(plinth);
   return g;
 }
 
@@ -362,15 +508,18 @@ function chandelier(x, z, y = 5.4) {
   const crystalMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0.1, clearcoat: 1, emissive: 0xfff2cc, emissiveIntensity: 0.4, transparent: true, opacity: 0.85 });
   const crystalGeo = new THREE.OctahedronGeometry(0.07, 0);
   const crystals = new THREE.Group();
+  // Alle Kristalle als eine Instanz-Wolke (1 Draw-Call statt 54)
+  const inst = new THREE.InstancedMesh(crystalGeo, crystalMat, 54);
+  const m = new THREE.Matrix4();
   for (let i = 0; i < 54; i++) {
     const tier = i % 3; // 0 außen, 1 mitte, 2 innen
     const a = (Math.floor(i / 3) / 18) * Math.PI * 2 + tier * 0.12;
     const r = [0.9, 0.62, 0.34][tier];
-    const c = new THREE.Mesh(crystalGeo, crystalMat);
-    c.position.set(Math.cos(a) * r, [0, 0.32, 0.6][tier] - 0.28 - ((i * 7) % 3) * 0.08, Math.sin(a) * r);
-    c.scale.y = 2.2;
-    crystals.add(c);
+    m.makeScale(1, 2.2, 1);
+    m.setPosition(Math.cos(a) * r, [0, 0.32, 0.6][tier] - 0.28 - ((i * 7) % 3) * 0.08, Math.sin(a) * r);
+    inst.setMatrixAt(i, m);
   }
+  crystals.add(inst);
   g.add(crystals);
   const bulbs = new THREE.Group();
   const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff4d6, emissive: 0xffe0a0, emissiveIntensity: 3 });
@@ -388,7 +537,8 @@ function chandelier(x, z, y = 5.4) {
 
 function column(x, z) {
   const g = new THREE.Group();
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.45, HALL.h, 24), new THREE.MeshStandardMaterial({ color: 0xe8dcc8, roughness: 0.55 }));
+  const colMarble = marbleTexture().clone(); colMarble.repeat.set(1.5, 3); colMarble.needsUpdate = true;
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.45, HALL.h, 32), new THREE.MeshPhysicalMaterial({ map: colMarble, roughness: 0.18, clearcoat: 0.9, clearcoatRoughness: 0.1 }));
   shaft.position.y = HALL.h / 2; shaft.castShadow = true; shaft.receiveShadow = true;
   g.add(shaft);
   const capTop = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.45, 0.35, 24), brass);
@@ -432,22 +582,17 @@ function bar(x, z) {
   return g;
 }
 
+/** Echter Roulette-Kessel (gemeinsames Modell mit dem Spiel), auf Tischgröße skaliert */
 function rouletteMini() {
   const g = new THREE.Group();
-  const { canvas, ctx } = makeCanvas(512, 512);
-  const n = 37;
-  for (let i = 0; i < n; i++) {
-    ctx.beginPath(); ctx.moveTo(256, 256);
-    ctx.arc(256, 256, 256, (i / n) * Math.PI * 2, ((i + 1) / n) * Math.PI * 2); ctx.closePath();
-    ctx.fillStyle = i === 0 ? '#1e8f4e' : i % 2 ? '#15161a' : '#b3261e'; ctx.fill();
-  }
-  ctx.fillStyle = '#4a2a12'; ctx.beginPath(); ctx.arc(256, 256, 150, 0, Math.PI * 2); ctx.fill();
-  const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.8, 0.18, 48), [darkWood, new THREE.MeshStandardMaterial({ map: canvasTexture(canvas), roughness: 0.4 }), darkWood]);
-  wheel.position.y = 1.02;
-  const hub = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.3, 24), brass);
-  hub.position.y = 1.2;
-  g.add(wheel, hub);
+  const { group: wheel, ball } = buildRouletteWheel({ ball: true });
+  wheel.scale.setScalar(0.15);
+  wheel.position.y = 0.95;
+  ball.scale.setScalar(0.15);
+  ball.position.set(3.1 * 0.15, 0.95 + 0.74 * 0.15, 0);
+  g.add(wheel, ball);
   g.userData.spin = wheel;
+  g.userData.ball = ball;
   return g;
 }
 
@@ -678,14 +823,12 @@ export function buildCasino(engine) {
   // Deckenspots in den Kassetten (warm, dezent – Bloom macht den Rest)
   const spotDisc = new THREE.CircleGeometry(0.16, 16);
   const spotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff1d6, emissiveIntensity: 1.1 });
-  for (let x = -18; x <= 18; x += 4) {
-    for (let z = -10; z <= 10; z += 4) {
-      if (Math.abs(x) < 3) continue; // unter dem Gewölbe keine Spots
-      const s = new THREE.Mesh(spotDisc, spotMat);
-      s.rotation.x = Math.PI / 2; s.position.set(x, h - 0.02, z);
-      scene.add(s);
-    }
-  }
+  const spotPositions = [];
+  for (let x = -18; x <= 18; x += 4) for (let z = -10; z <= 10; z += 4) if (Math.abs(x) >= 3) spotPositions.push([x, z]); // unter dem Gewölbe keine Spots
+  const spots = new THREE.InstancedMesh(spotDisc, spotMat, spotPositions.length);
+  const sm = new THREE.Matrix4(); const sq = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
+  spotPositions.forEach(([x, z], i) => { sm.compose(new THREE.Vector3(x, h - 0.02, z), sq, new THREE.Vector3(1, 1, 1)); spots.setMatrixAt(i, sm); });
+  scene.add(spots);
   // Kronleuchter (Licht kommt von wenigen Punktlichtern, nicht von jedem Leuchter)
   for (const [x, z] of [[-8, -4], [8, -4], [-8, 6], [8, 6], [0, 1]]) {
     const c = chandelier(x, z, x === 0 ? 5.6 : 5.3);
@@ -752,8 +895,9 @@ export function buildCasino(engine) {
     return st;
   };
   /** Montagepunkt für die Spielszene: type 'table' (auf der Platte, y nach oben) oder 'screen' (Bildschirm, +z zum Spieler) */
-  const setMount = (st, { type, scale, object = null, offset = [0, 0, 0], hide = [], rotX = 0, pull = 0.3 }) => {
-    st.mount = { type, scale, object, offset: new THREE.Vector3(...offset), hide, rotX, pull };
+  // lookY: Höhe des Blickziels beim Sitzen am Tisch (niedrig = Spielfläche in der oberen Bildhälfte, z. B. wegen Setztisch-Overlay)
+  const setMount = (st, { type, scale, object = null, offset = [0, 0, 0], hide = [], rotX = 0, pull = 0.3, lookY = 0.55 }) => {
+    st.mount = { type, scale, object, offset: new THREE.Vector3(...offset), hide, rotX, pull, lookY };
   };
 
   // Slot-Bank an der linken Wand
@@ -771,18 +915,24 @@ export function buildCasino(engine) {
   animated.push((dt, t) => { slotsGroup.children.forEach((m, i) => { const s = m.children[1]; s.material.emissiveIntensity = 1.2 + Math.sin(t * 3 + i) * 0.4; }); });
 
   // Roulette
-  const rl = gameTable({ shape: 'rect', w: 4.2, d: 2.0, felt: '#0f5a3a' });
+  const rl = gameTable({ shape: 'rect', w: 4.2, d: 2.0, felt: '#0f5a3a', layout: 'roulette' });
   const mini = rouletteMini(); mini.position.set(-1.3, 0, 0);
   rl.add(mini);
-  for (let i = 0; i < 3; i++) { const c = createChip([500, 2500, 10000][i]); c.position.set(0.4 + i * 0.5, 0.99, 0.3 - i * 0.2); rl.add(c); }
+  // Deko-Chips in realistischer Größe; beim Spielen ausgeblendet (das Spiel bringt eigene Chips mit)
+  const rlChips = [500, 2500, 10000].map((v, i) => { const c = createChip(v); c.scale.setScalar(0.3); c.position.set(0.5 + i * 0.35, 0.96, 0.35 - i * 0.15); rl.add(c); return c; });
   for (let i = 0; i < 3; i++) rl.add(stool(-0.5 + i * 1.0, 1.5));
   const rlSt = addStation('roulette', '🎡 Roulette', rl, { x: -8, z: 4, hit: [5, 2.4, 3.6], seats: [[-0.5, 1.5], [0.5, 1.5], [1.5, 1.5]] });
   // Kessel auf der Dealer-Seite, damit er über dem Setztisch-Overlay sichtbar bleibt
-  setMount(rlSt, { type: 'table', scale: 0.1, offset: [-0.4, 0.95, -0.5], hide: [mini], pull: 0 });
-  animated.push((dt) => { mini.userData.spin.rotation.y += dt * 0.6; });
+  setMount(rlSt, { type: 'table', scale: 0.1, offset: [-0.4, 0.95, -0.5], hide: [mini, ...rlChips], pull: 0 });
+  animated.push((dt, t) => {
+    mini.userData.spin.rotation.y += dt * 0.6;
+    // Kugel läuft mit dem Kessel (im Fach)
+    const a = mini.userData.spin.rotation.y + 0.8;
+    mini.userData.ball.position.set(Math.cos(a) * 3.1 * 0.15, 0.95 + 0.74 * 0.15, -Math.sin(a) * 3.1 * 0.15);
+  });
 
   // Blackjack
-  const bj = gameTable({ shape: 'half', w: 4, d: 2.2, felt: '#0f5a3a' });
+  const bj = gameTable({ shape: 'half', w: 4, d: 2.2, felt: '#0f5a3a', layout: 'blackjack' });
   for (let i = 0; i < 3; i++) { const c = createCard({ r: [1, 13, 10][i], s: 'SHD'[i] }); c.rotation.x = -Math.PI / 2; c.rotation.z = (i - 1) * 0.3; c.position.set((i - 1) * 0.7, 0.96, 0.9); c.scale.setScalar(0.6); bj.add(c); }
   const bjSeats = [0, 1, 2, 3].map((i) => { const a = -0.6 + i * 0.4; return [Math.sin(a) * 2.6, Math.cos(a) * 2.6 * 1.1 - 0.4]; });
   for (const [sx, sz] of bjSeats) bj.add(stool(sx, sz));
@@ -791,14 +941,14 @@ export function buildCasino(engine) {
   setMount(bjSt, { type: 'table', scale: 0.16, offset: [0, 0.95, 0.1], hide: bjDeco, pull: 0.45 });
 
   // Baccarat
-  const bc = gameTable({ shape: 'oval', w: 4.4, d: 2.2, felt: '#5a1424' });
+  const bc = gameTable({ shape: 'oval', w: 4.4, d: 2.2, felt: '#5a1424', layout: 'baccarat' });
   for (let i = 0; i < 4; i++) { const c = createCard({ r: 2 + i * 3, s: 'CDHS'[i] }); c.rotation.x = -Math.PI / 2; c.position.set(-1.2 + i * 0.8, 0.96, 0); c.scale.setScalar(0.6); bc.add(c); }
   for (let i = 0; i < 3; i++) bc.add(stool(-1 + i, 1.7));
   const bcSt = addStation('baccarat', '🎴 Baccarat', bc, { x: 8, z: 4, hit: [5, 2.4, 3.8], seats: [[-1, 1.7], [0, 1.7], [1, 1.7]] });
   setMount(bcSt, { type: 'table', scale: 0.15, offset: [0, 0.95, 0], hide: bc.children.filter((c) => c.userData.card), pull: 0.35 });
 
   // Würfel (Craps-Tisch)
-  const dc = gameTable({ shape: 'rect', w: 4.4, d: 2.0, felt: '#7a1b1b' });
+  const dc = gameTable({ shape: 'rect', w: 4.4, d: 2.0, felt: '#7a1b1b', layout: 'dice' });
   for (let i = 0; i < 3; i++) { const die = createDie(0.28); die.position.set(-0.6 + i * 0.5, 1.09, 0.2 - i * 0.15); die.rotation.set(0, i * 0.7, 0); dc.add(die); }
   for (let i = 0; i < 3; i++) dc.add(stool(-1 + i, 1.5));
   const dcSt = addStation('dice', '🎲 Würfel', dc, { x: -8, z: -5, hit: [5, 2.4, 3.6], seats: [[-1, 1.5], [0, 1.5], [1, 1.5]] });
@@ -809,7 +959,8 @@ export function buildCasino(engine) {
   const hlCard = createCard({ r: 7, s: 'H' }); hlCard.rotation.x = -Math.PI / 2; hlCard.position.y = 0.96; hlCard.scale.setScalar(0.7); hl.add(hlCard);
   hl.add(stool(0, 1.4));
   const hlSt = addStation('hilo', '🔺 Hi-Lo', hl, { x: 8, z: -5, hit: [3.2, 2.4, 3.2], seats: [[0, 1.4], [-1.2, 0.8], [1.2, 0.8]] });
-  setMount(hlSt, { type: 'table', scale: 0.16, offset: [0, 0.95, -0.1], hide: [hlCard], pull: 0.2 });
+  // Karten stehen aufrecht – Blick auf Tischhöhe, damit sie mittig im Bild sind
+  setMount(hlSt, { type: 'table', scale: 0.16, offset: [0, 0.95, -0.1], hide: [hlCard], pull: 0.2, lookY: 0.95 });
 
   // Glücksrad
   const fw = fortuneWheel();
@@ -853,19 +1004,13 @@ export function buildCasino(engine) {
       }
     }
   }
-  const leafMat = new THREE.MeshStandardMaterial({ color: 0x1f6b3a, roughness: 0.8 });
-  const potMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.6 });
-  for (const [px, pz] of [[-18.5, 13], [18.5, 13], [-18.5, -13], [18.5, -13], [-6, 13.5], [6, 13.5]]) {
-    const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.28, 0.6, 16), potMat);
-    pot.position.set(px, 0.3, pz);
-    scene.add(pot);
-    for (let i = 0; i < 5; i++) {
-      const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.4, 6), leafMat);
-      leaf.position.set(px + Math.cos(i * 1.26) * 0.2, 1.2 + (i % 2) * 0.3, pz + Math.sin(i * 1.26) * 0.2);
-      leaf.rotation.set(Math.cos(i) * 0.5, i, Math.sin(i) * 0.5);
-      scene.add(leaf);
-    }
-  }
+  // Pflanzen: Palmen an den Ecken und am Eingang, Ficus an den Säulen
+  const plants = [];
+  const placePlant = (plant, x, z) => { plant.position.set(x, 0, z); scene.add(plant); plants.push(plant); const cs = contactShadow(1.4, 1.4, 0.5); cs.position.set(x, 0.012, z); scene.add(cs); };
+  let seed = 0.13;
+  for (const [px, pz] of [[-18.5, 13], [18.5, 13], [-18.5, -13], [18.5, -13], [-6.2, 13.6], [6.2, 13.6]]) placePlant(createPalm({ height: 2.2 + (seed += 0.17) % 0.5, fronds: 11, seed }), px, pz);
+  for (const [px, pz] of [[-12.9, -9.9], [12.9, -9.9], [-12.9, 9.9], [12.9, 9.9], [-3.1, -9.9], [3.1, -9.9]]) placePlant(createFicus({ height: 1.6 + (seed += 0.11) % 0.4, seed }), px, pz);
+  animated.push((dt, t) => { for (const p of plants) p.userData.sway(t); });
   // Wandleuchten
   const sconceMat = new THREE.MeshStandardMaterial({ color: 0xffe0b0, emissive: 0xffc070, emissiveIntensity: 2.4 });
   for (let x = -16; x <= 16; x += 8) {

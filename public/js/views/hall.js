@@ -252,7 +252,7 @@ class Hall {
     if (seat.sit && isTable) {
       // Sitzend am Tisch: etwas zur Tischkante gelehnt, Blick deutlich nach unten auf die Platte
       // (Blickziel unter Tischhöhe, damit Karten/Kessel in der oberen Bildhälfte liegen, nicht hinter dem Setztisch-Overlay)
-      this.spectateCam = { pos: new THREE.Vector3(seat.x - dir.x * 0.35, 1.4, seat.z - dir.z * 0.35), look: look.setY(0.55) };
+      this.spectateCam = { pos: new THREE.Vector3(seat.x - dir.x * 0.35, 1.4, seat.z - dir.z * 0.35), look: look.setY(st.mount?.lookY ?? 0.55) };
     } else {
       // Vor einem Bildschirm (Automat, Glücksrad): auf dem Platz bleiben, Bildschirm auf Augenhöhe anschauen
       this.spectateCam = { pos: new THREE.Vector3(seat.x, seat.sit ? 1.3 : EYE, seat.z), look };
@@ -496,9 +496,13 @@ class Hall {
       }
     }
 
+    const camPos = engine.camera.position;
     for (const [id, a] of this.avatars) {
       const p = rt.players.get(id);
       if (!p) continue;
+      // Figuren in der Nähe schauen den Betrachter an
+      const near = a.av.position.distanceTo(camPos) < 4.5;
+      a.av.userData.lookAt(near ? camPos : null);
       if (a.seat) {
         a.av.position.lerp(new THREE.Vector3(a.seat.x, 0, a.seat.z), 0.2);
         a.av.rotation.y += (a.seat.ry - a.av.rotation.y) * 0.2;
