@@ -59,25 +59,102 @@ function contactShadow(w, d, opacity = 0.55) {
   return m;
 }
 
+/** Helle Kassettendecke mit Goldrahmen und Rosette je Feld */
 function ceilingTexture() {
   const S = 512;
   const { canvas, ctx } = makeCanvas(S, S);
-  ctx.fillStyle = '#1a1512';
+  ctx.fillStyle = '#efe4cf';
   ctx.fillRect(0, 0, S, S);
-  ctx.strokeStyle = '#2a221c'; ctx.lineWidth = 4;
-  for (let i = 0; i <= S; i += 128) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, S); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(S, i); ctx.stroke(); }
-  return canvasTexture(canvas, { repeat: [10, 7.5] });
+  for (let cy = 0; cy < S; cy += 256) {
+    for (let cx = 0; cx < S; cx += 256) {
+      const g = ctx.createRadialGradient(cx + 128, cy + 128, 20, cx + 128, cy + 128, 150);
+      g.addColorStop(0, '#f6ecd9'); g.addColorStop(1, '#d9c9a8');
+      ctx.fillStyle = g; ctx.fillRect(cx + 14, cy + 14, 228, 228);
+      ctx.strokeStyle = '#c9a24a'; ctx.lineWidth = 6; ctx.strokeRect(cx + 14, cy + 14, 228, 228);
+      ctx.strokeStyle = 'rgba(201,162,74,0.5)'; ctx.lineWidth = 2; ctx.strokeRect(cx + 30, cy + 30, 196, 196);
+      ctx.strokeStyle = '#c9a24a'; ctx.lineWidth = 3;
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        ctx.beginPath(); ctx.ellipse(cx + 128 + Math.cos(a) * 34, cy + 128 + Math.sin(a) * 34, 26, 10, a, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.fillStyle = '#c9a24a'; ctx.beginPath(); ctx.arc(cx + 128, cy + 128, 12, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  return canvasTexture(canvas, { repeat: [10, 7.5], anisotropy: 16 });
 }
 
+/** Creme-Stuckwand mit Holzsockel, Feldern und Goldleisten (statt dunkelrot) */
 function wallTexture() {
   const S = 512;
   const { canvas, ctx } = makeCanvas(S, S);
   const g = ctx.createLinearGradient(0, 0, 0, S);
-  g.addColorStop(0, '#4a1020'); g.addColorStop(1, '#2a0810');
+  g.addColorStop(0, '#e9dcc3'); g.addColorStop(1, '#d6c5a3');
   ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
-  ctx.strokeStyle = 'rgba(212,175,55,0.35)'; ctx.lineWidth = 6;
-  for (let x = 0; x < S; x += 128) { ctx.strokeRect(x + 12, 40, 104, S - 80); }
-  return canvasTexture(canvas, { repeat: [10, 1.5] });
+  const img = ctx.getImageData(0, 0, S, S);
+  for (let i = 0; i < img.data.length; i += 4) { const n = (Math.random() - 0.5) * 10; img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n; }
+  ctx.putImageData(img, 0, 0);
+  // Felder
+  for (let x = 0; x < S; x += 256) {
+    ctx.strokeStyle = 'rgba(201,162,74,0.85)'; ctx.lineWidth = 6; ctx.strokeRect(x + 28, 40, 200, 300);
+    ctx.strokeStyle = 'rgba(120,90,40,0.25)'; ctx.lineWidth = 2; ctx.strokeRect(x + 44, 56, 168, 268);
+  }
+  // Holzsockel unten (dunkel) mit Goldkante
+  const wg = ctx.createLinearGradient(0, 380, 0, S);
+  wg.addColorStop(0, '#5a3a1c'); wg.addColorStop(1, '#3a2410');
+  ctx.fillStyle = wg; ctx.fillRect(0, 380, S, S - 380);
+  ctx.fillStyle = '#c9a24a'; ctx.fillRect(0, 372, S, 10);
+  return canvasTexture(canvas, { repeat: [10, 1], anisotropy: 8 });
+}
+
+/** Cremefarbener Marmor mit Adern */
+function marbleTexture() {
+  const S = 1024;
+  const { canvas, ctx } = makeCanvas(S, S);
+  const g = ctx.createLinearGradient(0, 0, S, S);
+  g.addColorStop(0, '#f1e9d8'); g.addColorStop(0.5, '#e6dcc6'); g.addColorStop(1, '#efe5d2');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 26; i++) {
+    ctx.strokeStyle = `rgba(${120 + Math.random() * 40},${100 + Math.random() * 30},${70 + Math.random() * 30},${0.08 + Math.random() * 0.12})`;
+    ctx.lineWidth = 1 + Math.random() * 3;
+    ctx.beginPath();
+    let x = Math.random() * S; let y = Math.random() * S;
+    ctx.moveTo(x, y);
+    for (let k = 0; k < 6; k++) { const nx = x + (Math.random() - 0.5) * 400; const ny = y + (Math.random() - 0.5) * 400; ctx.quadraticCurveTo(x + (Math.random() - 0.5) * 200, y + (Math.random() - 0.5) * 200, nx, ny); x = nx; y = ny; }
+    ctx.stroke();
+  }
+  // Fliesenfugen
+  ctx.strokeStyle = 'rgba(90,70,40,0.25)'; ctx.lineWidth = 3;
+  for (let i = 0; i <= S; i += 256) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, S); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(S, i); ctx.stroke(); }
+  return canvasTexture(canvas, { repeat: [8, 6], anisotropy: 16 });
+}
+
+/** Roter Läufer mit floralem Ornament (wie im Vorbild) */
+function runnerTexture() {
+  const S = 512;
+  const { canvas, ctx } = makeCanvas(S, S);
+  ctx.fillStyle = '#9e1b2a'; ctx.fillRect(0, 0, S, S);
+  const img = ctx.getImageData(0, 0, S, S);
+  for (let i = 0; i < img.data.length; i += 4) { const n = (Math.random() - 0.5) * 16; img.data[i] += n; img.data[i + 1] += n; img.data[i + 2] += n; }
+  ctx.putImageData(img, 0, 0);
+  const petal = (x, y, r, rot, color) => {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(0, -r * 0.6, r * 0.32, r * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  };
+  const flower = (x, y, r) => {
+    for (let i = 0; i < 8; i++) petal(x, y, r, (i / 8) * Math.PI * 2, 'rgba(240,200,110,0.85)');
+    for (let i = 0; i < 8; i++) petal(x, y, r * 0.55, (i / 8) * Math.PI * 2 + Math.PI / 8, 'rgba(255,240,210,0.7)');
+    ctx.fillStyle = '#2f4f8a'; ctx.beginPath(); ctx.arc(x, y, r * 0.16, 0, Math.PI * 2); ctx.fill();
+  };
+  flower(256, 256, 120);
+  for (const [x, y] of [[0, 0], [512, 0], [0, 512], [512, 512]]) flower(x, y, 70);
+  ctx.strokeStyle = 'rgba(240,200,110,0.6)'; ctx.lineWidth = 4;
+  for (const [x, y] of [[256, 40], [256, 472], [40, 256], [472, 256]]) {
+    ctx.beginPath(); ctx.arc(x, y, 34, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,240,210,0.6)'; ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.strokeStyle = '#e6c26a'; ctx.lineWidth = 10; ctx.strokeRect(5, 5, S - 10, S - 10);
+  return canvasTexture(canvas, { repeat: [1, 6], anisotropy: 16 });
 }
 
 function neonTexture(text, color, sub = null) {
@@ -269,10 +346,13 @@ function cabinet(screenTex, title, color) {
 
 function chandelier(x, z, y = 5.4) {
   const g = new THREE.Group();
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.06, 10, 48), brass);
-  ring.rotation.x = Math.PI / 2;
-  g.add(ring);
-  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.05, 10, 32), brass);
+  // Dreistufiger Kronleuchter
+  for (const [r, yy] of [[0.9, 0], [0.62, 0.32], [0.34, 0.6]]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r, 0.05, 10, 48), brass);
+    ring.rotation.x = Math.PI / 2; ring.position.y = yy;
+    g.add(ring);
+  }
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.04, 10, 32), brass);
   ring2.rotation.x = Math.PI / 2; ring2.position.y = 0.35;
   g.add(ring2);
   const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.2, 6), brass);
@@ -282,12 +362,13 @@ function chandelier(x, z, y = 5.4) {
   const crystalMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0.1, clearcoat: 1, emissive: 0xfff2cc, emissiveIntensity: 0.4, transparent: true, opacity: 0.85 });
   const crystalGeo = new THREE.OctahedronGeometry(0.07, 0);
   const crystals = new THREE.Group();
-  for (let i = 0; i < 28; i++) {
-    const a = (i / 28) * Math.PI * 2;
-    const r = i % 2 ? 0.9 : 0.5;
+  for (let i = 0; i < 54; i++) {
+    const tier = i % 3; // 0 außen, 1 mitte, 2 innen
+    const a = (Math.floor(i / 3) / 18) * Math.PI * 2 + tier * 0.12;
+    const r = [0.9, 0.62, 0.34][tier];
     const c = new THREE.Mesh(crystalGeo, crystalMat);
-    c.position.set(Math.cos(a) * r, -0.25 - (i % 3) * 0.12 + (i % 2 ? 0 : 0.35), Math.sin(a) * r);
-    c.scale.y = 2;
+    c.position.set(Math.cos(a) * r, [0, 0.32, 0.6][tier] - 0.28 - ((i * 7) % 3) * 0.08, Math.sin(a) * r);
+    c.scale.y = 2.2;
     crystals.add(c);
   }
   g.add(crystals);
@@ -500,22 +581,76 @@ export function buildCasino(engine) {
   const animated = [];
   const stations = [];
 
-  // Boden, Decke, Wände
+  // ---------- Boden: Marmor mit roten Läufern ----------
+  const marbleFloor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshPhysicalMaterial({ map: marbleTexture(), roughness: 0.12, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 1.2 }));
+  marbleFloor.rotation.x = -Math.PI / 2; marbleFloor.receiveShadow = true;
+  scene.add(marbleFloor);
   const carpet = carpetTexture();
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: carpet.map, normalMap: carpet.normal, normalScale: new THREE.Vector2(0.6, 0.6), roughness: 0.98 }));
-  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
-  scene.add(floor);
-  // Lichtvouten entlang der Decke (indirektes warmes Licht, Bloom)
-  const coveMat = new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xffb860, emissiveIntensity: 1.6 });
+  const runnerMat = new THREE.MeshStandardMaterial({ map: runnerTexture(), normalMap: carpet.normal, normalScale: new THREE.Vector2(0.25, 0.25), roughness: 0.98 });
+  const runner = (width, length, x, z, rotY = 0) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(width, length), runnerMat);
+    m.rotation.x = -Math.PI / 2; m.rotation.z = rotY; m.position.set(x, 0.008, z); m.receiveShadow = true;
+    scene.add(m);
+    const trim = new THREE.Mesh(new THREE.PlaneGeometry(width + 0.3, length + 0.3), new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.6, roughness: 0.35 }));
+    trim.rotation.x = -Math.PI / 2; trim.rotation.z = rotY; trim.position.set(x, 0.004, z);
+    scene.add(trim);
+  };
+  runner(5, d - 1, 0, 0);                    // Hauptläufer vom Eingang zur Rückwand
+  runner(3.6, w - 1, 0, 0, Math.PI / 2);     // Querläufer in der Mitte
+  runner(3.2, d - 4, -12, 0);                // Seitengänge
+  runner(3.2, d - 4, 12, 0);
+  // Teppichinseln unter den Tischen
+  const islandMat = new THREE.MeshStandardMaterial({ map: carpet.map, normalMap: carpet.normal, normalScale: new THREE.Vector2(0.5, 0.5), roughness: 0.98 });
+  for (const [ix, iz, iw, id] of [[-8, 4, 7, 6], [8, 4, 7, 6], [-8, -5, 7, 6], [8, -5, 6, 6], [0, 5.5, 7, 7], [0, -3, 5, 5]]) {
+    const isl = new THREE.Mesh(new THREE.PlaneGeometry(iw, id), islandMat);
+    isl.rotation.x = -Math.PI / 2; isl.position.set(ix, 0.006, iz); isl.receiveShadow = true;
+    scene.add(isl);
+  }
+
+  // ---------- Decke: helle Kassetten, goldene Bogenrippen, Lichtvouten, Tonnengewölbe über dem Hauptgang ----------
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: ceilingTexture(), roughness: 0.85 }));
+  ceiling.rotation.x = Math.PI / 2; ceiling.position.y = h;
+  scene.add(ceiling);
+  const ribMat = goldMaterial({ roughness: 0.3 });
+  const coveMat = new THREE.MeshStandardMaterial({ color: 0xffe0b0, emissive: 0xffc070, emissiveIntensity: 0.7 });
+  // Querrippen: flache Bögen quer durch die Halle (Torus-Ausschnitt in der XY-Ebene) alle 4 m
+  const R = 160;
+  const arc = w / R;
+  for (let z = -12; z <= 12; z += 4) {
+    const rib = new THREE.Mesh(new THREE.TorusGeometry(R, 0.14, 10, 96, arc), ribMat);
+    rib.rotation.z = Math.PI / 2 - arc / 2; // Bogenmitte oben
+    rib.position.set(0, h - 0.3 - R, z);
+    scene.add(rib);
+    const cove = new THREE.Mesh(new THREE.BoxGeometry(w - 1, 0.05, 0.1), coveMat);
+    cove.position.set(0, h - 0.32, z + 0.32);
+    scene.add(cove);
+  }
+  // Längsrippen
+  for (const x of [-14, -7, 7, 14]) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, d), ribMat);
+    beam.position.set(x, h - 0.15, 0);
+    scene.add(beam);
+  }
+  // Tonnengewölbe über dem Hauptgang (Innenseite sichtbar), mit Goldkanten
+  const vault = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, d, 48, 1, true, Math.PI * 0.5, Math.PI), new THREE.MeshStandardMaterial({ color: 0xf3e8d2, roughness: 0.8, side: THREE.BackSide }));
+  vault.rotation.x = Math.PI / 2; // Zylinderachse entlang des Hauptgangs (z), obere Hälfte
+  vault.position.set(0, h - 0.9, 0);
+  scene.add(vault);
+  for (const x of [-2.6, 2.6]) {
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, d), ribMat);
+    edge.position.set(x, h - 0.9, 0);
+    scene.add(edge);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, d - 1), coveMat);
+    strip.position.set(x * 0.94, h - 0.95, 0);
+    scene.add(strip);
+  }
+  // Umlaufende Lichtvouten an den Wänden
   for (const [len, x, z, rot] of [[w - 2, 0, -d / 2 + 0.5, 0], [w - 2, 0, d / 2 - 0.5, 0], [d - 2, -w / 2 + 0.5, 0, Math.PI / 2], [d - 2, w / 2 - 0.5, 0, Math.PI / 2]]) {
     const cove = new THREE.Mesh(new THREE.BoxGeometry(len, 0.06, 0.12), coveMat);
     cove.position.set(x, h - 0.12, z); cove.rotation.y = rot;
     scene.add(cove);
   }
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: ceilingTexture(), roughness: 0.9 }));
-  ceiling.rotation.x = Math.PI / 2; ceiling.position.y = h;
-  scene.add(ceiling);
-  const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture(), roughness: 0.7 });
+  const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture(), roughness: 0.75 });
   const mkWall = (width, x, z, rotY) => {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(width, h), wallMat);
     m.position.set(x, h / 2, z); m.rotation.y = rotY; m.receiveShadow = true;
@@ -540,11 +675,12 @@ export function buildCasino(engine) {
     }
   });
 
-  // Deckenspots (leuchtende Scheiben, Bloom macht den Rest)
-  const spotDisc = new THREE.CircleGeometry(0.18, 16);
-  const spotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff1d6, emissiveIntensity: 2.2 });
-  for (let x = -16; x <= 16; x += 4) {
-    for (let z = -12; z <= 12; z += 4) {
+  // Deckenspots in den Kassetten (warm, dezent – Bloom macht den Rest)
+  const spotDisc = new THREE.CircleGeometry(0.16, 16);
+  const spotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff1d6, emissiveIntensity: 1.1 });
+  for (let x = -18; x <= 18; x += 4) {
+    for (let z = -10; z <= 10; z += 4) {
+      if (Math.abs(x) < 3) continue; // unter dem Gewölbe keine Spots
       const s = new THREE.Mesh(spotDisc, spotMat);
       s.rotation.x = Math.PI / 2; s.position.set(x, h - 0.02, z);
       scene.add(s);
@@ -698,13 +834,7 @@ export function buildCasino(engine) {
   const pdSt = addStation('coinflip', '🪙 Münzwurf', pd, { x: 0, z: -3, hit: [1.8, 2.6, 1.8], labelY: 2.9, seats: [[0, 1.4], [-1.2, 0.7], [1.2, 0.7]], sit: false });
   setMount(pdSt, { type: 'table', scale: 0.14, offset: [0, 0.93, 0], hide: [pd.userData.spin], pull: 0 });
 
-  // Marmor-Laufsteg vom Eingang zur Mitte, Samtkordeln, Pflanzen
-  const marble = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 12), new THREE.MeshPhysicalMaterial({ color: 0xe9e4da, roughness: 0.18, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.1 }));
-  marble.rotation.x = -Math.PI / 2; marble.position.set(0, 0.012, 9.5); marble.receiveShadow = true;
-  scene.add(marble);
-  const marbleTrim = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.02, 12.1), brass);
-  marbleTrim.position.set(0, 0.003, 9.5);
-  scene.add(marbleTrim);
+  // Samtkordeln am Eingang, Pflanzen
   const ropeMat = new THREE.MeshStandardMaterial({ color: 0x8a1030, roughness: 0.85 });
   for (const side of [-1, 1]) {
     for (let i = 0; i < 4; i++) {

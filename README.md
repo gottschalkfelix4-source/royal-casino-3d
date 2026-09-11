@@ -38,7 +38,10 @@ Voraussetzung: Node.js ≥ 22.13 (nutzt das eingebaute `node:sqlite`, keine nati
 
 ## Lobby & Multiplayer
 
-Die Lobby ist eine begehbare 3D-Casino-Halle im Stil der 2000er (Musterteppich, Kronleuchter, Neon, Bar).
+Die Lobby ist eine begehbare 3D-Casino-Halle im Stil großer Las-Vegas-Häuser: cremefarbener Marmor mit roten
+Blumenläufern, helle Kassettendecke mit goldenen Bogenrippen und Lichtvouten, Tonnengewölbe über dem Hauptgang,
+Kronleuchter, Bar. Die fertige Halle wird beim Start einmal als Cubemap aufgenommen und dient als
+Umgebungsspiegelung für Marmor, Gold und Chrom.
 
 - **Steuerung**: `W A S D` / Pfeiltasten laufen, `Shift` rennen, Maus ziehen zum Umsehen, `Q`/`E` drehen.
   In der Nähe eines Tisches: `E` oder Klick startet das Spiel. `Enter` fokussiert den Chat.

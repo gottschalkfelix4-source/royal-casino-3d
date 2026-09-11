@@ -43,13 +43,13 @@ class Hall {
     document.body.prepend(this.layer);
     const engine = new Engine(this.layer, {
       fov: 70, position: [0, EYE, 12], target: [0, EYE, 0], background: 0x05040a,
-      shadows: true, exposure: 1.05, envIntensity: 0.35,
-      bloom: { strength: 0.4, radius: 0.5, threshold: 0.86 },
+      shadows: true, exposure: 0.92, envIntensity: 0.45,
+      bloom: { strength: 0.22, radius: 0.4, threshold: 0.95 },
     });
     this.engine = engine;
-    engine.scene.fog = new THREE.FogExp2(0x0a0610, 0.024);
-    engine.scene.add(new THREE.HemisphereLight(0xffe0c0, 0x2a0a10, 0.4));
-    const key = new THREE.SpotLight(0xffe6c4, 900, 0, 0.9, 0.7, 2);
+    engine.scene.fog = new THREE.FogExp2(0x1e150e, 0.011);
+    engine.scene.add(new THREE.HemisphereLight(0xfff0dc, 0x5a3f26, 0.42)); // warmes Raumlicht von der hellen Decke
+    const key = new THREE.SpotLight(0xffe6c4, 650, 0, 0.9, 0.7, 2);
     key.position.set(0, 6.2, 2);
     key.target.position.set(0, 0, 0);
     key.castShadow = engine.quality.shadows;
@@ -70,6 +70,8 @@ class Hall {
     this.casino = buildCasino(engine);
     this.baseHitboxes = [...this.casino.stations.map((s) => s.hitbox), ...this.casino.interactives.map((i) => i.hitbox)];
     this.hitboxes = this.baseHitboxes;
+    // Echte Spiegelung: die fertige Halle einmal als Cubemap aufnehmen und als Umgebung für Marmor/Gold/Chrom nutzen
+    setTimeout(() => this.captureEnvironment(), 300);
 
     // Eingaben (nur im Modus 'walk' wirksam)
     const canvas = engine.renderer.domElement;
@@ -161,6 +163,27 @@ class Hall {
     this.hoverTime = 0;
     engine.onUpdate((dt, t) => this.update(dt, t));
     engine.start();
+  }
+
+  captureEnvironment() {
+    if (!this.engine || this.engine.disposed) return;
+    try {
+      const { renderer, scene } = this.engine;
+      const rt = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
+      const cam = new THREE.CubeCamera(0.2, 80, rt);
+      cam.position.set(0, 2.2, 2);
+      const hidden = [...this.avatars.values()].map((a) => a.av);
+      hidden.forEach((o) => { o.visible = false; });
+      cam.update(renderer, scene);
+      hidden.forEach((o) => { o.visible = true; });
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const env = pmrem.fromCubemap(rt.texture).texture;
+      scene.environment?.dispose?.();
+      scene.environment = env;
+      scene.environmentIntensity = 0.7;
+      pmrem.dispose();
+      rt.dispose();
+    } catch (e) { console.warn('Environment-Capture', e); }
   }
 
   stationOf(hitbox) {
