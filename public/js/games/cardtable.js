@@ -11,8 +11,9 @@ export class CardTable {
     this.engine = engine;
     this.shoe = new THREE.Vector3(...shoe);
     this.cards = [];
-    this.table = buildTable(engine.scene, { width: size[0], depth: size[1], felt });
-    if (shoeVisible) {
+    // In der Halle steht der echte Tisch schon – dann nur Karten, kein Tisch/Schlitten
+    if (!engine.embedded) this.table = buildTable(engine.scene, { width: size[0], depth: size[1], felt });
+    if (shoeVisible && !engine.embedded) {
       const box = new THREE.Mesh(
         new THREE.BoxGeometry(1.4, 0.7, 1.9),
         new THREE.MeshPhysicalMaterial({ color: 0x1a1d24, roughness: 0.2, clearcoat: 1, metalness: 0.2 })

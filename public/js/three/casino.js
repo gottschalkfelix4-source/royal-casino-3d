@@ -490,12 +490,10 @@ export function buildCasino(engine) {
     group.rotation.y = rotY;
     scene.add(group);
     const cos = Math.cos(rotY); const sin = Math.sin(rotY);
-    const worldSeats = seats.map(([lx, lz]) => ({
-      x: x + lx * cos + lz * sin,
-      z: z - lx * sin + lz * cos,
-      ry: rotY + Math.atan2(lx - face[0], lz - face[1]),
-      sit,
-    }));
+    const worldSeats = seats.map(([lx, lz]) => {
+      const [fx, fz] = typeof face === 'function' ? face(lx, lz) : face;
+      return { x: x + lx * cos + lz * sin, z: z - lx * sin + lz * cos, ry: rotY + Math.atan2(lx - fx, lz - fz), sit };
+    });
     const hitbox = new THREE.Mesh(new THREE.BoxGeometry(...hit), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
     hitbox.position.set(x, hit[1] / 2, z); hitbox.rotation.y = rotY;
     hitbox.userData.gameId = id;
@@ -506,7 +504,13 @@ export function buildCasino(engine) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(hit[0], hit[2]) * 0.55, Math.max(hit[0], hit[2]) * 0.55 + 0.12, 64), new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.03, z);
     scene.add(ring);
-    stations.push({ id, name, group, hitbox, label, ring, position: new THREE.Vector3(x, 1, z), seats: worldSeats, radius: Math.max(hit[0], hit[2]) / 2 });
+    const st = { id, name, group, hitbox, label, ring, position: new THREE.Vector3(x, 1, z), seats: worldSeats, radius: Math.max(hit[0], hit[2]) / 2, mount: null };
+    stations.push(st);
+    return st;
+  };
+  /** Montagepunkt für die Spielszene: type 'table' (auf der Platte, y nach oben) oder 'screen' (Bildschirm, +z zum Spieler) */
+  const setMount = (st, { type, scale, object = null, offset = [0, 0, 0], hide = [], rotX = 0, pull = 0.3 }) => {
+    st.mount = { type, scale, object, offset: new THREE.Vector3(...offset), hide, rotX, pull };
   };
 
   // Slot-Bank an der linken Wand
@@ -518,7 +522,9 @@ export function buildCasino(engine) {
     m.rotation.y = Math.PI / 2;
     slotsGroup.add(m);
   }
-  addStation('slots', '🎰 Slots', slotsGroup, { x: -17.2, z: 0, hit: [3, 2.6, 7.5], labelY: 3.0, seats: [0, 1, 2, 3, 4, 5].map((i) => [0.95, (i - 2.5) * 1.15]), face: [0, 0] });
+  const slotsSt = addStation('slots', '🎰 Slots', slotsGroup, { x: -17.2, z: 0, hit: [3, 2.6, 7.5], labelY: 3.0, seats: [0, 1, 2, 3, 4, 5].map((i) => [0.95, (i - 2.5) * 1.15]), face: (lx, lz) => [0, lz] });
+  // Walzen sitzen im Automaten; Bildschirm der Maschine ist Referenz (Index = Sitzplatz)
+  setMount(slotsSt, { type: 'screen', scale: 0.1, object: (seatIndex) => slotsGroup.children[seatIndex].children[1], offset: [0, 0, -0.4] });
   animated.push((dt, t) => { slotsGroup.children.forEach((m, i) => { const s = m.children[1]; s.material.emissiveIntensity = 1.2 + Math.sin(t * 3 + i) * 0.4; }); });
 
   // Roulette
@@ -527,7 +533,8 @@ export function buildCasino(engine) {
   rl.add(mini);
   for (let i = 0; i < 3; i++) { const c = createChip([500, 2500, 10000][i]); c.position.set(0.4 + i * 0.5, 0.99, 0.3 - i * 0.2); rl.add(c); }
   for (let i = 0; i < 3; i++) rl.add(stool(-0.5 + i * 1.0, 1.5));
-  addStation('roulette', '🎡 Roulette', rl, { x: -8, z: 4, hit: [5, 2.4, 3.6], seats: [[-0.5, 1.5], [0.5, 1.5], [1.5, 1.5]] });
+  const rlSt = addStation('roulette', '🎡 Roulette', rl, { x: -8, z: 4, hit: [5, 2.4, 3.6], seats: [[-0.5, 1.5], [0.5, 1.5], [1.5, 1.5]] });
+  setMount(rlSt, { type: 'table', scale: 0.11, offset: [-0.6, 0.95, 0], hide: [mini], pull: 0 });
   animated.push((dt) => { mini.userData.spin.rotation.y += dt * 0.6; });
 
   // Blackjack
@@ -535,41 +542,53 @@ export function buildCasino(engine) {
   for (let i = 0; i < 3; i++) { const c = createCard({ r: [1, 13, 10][i], s: 'SHD'[i] }); c.rotation.x = -Math.PI / 2; c.rotation.z = (i - 1) * 0.3; c.position.set((i - 1) * 0.7, 0.96, 0.9); c.scale.setScalar(0.6); bj.add(c); }
   const bjSeats = [0, 1, 2, 3].map((i) => { const a = -0.6 + i * 0.4; return [Math.sin(a) * 2.6, Math.cos(a) * 2.6 * 1.1 - 0.4]; });
   for (const [sx, sz] of bjSeats) bj.add(stool(sx, sz));
-  addStation('blackjack', '🃏 Blackjack', bj, { x: 0, z: 5.5, rotY: 0, hit: [4.6, 2.4, 4], seats: bjSeats });
+  const bjDeco = bj.children.filter((c) => c.userData.card);
+  const bjSt = addStation('blackjack', '🃏 Blackjack', bj, { x: 0, z: 5.5, rotY: 0, hit: [4.6, 2.4, 4], seats: bjSeats });
+  setMount(bjSt, { type: 'table', scale: 0.16, offset: [0, 0.95, 0.1], hide: bjDeco, pull: 0.45 });
 
   // Baccarat
   const bc = gameTable({ shape: 'oval', w: 4.4, d: 2.2, felt: '#5a1424' });
   for (let i = 0; i < 4; i++) { const c = createCard({ r: 2 + i * 3, s: 'CDHS'[i] }); c.rotation.x = -Math.PI / 2; c.position.set(-1.2 + i * 0.8, 0.96, 0); c.scale.setScalar(0.6); bc.add(c); }
   for (let i = 0; i < 3; i++) bc.add(stool(-1 + i, 1.7));
-  addStation('baccarat', '🎴 Baccarat', bc, { x: 8, z: 4, hit: [5, 2.4, 3.8], seats: [[-1, 1.7], [0, 1.7], [1, 1.7]] });
+  const bcSt = addStation('baccarat', '🎴 Baccarat', bc, { x: 8, z: 4, hit: [5, 2.4, 3.8], seats: [[-1, 1.7], [0, 1.7], [1, 1.7]] });
+  setMount(bcSt, { type: 'table', scale: 0.15, offset: [0, 0.95, 0], hide: bc.children.filter((c) => c.userData.card), pull: 0.35 });
 
   // Würfel (Craps-Tisch)
   const dc = gameTable({ shape: 'rect', w: 4.4, d: 2.0, felt: '#7a1b1b' });
   for (let i = 0; i < 3; i++) { const die = createDie(0.28); die.position.set(-0.6 + i * 0.5, 1.09, 0.2 - i * 0.15); die.rotation.set(0, i * 0.7, 0); dc.add(die); }
   for (let i = 0; i < 3; i++) dc.add(stool(-1 + i, 1.5));
-  addStation('dice', '🎲 Würfel', dc, { x: -8, z: -5, hit: [5, 2.4, 3.6], seats: [[-1, 1.5], [0, 1.5], [1, 1.5]] });
+  const dcSt = addStation('dice', '🎲 Würfel', dc, { x: -8, z: -5, hit: [5, 2.4, 3.6], seats: [[-1, 1.5], [0, 1.5], [1, 1.5]] });
+  setMount(dcSt, { type: 'table', scale: 0.14, offset: [0, 0.95, 0], hide: dc.children.filter((c) => c.geometry?.type === 'BoxGeometry' && c.material?.length === 6) });
 
   // Hi-Lo
   const hl = gameTable({ shape: 'oval', w: 2.6, d: 1.8, felt: '#3b1d5c' });
   const hlCard = createCard({ r: 7, s: 'H' }); hlCard.rotation.x = -Math.PI / 2; hlCard.position.y = 0.96; hlCard.scale.setScalar(0.7); hl.add(hlCard);
   hl.add(stool(0, 1.4));
-  addStation('hilo', '🔺 Hi-Lo', hl, { x: 8, z: -5, hit: [3.2, 2.4, 3.2], seats: [[0, 1.4], [-1.2, 0.8], [1.2, 0.8]] });
+  const hlSt = addStation('hilo', '🔺 Hi-Lo', hl, { x: 8, z: -5, hit: [3.2, 2.4, 3.2], seats: [[0, 1.4], [-1.2, 0.8], [1.2, 0.8]] });
+  setMount(hlSt, { type: 'table', scale: 0.16, offset: [0, 0.95, -0.1], hide: [hlCard], pull: 0.2 });
 
   // Glücksrad
   const fw = fortuneWheel();
-  addStation('wheel', '🎯 Glücksrad', fw, { x: 0, z: -13.6, hit: [4, 4.3, 1.6], labelY: 4.5, seats: [[0, 2.2], [-1.2, 2.4], [1.2, 2.4]], sit: false });
+  const fwSt = addStation('wheel', '🎯 Glücksrad', fw, { x: 0, z: -13.6, hit: [4, 4.3, 1.6], labelY: 4.5, seats: [[0, 2.2], [-1.2, 2.4], [1.2, 2.4]], sit: false });
+  setMount(fwSt, { type: 'screen', scale: 0.34, object: () => fw.userData.spin, hide: [fw] });
   animated.push((dt) => { fw.userData.spin.rotation.z -= dt * 0.35; });
 
   // Automaten an der Rückwand
   const cab = { hit: [1.6, 2.4, 1.6], labelY: 2.6, seats: [[0, 1.2], [-0.8, 1.6], [0.8, 1.6]], sit: false };
-  addStation('crash', '🚀 Crash', cabinet(SCREENS.crash(), 'CRASH', '#ff4d4d'), { x: -5.5, z: -13.9, ...cab });
-  addStation('plinko', '🔮 Plinko', cabinet(SCREENS.plinko(), 'PLINKO', '#ff7ad9'), { x: 5.5, z: -13.9, ...cab });
+  const screenOf = (cabGroup) => () => cabGroup.children[1];
+  const crashCab = cabinet(SCREENS.crash(), 'CRASH', '#ff4d4d');
+  setMount(addStation('crash', '🚀 Crash', crashCab, { x: -5.5, z: -13.9, ...cab }), { type: 'screen', scale: 0.07, object: screenOf(crashCab), offset: [0, -0.05, 0.02], hide: [crashCab.children[1]] });
+  const plinkoCab = cabinet(SCREENS.plinko(), 'PLINKO', '#ff7ad9');
+  setMount(addStation('plinko', '🔮 Plinko', plinkoCab, { x: 5.5, z: -13.9, ...cab }), { type: 'screen', scale: 0.06, object: screenOf(plinkoCab), offset: [0, 0.03, 0.02], hide: [plinkoCab.children[1]] });
   // Automaten an der rechten Wand
-  addStation('videopoker', '♠️ Video Poker', cabinet(SCREENS.videopoker(), 'POKER', '#4d9cff'), { x: 19.3, z: 8, rotY: -Math.PI / 2, ...cab });
-  addStation('mines', '💣 Mines', cabinet(SCREENS.mines(), 'MINES', '#34e39a'), { x: 19.3, z: 0, rotY: -Math.PI / 2, ...cab });
+  const vpCab = cabinet(SCREENS.videopoker(), 'POKER', '#4d9cff');
+  setMount(addStation('videopoker', '♠️ Video Poker', vpCab, { x: 19.3, z: 8, rotY: -Math.PI / 2, ...cab }), { type: 'screen', scale: 0.11, object: screenOf(vpCab), offset: [0, -0.12, 0.03], hide: [vpCab.children[1]] });
+  const minesCab = cabinet(SCREENS.mines(), 'MINES', '#34e39a');
+  setMount(addStation('mines', '💣 Mines', minesCab, { x: 19.3, z: 0, rotY: -Math.PI / 2, ...cab }), { type: 'screen', scale: 0.11, object: screenOf(minesCab), offset: [0, 0, 0.03], rotX: Math.PI / 2, hide: [minesCab.children[1]] });
   // Münzwurf-Podest in der Mitte
   const pd = pedestal();
-  addStation('coinflip', '🪙 Münzwurf', pd, { x: 0, z: -3, hit: [1.8, 2.6, 1.8], labelY: 2.9, seats: [[0, 1.4], [-1.2, 0.7], [1.2, 0.7]], sit: false });
+  const pdSt = addStation('coinflip', '🪙 Münzwurf', pd, { x: 0, z: -3, hit: [1.8, 2.6, 1.8], labelY: 2.9, seats: [[0, 1.4], [-1.2, 0.7], [1.2, 0.7]], sit: false });
+  setMount(pdSt, { type: 'table', scale: 0.14, offset: [0, 0.93, 0], hide: [pd.userData.spin], pull: 0 });
 
   // Marmor-Laufsteg vom Eingang zur Mitte, Samtkordeln, Pflanzen
   const marble = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 12), new THREE.MeshPhysicalMaterial({ color: 0xe9e4da, roughness: 0.18, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.1 }));

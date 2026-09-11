@@ -2,6 +2,59 @@ import { Engine } from '../three/engine.js';
 import { h, toast } from '../ui.js';
 import { store, setBalance } from '../state.js';
 import { chatWidget, playersList } from '../chat.js';
+import { hall } from '../views/hall.js';
+import { disposeObject } from '../three/assets.js';
+
+/**
+ * Engine-Fassade für Spiele, die direkt in der Halle gerendert werden:
+ * gleiche API wie Engine, aber Szene = Gruppe auf dem Hallentisch, Kamera = Hallenkamera.
+ */
+class EmbeddedEngine {
+  constructor(host, root, canvas, onDispose) {
+    this.host = host;
+    this.scene = root;
+    this.camera = host.camera;
+    this.tweener = host.tweener;
+    this.quality = host.quality;
+    this.embedded = true;
+    this.canvas = canvas;
+    this.onDispose = onDispose;
+    this.updaters = [];
+    this.listeners = [];
+    const self = this;
+    this.renderer = {
+      domElement: {
+        addEventListener: (t, f, o) => { canvas.addEventListener(t, f, o); self.listeners.push([t, f, o]); },
+        removeEventListener: (t, f, o) => canvas.removeEventListener(t, f, o),
+        getBoundingClientRect: () => canvas.getBoundingClientRect(),
+        get style() { return canvas.style; },
+      },
+      info: host.renderer.info,
+      shadowMap: host.renderer.shadowMap,
+    };
+  }
+  addLights() { return {}; }
+  addSpot() { return null; }
+  setFit() {}
+  start() {}
+  stop() {}
+  moveCamera() { return Promise.resolve(); }
+  onUpdate(fn) { const off = this.host.onUpdate(fn); this.updaters.push(off); return off; }
+  tween(...args) { return this.host.tween(...args); }
+  delay(ms) { return this.host.delay(ms); }
+  shake(a) { this.host.shake(a * 0.4); }
+  pick(event, objects, recursive = true) {
+    if (hall.dragMoved >= 6) return []; // Klick nach Maus-Drag zählt nicht
+    return this.host.pick(event, objects, recursive);
+  }
+  dispose() {
+    this.updaters.forEach((f) => f());
+    this.listeners.forEach(([t, f, o]) => this.canvas.removeEventListener(t, f, o));
+    this.canvas.style.cursor = '';
+    this.onDispose?.();
+    disposeObject(this.scene);
+  }
+}
 
 /**
  * Basisklasse für alle Spiele: erstellt 3D-Bühne + Seitenpanel,
@@ -31,8 +84,14 @@ export class GameBase {
     root.append(this.stage, this.panel);
     this.panel.append(h('h2', {}, h('span.icon', {}, this.meta.icon), this.meta.name));
 
-    // Transparent rendern, damit die Live-Halle dahinter sichtbar bleibt
-    this.engine = new Engine(this.stage, { ...this.engineOptions(), alpha: true });
+    // Spielszene direkt in der Halle (auf dem echten Tisch / im Automaten), sonst eigene transparente Szene
+    const mounted = store.user ? hall.mountGame(this.meta.id) : null;
+    if (mounted) {
+      this.engine = new EmbeddedEngine(hall.engine, mounted.root, hall.canvas, mounted.dispose);
+      this.stage.classList.add('embedded');
+    } else {
+      this.engine = new Engine(this.stage, { ...this.engineOptions(), alpha: true });
+    }
     this.buildScene();
     this.buildPanel();
     this.buildTableSection();

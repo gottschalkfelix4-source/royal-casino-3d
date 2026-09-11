@@ -21,7 +21,7 @@ export default class Dice extends GameBase {
     const { engine } = this;
     engine.addLights({ key: [4, 10, 4], keyIntensity: 2.4, hemi: 0.5, fill: 0.7, shadowSize: 8 });
     engine.addSpot({ position: [0, 8, 3], target: [0, 0, 0], intensity: 450, angle: 0.7, color: 0xfff1d6 });
-    buildTable(engine.scene, { width: 12, depth: 8, felt: '#7a1b1b' });
+    if (!engine.embedded) buildTable(engine.scene, { width: 12, depth: 8, felt: '#7a1b1b' });
     engine.setFit(8.5, 7.5);
     const ring = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.08, 12, 96), goldMaterial());
     ring.rotation.x = Math.PI / 2; ring.position.y = 0.02;

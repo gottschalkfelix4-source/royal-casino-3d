@@ -47,15 +47,24 @@ export default class Crash extends GameBase {
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     this.stars = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.09, transparent: true, opacity: 0.8 }));
-    engine.scene.add(this.stars);
     engine.setFit(13.5, 11);
-    // Planet / Boden
-    const planet = new THREE.Mesh(new THREE.SphereGeometry(30, 64, 64), new THREE.MeshStandardMaterial({ color: 0x1d2a4a, roughness: 0.9, transparent: true, opacity: 0.85 }));
-    planet.position.set(0, -34.5, -4);
-    engine.scene.add(planet);
-    const glow = new THREE.Mesh(new THREE.SphereGeometry(30.6, 64, 64), new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.12, side: THREE.BackSide }));
-    glow.position.copy(planet.position);
-    engine.scene.add(glow);
+    if (engine.embedded) {
+      // Im Automaten: dunkler Bildschirm mit Sternen als Hintergrund
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(13, 12), new THREE.MeshStandardMaterial({ color: 0x05070f, roughness: 0.3, emissive: 0x0a1230, emissiveIntensity: 0.6 }));
+      screen.position.set(0, 1.2, -0.8);
+      engine.scene.add(screen);
+      this.stars.position.z = 0;
+      this.stars.scale.setScalar(0.25);
+    } else {
+      // Planet / Boden
+      const planet = new THREE.Mesh(new THREE.SphereGeometry(30, 64, 64), new THREE.MeshStandardMaterial({ color: 0x1d2a4a, roughness: 0.9, transparent: true, opacity: 0.85 }));
+      planet.position.set(0, -34.5, -4);
+      engine.scene.add(planet);
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(30.6, 64, 64), new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.12, side: THREE.BackSide }));
+      glow.position.copy(planet.position);
+      engine.scene.add(glow);
+    }
+    engine.scene.add(this.stars);
 
     this.rocket = buildRocket();
     engine.scene.add(this.rocket);

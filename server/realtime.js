@@ -13,7 +13,7 @@ export function attachRealtime(server, { bots = 3 } = {}) {
   const players = new Map(); // id -> Spieler
   const selectUser = db.prepare('SELECT u.id, u.username FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ? AND s.expires_at > ?');
 
-  const pub = (p) => ({ id: p.id, name: p.name, x: r2(p.x), z: r2(p.z), ry: r2(p.ry), anim: p.anim, game: p.game, bot: !!p.bot });
+  const pub = (p) => ({ id: p.id, name: p.name, x: r2(p.x), z: r2(p.z), ry: r2(p.ry), anim: p.anim, game: p.game, bot: !!p.bot, mic: !!p.mic });
   const r2 = (n) => Math.round(n * 100) / 100;
   const send = (ws, msg) => { if (ws.readyState === 1) ws.send(JSON.stringify(msg)); };
   const broadcast = (msg, except = null) => {
@@ -58,6 +58,13 @@ export function attachRealtime(server, { bots = 3 } = {}) {
         if (game === p.game) return;
         p.game = game;
         broadcast({ t: 'game', id: p.id, game });
+      } else if (msg.t === 'rtc') {
+        // WebRTC-Signalisierung (Sprachchat) 1:1 weiterleiten
+        const target = players.get(Number(msg.to));
+        if (target?.ws && msg.data && typeof msg.data === 'object') send(target.ws, { t: 'rtc', from: p.id, data: msg.data });
+      } else if (msg.t === 'mic') {
+        p.mic = !!msg.on;
+        broadcast({ t: 'mic', id: p.id, on: p.mic });
       } else if (msg.t === 'chat') {
         const text = String(msg.text ?? '').replace(/\s+/g, ' ').trim().slice(0, 200);
         const now = Date.now();

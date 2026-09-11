@@ -68,6 +68,26 @@ export default class Slots extends GameBase {
     engine.addSpot({ position: [-5, 6, R + 6], target: [0, 0, R], intensity: 500, color: 0xffd28a, angle: 0.6 });
     engine.addSpot({ position: [5, 6, R + 6], target: [0, 0, R], intensity: 500, color: 0xa8c8ff, angle: 0.6 });
 
+    // Walzen
+    this.reels = [];
+    this.reelGroup = new THREE.Group();
+    scene.add(this.reelGroup);
+    this.marks = new THREE.Group();
+    this.reelGroup.add(this.marks);
+    this.lamps = [];
+    engine.onUpdate((dt, t) => {
+      const speed = this.spinning ? 10 : 3;
+      this.lamps.forEach((l, i) => {
+        const on = Math.sin(t * speed + i * 0.6) > 0;
+        l.material.color.setHex(on ? 0xffd76a : 0x4a3a10);
+      });
+      if (this.marks.children.length) {
+        const k = 0.6 + 0.4 * Math.sin(t * 8);
+        this.marks.traverse((o) => { if (o.material?.opacity !== undefined) o.material.opacity = k; });
+      }
+    });
+    if (engine.embedded) return; // In der Halle: Walzen sitzen im echten Automaten
+
     // Boden mit Reflexionen
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 10), new THREE.MeshStandardMaterial({ color: 0x0a0c11, roughness: 0.35, metalness: 0.7 }));
     floor.rotation.x = -Math.PI / 2;
@@ -128,15 +148,7 @@ export default class Slots extends GameBase {
     cabinet.add(sign);
     scene.add(cabinet);
 
-    // Walzen
-    this.reels = [];
-    this.reelGroup = new THREE.Group();
-    scene.add(this.reelGroup);
-    this.marks = new THREE.Group();
-    this.reelGroup.add(this.marks);
-
     // Lichter blinken
-    this.lamps = [];
     const lampGeo = new THREE.SphereGeometry(0.07, 12, 12);
     for (let i = 0; i < 26; i++) {
       const lamp = new THREE.Mesh(lampGeo, new THREE.MeshBasicMaterial({ color: 0xffd76a }));
@@ -150,17 +162,6 @@ export default class Slots extends GameBase {
       cabinet.add(lamp2);
       this.lamps.push(lamp, lamp2);
     }
-    engine.onUpdate((dt, t) => {
-      const speed = this.spinning ? 10 : 3;
-      this.lamps.forEach((l, i) => {
-        const on = Math.sin(t * speed + i * 0.6) > 0;
-        l.material.color.setHex(on ? 0xffd76a : 0x4a3a10);
-      });
-      if (this.marks.children.length) {
-        const k = 0.6 + 0.4 * Math.sin(t * 8);
-        this.marks.traverse((o) => { if (o.material?.opacity !== undefined) o.material.opacity = k; });
-      }
-    });
   }
 
   buildReels(strips) {

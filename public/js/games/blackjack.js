@@ -27,7 +27,16 @@ export default class Blackjack extends GameBase {
     this.tableApi = new CardTable(engine, { shoe: [5.4, 0.5, -3.2], felt: '#0f5a3a', size: [14, 9] });
     engine.setFit(10, 8);
 
-    // Aufdruck auf dem Filz
+    this.playerCards = [];
+    this.dealerCards = [];
+    this.chips = null;
+    this.dealerLabel = textSprite('DEALER', { size: 48, color: '#f5d97a', bg: 'rgba(0,0,0,0.55)', height: 0.5 });
+    this.dealerLabel.position.set(-2.9, 0.6, DEALER_Z);
+    this.playerLabel = textSprite('SPIELER', { size: 48, color: '#ffffff', bg: 'rgba(0,0,0,0.55)', height: 0.5 });
+    this.playerLabel.position.set(-2.9, 0.6, PLAYER_Z);
+    engine.scene.add(this.dealerLabel, this.playerLabel);
+    if (engine.embedded) return;
+    // Aufdruck auf dem Filz (nur in der Einzelszene)
     const { canvas, ctx } = makeCanvas(2048, 256);
     ctx.font = '700 92px Cinzel, Georgia, serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(245,217,122,0.85)';
@@ -40,15 +49,6 @@ export default class Blackjack extends GameBase {
     const arc = new THREE.Mesh(new THREE.RingGeometry(4.9, 5.0, 96, 1, Math.PI * 1.15, Math.PI * 0.7), new THREE.MeshBasicMaterial({ color: 0xf5d97a, transparent: true, opacity: 0.6, side: THREE.DoubleSide }));
     arc.rotation.x = -Math.PI / 2; arc.position.set(0, 0.005, -3.4);
     engine.scene.add(arc);
-
-    this.dealerLabel = textSprite('DEALER', { size: 48, color: '#f5d97a', bg: 'rgba(0,0,0,0.55)', height: 0.5 });
-    this.dealerLabel.position.set(-2.9, 0.6, DEALER_Z);
-    this.playerLabel = textSprite('SPIELER', { size: 48, color: '#ffffff', bg: 'rgba(0,0,0,0.55)', height: 0.5 });
-    this.playerLabel.position.set(-2.9, 0.6, PLAYER_Z);
-    engine.scene.add(this.dealerLabel, this.playerLabel);
-    this.playerCards = [];
-    this.dealerCards = [];
-    this.chips = null;
   }
 
   buildPanel() {
@@ -75,6 +75,7 @@ export default class Blackjack extends GameBase {
     if (this.destroyed) return;
     if (game) {
       this.bet.value = game.bet;
+      this.status.set('Läuft…');
       await this.syncHands(game, true);
       this.enterGame(game);
     } else {

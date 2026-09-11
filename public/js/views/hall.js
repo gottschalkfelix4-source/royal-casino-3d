@@ -5,6 +5,7 @@ import { GAMES } from '../games/registry.js';
 import { fmt } from '../ui.js';
 import { sound } from '../sound.js';
 import { rt } from '../realtime.js';
+import { voice } from '../voice.js';
 
 const EYE = 1.62;
 const gameName = (id) => GAMES.find((g) => g.id === id)?.name ?? id;
@@ -71,8 +72,9 @@ class Hall {
     const canvas = engine.renderer.domElement;
     this.canvas = canvas;
     this.dragging = false; this.dragMoved = 0; this.lastX = 0; this.lastY = 0;
+    this.lookOffset = { yaw: 0, pitch: 0 }; // Umsehen im Sitzen
     canvas.addEventListener('pointerdown', (e) => {
-      if (this.mode !== 'walk' || e.button !== 0) return;
+      if (this.mode === 'idle' || e.button !== 0) return;
       this.dragging = true; this.dragMoved = 0; this.lastX = e.clientX; this.lastY = e.clientY;
       canvas.setPointerCapture?.(e.pointerId);
       canvas.style.cursor = 'grabbing';
@@ -80,22 +82,29 @@ class Hall {
     });
     canvas.addEventListener('pointercancel', () => { this.dragging = false; });
     canvas.addEventListener('pointerup', (e) => {
-      if (this.mode !== 'walk') return;
+      if (this.mode === 'idle') return;
       this.dragging = false;
-      canvas.style.cursor = this.hovered ? 'pointer' : 'grab';
-      if (this.dragMoved < 6) { const hit = engine.pick(e, this.hitboxes, false)[0]; if (hit) this.enter(this.stationOf(hit.object)); }
+      canvas.style.cursor = this.mode === 'walk' ? (this.hovered ? 'pointer' : 'grab') : '';
+      if (this.mode === 'walk' && this.dragMoved < 6) { const hit = engine.pick(e, this.hitboxes, false)[0]; if (hit) this.enter(this.stationOf(hit.object)); }
     });
     canvas.addEventListener('pointermove', (e) => {
-      if (this.mode !== 'walk') return;
+      if (this.mode === 'idle') return;
       if (this.dragging) {
         const dx = e.clientX - this.lastX; const dy = e.clientY - this.lastY;
         this.dragMoved += Math.abs(dx) + Math.abs(dy);
-        this.me.yaw -= dx * 0.0042;
-        this.me.pitch = Math.max(-1.1, Math.min(0.9, this.me.pitch - dy * 0.0032));
+        if (this.mode === 'walk') {
+          this.me.yaw -= dx * 0.0042;
+          this.me.pitch = Math.max(-1.1, Math.min(0.9, this.me.pitch - dy * 0.0032));
+        } else {
+          this.lookOffset.yaw = Math.max(-1.6, Math.min(1.6, this.lookOffset.yaw - dx * 0.0042));
+          this.lookOffset.pitch = Math.max(-0.7, Math.min(0.6, this.lookOffset.pitch - dy * 0.0032));
+        }
       }
       this.lastX = e.clientX; this.lastY = e.clientY;
-      const hit = engine.pick(e, this.hitboxes, false)[0];
-      this.setHover(hit ? this.stationOf(hit.object) : null);
+      if (this.mode === 'walk') {
+        const hit = engine.pick(e, this.hitboxes, false)[0];
+        this.setHover(hit ? this.stationOf(hit.object) : null);
+      }
     });
     canvas.addEventListener('pointerleave', () => { this.dragging = false; this.setHover(null); });
     window.addEventListener('keydown', (e) => {
@@ -127,6 +136,7 @@ class Hall {
         this.emit('ticker', { text: `${r.name} ${net >= 0 ? 'gewinnt' : 'verliert'} 🪙 ${fmt(Math.abs(net))} · ${gameName(r.game)}`, cls: net >= 0 ? 'win' : 'lose' });
       }),
       rt.on('chat', (m) => { const a = this.avatars.get(m.id); if (a) floatText(engine, a.av.position.clone(), `💬 ${m.text.slice(0, 40)}`, '#ffffff'); }),
+      rt.on('mic', (m) => { const p = rt.players.get(m.id); const a = this.avatars.get(m.id); if (p && a) a.av.userData.label.userData.setText(`${p.name}${m.on ? ' 🎤' : ''}`); }),
     ];
 
     this.hoverTime = 0;
@@ -158,28 +168,88 @@ class Hall {
     this.keys.clear();
     this.dragging = false;
     this.setHover(null);
-    this.layer.classList.toggle('interactive', mode === 'walk');
+    this.layer.classList.toggle('interactive', mode !== 'idle');
     document.body.classList.toggle('walk', mode === 'walk');
+    document.body.classList.toggle('hall', mode !== 'idle');
     this.canvas.style.cursor = mode === 'walk' ? 'grab' : '';
+    this.lookOffset = { yaw: 0, pitch: 0 };
     // Im Hintergrund sparsamer rendern
     // Bloom + große Halle: Pixeldichte in der Lobby auf 1,5 begrenzen, im Hintergrund auf 1
     this.engine.setPixelRatioCap(mode === 'walk' ? 1.5 : 1);
     this.updateSpectateCam();
   }
 
-  /** Eigener Sitzplatz: erster Platz, der nicht von Mitspielern belegt ist; Kamera in Sitz-Augenhöhe */
+  /** Eigener Sitzplatz: erster Platz, der nicht von Mitspielern belegt ist */
+  mySeat(st) {
+    const others = [...rt.players.values()].filter((p) => p.game === st.id && p.id !== rt.me).length;
+    return { seat: st.seats[others % st.seats.length], index: others % st.seats.length };
+  }
+
+  /** Kamera in Sitz-Augenhöhe auf dem eigenen Platz, Blick auf Tisch bzw. Bildschirm */
   updateSpectateCam() {
     const st = this.spectateStation;
     if (this.mode !== 'spectate' || !st) return;
-    const others = [...rt.players.values()].filter((p) => p.game === st.id && p.id !== rt.me).length;
-    const seat = st.seats[others % st.seats.length];
-    const eye = seat.sit ? 1.22 : EYE;
-    const dir = new THREE.Vector3(seat.x - st.position.x, 0, seat.z - st.position.z).normalize();
-    this.spectateCam = {
-      pos: new THREE.Vector3(seat.x + dir.x * 0.15, eye, seat.z + dir.z * 0.15),
-      look: st.position.clone().setY(seat.sit ? 0.9 : 1.3),
+    const { seat } = this.mySeat(st);
+    const isTable = !this.mounted || st.mount?.type === 'table';
+    const look = this.mounted?.lookAt?.clone() ?? st.position.clone().setY(0.95);
+    // Richtung vom Blickziel (Tischfläche/Bildschirm) zum Platz – nicht vom Stationsmittelpunkt (Slot-Bank!)
+    const dir = new THREE.Vector3(seat.x - look.x, 0, seat.z - look.z).normalize();
+    if (seat.sit && isTable) {
+      // Sitzend am Tisch: etwas zur Tischkante gelehnt, Blick schräg nach unten auf die Platte
+      this.spectateCam = { pos: new THREE.Vector3(seat.x - dir.x * 0.35, 1.34, seat.z - dir.z * 0.35), look: look.setY(0.95) };
+    } else {
+      // Vor einem Bildschirm (Automat, Glücksrad): auf dem Platz bleiben, Bildschirm auf Augenhöhe anschauen
+      this.spectateCam = { pos: new THREE.Vector3(seat.x, seat.sit ? 1.3 : EYE, seat.z), look };
+    }
+  }
+
+  /**
+   * Spielszene direkt in die Halle einbauen (auf die Tischplatte bzw. in den Automaten).
+   * Liefert die Wurzelgruppe und eine dispose()-Funktion.
+   */
+  mountGame(id) {
+    this.ensure();
+    const st = this.stationById(id);
+    if (!st?.mount) return null;
+    const m = st.mount;
+    const { seat, index } = this.mySeat(st);
+    const root = new THREE.Group();
+    const hidden = [...m.hide];
+    let lookAt;
+    if (m.type === 'table') {
+      // Spielfläche etwas zum eigenen Platz rücken, damit die eigenen Karten/Chips nah liegen
+      const toSeat = new THREE.Vector3(seat.x - st.position.x, 0, seat.z - st.position.z).normalize().multiplyScalar(m.pull ?? 0.3);
+      root.position.set(st.position.x + m.offset.x + toSeat.x, m.offset.y, st.position.z + m.offset.z + toSeat.z);
+      root.rotation.y = seat.ry;
+      lookAt = root.position.clone();
+    } else {
+      const obj = typeof m.object === 'function' ? m.object(index) : m.object;
+      obj.updateWorldMatrix(true, false);
+      const q = obj.getWorldQuaternion(new THREE.Quaternion());
+      root.position.copy(obj.getWorldPosition(new THREE.Vector3())).add(m.offset.clone().applyQuaternion(q));
+      root.quaternion.copy(q);
+      if (m.rotX) root.rotateX(m.rotX);
+      if (obj.isMesh) hidden.push(obj); // Bildschirm-Attrappe ausblenden
+      lookAt = obj.getWorldPosition(new THREE.Vector3());
+    }
+    root.scale.setScalar(m.scale);
+    for (const o of hidden) o.visible = false;
+    this.engine.scene.add(root);
+    this.mounted = { root, lookAt };
+    this.updateSpectateCam();
+    return {
+      root,
+      dispose: () => {
+        this.engine.scene.remove(root);
+        for (const o of hidden) o.visible = true;
+        if (this.mounted?.root === root) this.mounted = null;
+      },
     };
   }
+
+  /** Weltposition eines Spielers (für Sprachchat-Entfernung) */
+  positionOf(id) { return this.avatars.get(id)?.av.position ?? null; }
+  myPosition() { return this.mode === 'spectate' && this.spectateCam ? this.spectateCam.pos : this.me.pos; }
 
   // ---------- Figuren ----------
   ensureAvatar(p) {
@@ -254,15 +324,22 @@ class Hall {
       }
       if (best !== this.nearStation) { this.nearStation = best; this.emit('near', best); }
     } else if (this.mode === 'spectate' && this.spectateCam) {
-      // Sitzend am Tisch: Kamera auf dem eigenen Platz, leichtes Atmen/Umschauen
+      // Sitzend am Tisch: Kamera auf dem eigenen Platz, leichtes Atmen; Maus-Drag zum Umsehen
       const c = this.spectateCam;
       const target = c.pos.clone();
       target.y += Math.sin(t * 1.4) * 0.012;
       engine.camera.position.lerp(target, Math.min(1, dt * 2.5));
-      const look = c.look.clone();
-      look.x += Math.sin(t * 0.25) * 0.25;
-      engine.camera.lookAt(look);
+      const d = c.look.clone().sub(c.pos);
+      const baseYaw = Math.atan2(-d.x, -d.z);
+      const basePitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
+      const yaw = baseYaw + this.lookOffset.yaw; const pitch = basePitch + this.lookOffset.pitch;
+      engine.camera.lookAt(
+        engine.camera.position.x - Math.sin(yaw) * Math.cos(pitch),
+        engine.camera.position.y + Math.sin(pitch),
+        engine.camera.position.z - Math.cos(yaw) * Math.cos(pitch),
+      );
     }
+    if ((this.frame % 10) === 0) voice.updateVolumes((id) => this.positionOf(id), this.myPosition());
 
     this.hoverTime += dt;
     for (const s of this.casino.stations) {

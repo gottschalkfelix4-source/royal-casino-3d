@@ -53,9 +53,11 @@ export default class Roulette extends GameBase {
     engine.addLights({ key: [5, 12, 6], keyIntensity: 2.4, hemi: 0.5, fill: 0.7, shadowSize: 8 });
     engine.addSpot({ position: [0, 12, 3], target: [0, 0, 0], intensity: 700, angle: 0.55, color: 0xffe6c0 });
 
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(7, 64), new THREE.MeshStandardMaterial({ color: 0x0d1a14, roughness: 0.9 }));
-    floor.rotation.x = -Math.PI / 2; floor.position.y = -0.01; floor.receiveShadow = true;
-    scene.add(floor);
+    if (!engine.embedded) {
+      const floor = new THREE.Mesh(new THREE.CircleGeometry(7, 64), new THREE.MeshStandardMaterial({ color: 0x0d1a14, roughness: 0.9 }));
+      floor.rotation.x = -Math.PI / 2; floor.position.y = -0.01; floor.receiveShadow = true;
+      scene.add(floor);
+    }
     engine.setFit(11, 12);
 
     const wheel = new THREE.Group();

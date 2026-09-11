@@ -48,6 +48,14 @@ Die Lobby ist eine begehbare 3D-Casino-Halle im Stil der 2000er (Musterteppich, 
 - **Live-Hintergrund**: Die Halle läuft als eigene Ebene hinter der App dauerhaft weiter ([hall.js](public/js/views/hall.js)).
   Im Spiel rendert die Spielszene transparent darüber, die Kamera der Halle parkt am jeweiligen Tisch – man sieht
   weiterhin Mitspieler, Bots und die animierten Croupiers (Blackjack, Baccarat, Roulette, Würfel), die periodisch Karten geben.
+- **Spielen am echten Tisch**: Öffnest du ein Spiel, setzt sich deine Kamera auf einen freien Stuhl dieser Station.
+  Karten, Chips, Würfel, Kessel oder Walzen werden in realer Größe direkt auf den Hallentisch bzw. in den Automaten
+  gerendert – Mitspieler und Croupier sitzen sichtbar daneben. Maus ziehen dreht auch im Sitzen den Blick.
+- **Sprachchat** (🎤 in der Kopfzeile): WebRTC-Verbindungen zwischen den Spielern, Signalisierung über den WebSocket.
+  Die Lautstärke sinkt mit der Entfernung in der Halle (voll bis ~2 m, stumm ab ~9 m) – Spieler an anderen
+  Tischen hört man also nicht. Browser geben das Mikrofon nur über **HTTPS oder localhost** frei; hinter einem
+  Reverse Proxy mit Zertifikat funktioniert es, über `http://ip:3000` nicht. Für Verbindungen über das Internet
+  ggf. einen eigenen TURN-Server eintragen (`public/js/voice.js`, `ICE`).
 - **Technik**: WebSocket (`/ws`, Paket `ws`), Auth über das Session-Cookie, Positionen 10 Hz, Chat mit Rate-Limit.
 - **Bots**: Damit die Halle nicht leer ist, laufen standardmäßig 3 als 🤖 markierte Bots herum.
   Abschalten mit `CASINO_BOTS=0`, mehr mit z. B. `CASINO_BOTS=6`.

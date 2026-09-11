@@ -7,6 +7,7 @@ import { renderLobby } from './views/lobby.js';
 import { renderProfile, renderLeaderboard } from './views/profile.js';
 import { rt } from './realtime.js';
 import { hall } from './views/hall.js';
+import { voice } from './voice.js';
 import { getQuality, setQuality } from './three/engine.js';
 
 const QUALITY_LABEL = { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' };
@@ -32,6 +33,7 @@ function renderTopbar() {
     h('button.btn.btn-ghost.btn-sm', { onclick: toggleSound, title: 'Sound an/aus' }, sound.enabled ? '🔊' : '🔇'),
   );
   if (u) {
+    topbar.append(h('button.btn.btn-sm', { class: `btn btn-sm ${voice.enabled ? 'btn-green' : ''}`, onclick: () => voice.toggle(), title: 'Sprachchat: Mikrofon an/aus (Mitspieler in der Nähe hören dich)' }, voice.enabled ? '🎤 An' : '🎤 Aus'));
     balanceEl = h('span', {}, fmt(u.balance));
     shownBalance = u.balance;
     topbar.append(h('a.balance-pill', { href: '#/profile', title: 'Guthaben' }, h('span.coin', {}, '🪙'), balanceEl));
@@ -50,11 +52,13 @@ function renderTopbar() {
   }
 }
 
+voice.onChange(() => { topbarSignature = ''; renderTopbar(); });
+
 subscribe(() => {
   const u = store.user;
   if (u && !rt.ws) rt.connect();
-  if (!u && rt.ws) rt.disconnect();
-  const sig = `${u?.id ?? '-'}|${u?.bonus?.available}|${u?.rescue?.available}|${sound.enabled}|${location.hash}`;
+  if (!u && rt.ws) { voice.disable(); rt.disconnect(); }
+  const sig = `${u?.id ?? '-'}|${u?.bonus?.available}|${u?.rescue?.available}|${sound.enabled}|${voice.enabled}|${location.hash}`;
   if (sig !== topbarSignature) {
     topbarSignature = sig;
     renderTopbar();
