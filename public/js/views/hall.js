@@ -1,6 +1,7 @@
 import { Engine, THREE } from '../three/engine.js';
 import { buildCasino, HALL } from '../three/casino.js';
 import { createAvatar, floatText } from '../three/avatars.js';
+import { createChip, textSprite } from '../three/assets.js';
 import { GAMES } from '../games/registry.js';
 import { fmt } from '../ui.js';
 import { sound } from '../sound.js';
@@ -137,7 +138,18 @@ class Hall {
       }),
       rt.on('chat', (m) => { const a = this.avatars.get(m.id); if (a) floatText(engine, a.av.position.clone(), `💬 ${m.text.slice(0, 40)}`, '#ffffff'); }),
       rt.on('mic', (m) => { const p = rt.players.get(m.id); const a = this.avatars.get(m.id); if (p && a) a.av.userData.label.userData.setText(`${p.name}${m.on ? ' 🎤' : ''}`); }),
+      // Chips zum Einsammeln
+      rt.on('welcome', (m) => { for (const id of [...this.coins.keys()]) this.removeCoin(id); for (const c of m.coins ?? []) this.addCoin(c); }),
+      rt.on('coin', (m) => this.addCoin(m.coin)),
+      rt.on('coin_taken', (m) => {
+        const c = this.coins.get(m.id);
+        if (c && m.by !== rt.me && m.value) floatText(engine, c.mesh.position.clone(), `${m.name} +🪙 ${fmt(m.value)}`, '#ffd76a');
+        this.removeCoin(m.id);
+      }),
     ];
+    this.coins = new Map();
+    this.pendingPickup = new Set();
+    for (const c of rt.coins ?? []) this.addCoin(c); // falls welcome vor dem Hallenaufbau kam
 
     this.hoverTime = 0;
     engine.onUpdate((dt, t) => this.update(dt, t));
@@ -255,6 +267,29 @@ class Hall {
     };
   }
 
+  // ---------- Chips in der Halle ----------
+  addCoin(c) {
+    if (this.coins.has(c.id)) return;
+    const mesh = createChip(c.value);
+    mesh.scale.setScalar(1.6);
+    mesh.position.set(c.x, 0.35, c.z);
+    mesh.rotation.x = Math.PI / 2 - 0.3;
+    const glow = textSprite(`🪙 ${Math.round(c.value / 100)}`, { size: 44, color: '#ffd76a', bg: 'rgba(0,0,0,0.55)', height: 0.26 });
+    glow.position.set(c.x, 0.95, c.z);
+    const halo = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.5, 32), new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.45, side: THREE.DoubleSide }));
+    halo.rotation.x = -Math.PI / 2; halo.position.set(c.x, 0.02, c.z);
+    this.engine.scene.add(mesh, glow, halo);
+    this.coins.set(c.id, { ...c, mesh, glow, halo, phase: Math.random() * 6 });
+  }
+  removeCoin(id) {
+    const c = this.coins.get(id);
+    if (!c) return;
+    for (const o of [c.mesh, c.glow, c.halo]) { this.engine.scene.remove(o); if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); } }
+    c.halo.geometry.dispose(); c.halo.material.dispose();
+    this.coins.delete(id);
+    this.pendingPickup.delete(id);
+  }
+
   /** Weltposition eines Spielers (für Sprachchat-Entfernung) */
   positionOf(id) { return this.avatars.get(id)?.av.position ?? null; }
   myPosition() { return this.mode === 'spectate' && this.spectateCam ? this.spectateCam.pos : this.me.pos; }
@@ -334,6 +369,14 @@ class Hall {
         if (d < bestD) { bestD = d; best = s; }
       }
       if (best !== this.nearStation) { this.nearStation = best; this.emit('near', best); }
+      // Chips einsammeln: drüberlaufen genügt
+      for (const c of this.coins.values()) {
+        if (!this.pendingPickup.has(c.id) && Math.hypot(c.x - me.pos.x, c.z - me.pos.z) < 1.0 && rt.connected) {
+          this.pendingPickup.add(c.id);
+          rt.sendPos(me.pos.x, me.pos.z, me.yaw, 'idle'); // Server kennt die aktuelle Position
+          rt.send({ t: 'pickup', id: c.id });
+        }
+      }
     } else if (this.mode === 'spectate' && this.spectateCam) {
       // Sitzend am Tisch: Kamera auf dem eigenen Platz, leichtes Atmen; Maus-Drag zum Umsehen
       const c = this.spectateCam;
@@ -352,6 +395,11 @@ class Hall {
     }
     if ((this.frame % 10) === 0) voice.updateVolumes((id) => this.positionOf(id), this.myPosition());
 
+    for (const c of this.coins.values()) {
+      c.mesh.rotation.z += dt * 1.8;
+      c.mesh.position.y = 0.35 + Math.sin(t * 2.5 + c.phase) * 0.08;
+      c.halo.material.opacity = 0.3 + Math.sin(t * 3 + c.phase) * 0.15;
+    }
     this.hoverTime += dt;
     for (const s of this.casino.stations) {
       const active = this.mode === 'walk' && (s === this.hovered || s === this.nearStation);

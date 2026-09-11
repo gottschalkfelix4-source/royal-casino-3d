@@ -6,6 +6,7 @@ import { attachUser, authRouter } from './auth.js';
 import { walletRouter } from './wallet.js';
 import { gamesRouter } from './games/index.js';
 import { attachRealtime } from './realtime.js';
+import { rewardsRouter } from './rewards.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
@@ -18,6 +19,7 @@ app.use(attachUser);
 app.use('/api/auth', authRouter);
 app.use('/api/wallet', walletRouter);
 app.use('/api/games', gamesRouter);
+app.use('/api/rewards', rewardsRouter);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Nicht gefunden' }));
 
 app.use('/vendor/three', express.static(path.join(root, 'node_modules', 'three'), { maxAge: '1d' }));

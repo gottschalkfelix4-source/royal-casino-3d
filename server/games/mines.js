@@ -75,7 +75,7 @@ minesRouter.post('/cashout', (req, res) => {
     const m = multiplier(s.revealed.length, s.mineCount);
     s.status = 'won';
     s.payout = Math.floor(game.bet * m);
-    return { game, balance: finishGame(game, s.payout, { result: 'cashout', multiplier: m, mines: s.mineCount }) };
+    return { game, balance: finishGame(game, s.payout, { result: 'cashout', multiplier: m, mines: s.mineCount, revealed: s.revealed.length }) };
   });
   res.json({ game: publicState(out.game, out.balance) });
 });

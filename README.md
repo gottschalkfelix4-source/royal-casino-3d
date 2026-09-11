@@ -83,7 +83,12 @@ docker compose up -d          # nutzt ghcr.io/gottschalkfelix4-source/royal-casi
 ## Konto & Guthaben
 
 - Registrierung mit Benutzername + Passwort (scrypt-gehasht), Sessions per HttpOnly-Cookie.
-- Startguthaben 🪙 10.000, Tagesbonus 🪙 5.000 (alle 24 h), Notfall-Guthaben 🪙 1.000 (unter 🪙 1, einmal pro Stunde).
+- Startguthaben 🪙 10.000, Notfall-Guthaben 🪙 1.000 (unter 🪙 1, einmal pro Stunde).
+- **Coins verdienen** („🎁 Belohnungen“ in der Kopfzeile, [server/rewards.js](server/rewards.js)):
+  - Tagesbonus 🪙 500, +100 je Tag in Folge bis 🪙 1.500; ein verpasster Tag setzt die Serie zurück
+  - 3 Tagesaufgaben (z. B. „3 Runden Blackjack“, „an 3 Tischen spielen“, „Chips sammeln“), Fortschritt automatisch aus den Runden, 🪙 100–400 je Aufgabe
+  - Leuchtende Chips (🪙 10–50) liegen in der Halle – drüberlaufen sammelt sie ein, max. 🪙 500 pro Tag
+  - 13 Erfolge mit einmaligem Bonus (erste Runde, 100 Runden, 10×-Gewinn, alle 12 Spiele, 5 Siege in Folge, High Roller, 7-Tage-Serie …)
 - Profil mit Statistiken und vollständigem Buchungsverlauf, Rangliste nach Guthaben.
 
 ## Architektur

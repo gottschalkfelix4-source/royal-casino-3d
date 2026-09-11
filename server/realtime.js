@@ -3,6 +3,7 @@ import { db } from './db.js';
 import { parseCookies } from './util.js';
 import { bus } from './events.js';
 import { GAME_IDS, STATION_POS, HALL_BOUNDS } from './stations.js';
+import { pickup } from './rewards.js';
 
 /**
  * Echtzeit-Präsenz per WebSocket: Spielerpositionen in der Halle, wer an welchem
@@ -38,7 +39,7 @@ export function attachRealtime(server, { bots = 3 } = {}) {
       anim: 'idle', game: prev?.game ?? null, lastChat: 0, alive: true,
     };
     players.set(p.id, p);
-    send(ws, { t: 'welcome', id: p.id, players: [...players.values()].map(pub) });
+    send(ws, { t: 'welcome', id: p.id, players: [...players.values()].map(pub), coins: [...coins.values()] });
     broadcast({ t: 'join', player: pub(p) }, p.id);
 
     ws.on('pong', () => { p.alive = true; });
@@ -72,6 +73,17 @@ export function attachRealtime(server, { bots = 3 } = {}) {
         if (!text || now - p.lastChat < 800) return;
         p.lastChat = now;
         broadcast({ t: 'chat', id: p.id, name: p.name, text, game: p.game, ts: now });
+        bus.emit('chat', { userId: p.id });
+      } else if (msg.t === 'pickup') {
+        // Chip in der Halle einsammeln: muss existieren und in Reichweite der zuletzt gemeldeten Position liegen
+        const coin = coins.get(String(msg.id));
+        if (!coin || p.game) return;
+        if (Math.hypot(coin.x - p.x, coin.z - p.z) > 2.0) return;
+        coins.delete(coin.id);
+        const result = pickup(p.id, coin.value);
+        broadcast({ t: 'coin_taken', id: coin.id, by: p.id, name: p.name, value: result ? result.amount : 0 });
+        if (result) send(ws, { t: 'reward', kind: 'pickup', amount: result.amount, balance: result.balance, today: result.today });
+        else send(ws, { t: 'reward', kind: 'pickup_cap', amount: 0 });
       }
     });
     ws.on('close', () => {
@@ -92,6 +104,28 @@ export function attachRealtime(server, { bots = 3 } = {}) {
     }
   }, 30_000);
   wss.on('close', () => clearInterval(ping));
+
+  // Belohnungs-Benachrichtigungen an den betreffenden Spieler
+  bus.on('notify', ({ userId, msg }) => { const p = players.get(userId); if (p?.ws) send(p.ws, msg); });
+
+  // ---------- Chips zum Einsammeln in der Halle ----------
+  const coins = new Map();
+  let coinSeq = 1;
+  const nearStation = (x, z) => Object.values(STATION_POS).some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 3.2);
+  const spawnCoin = () => {
+    if (coins.size >= 6) return;
+    for (let tries = 0; tries < 20; tries++) {
+      const x = (Math.random() - 0.5) * 2 * (HALL_BOUNDS.x - 2);
+      const z = (Math.random() - 0.5) * 2 * (HALL_BOUNDS.z - 2);
+      if (nearStation(x, z) || (z < -10 && x < -8)) continue; // nicht in Tischen/Bar
+      const coin = { id: String(coinSeq++), x: Math.round(x * 100) / 100, z: Math.round(z * 100) / 100, value: [10_00, 10_00, 20_00, 25_00, 50_00][Math.floor(Math.random() * 5)] };
+      coins.set(coin.id, coin);
+      broadcast({ t: 'coin', coin });
+      return;
+    }
+  };
+  for (let i = 0; i < 3; i++) spawnCoin();
+  setInterval(spawnCoin, 15_000);
 
   // Spielrunden live an alle
   bus.on('round', (r) => {

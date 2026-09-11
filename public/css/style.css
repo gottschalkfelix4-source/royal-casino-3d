@@ -435,6 +435,32 @@ input[type='range'] { width: 100%; accent-color: var(--gold); }
 .bet-cell.lost { opacity: 0.45; }
 .bet-cell .rl-chip { right: 6px; top: 6px; }
 
+/* ---------- Belohnungen ---------- */
+.badge { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 6px; border-radius: 999px; background: var(--red); color: #fff; font-size: 10px; font-weight: 900; }
+.rewards { display: flex; flex-direction: column; gap: 14px; max-height: 70vh; overflow-y: auto; padding-right: 4px; }
+.rw-section { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); }
+.rw-head { display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 15px; }
+.rw-streak { color: #ffb347; font-size: 13px; }
+.rw-done { color: var(--green); font-weight: 700; font-size: 13px; }
+.rw-mission { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line); }
+.rw-mission.done { border-color: rgba(212, 175, 55, 0.6); box-shadow: 0 0 14px rgba(212, 175, 55, 0.2); }
+.rw-mission.claimed { opacity: 0.55; }
+.rw-mission-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.rw-title { font-weight: 700; font-size: 13px; }
+.rw-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+.rw-fill { height: 100%; background: linear-gradient(90deg, var(--green-dark), var(--green)); transition: width 0.4s; }
+.rw-fill.gold { background: linear-gradient(90deg, var(--gold-dark), var(--gold-2)); }
+.rw-progress { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.rw-reward { font-size: 12px; font-weight: 800; color: var(--gold-2); white-space: nowrap; }
+.rw-badge { color: var(--green); font-weight: 900; font-size: 18px; }
+.rw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.rw-ach { padding: 8px 10px; border-radius: 10px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--line); opacity: 0.55; }
+.rw-ach.unlocked { opacity: 1; border-color: rgba(212, 175, 55, 0.5); background: rgba(212, 175, 55, 0.1); }
+.rw-ach-title { font-weight: 800; font-size: 12px; }
+.rw-ach-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.rw-ach-reward { font-size: 11px; color: var(--gold-2); font-weight: 700; margin-top: 4px; }
+.modal.wide, .modal:has(.rewards) { width: min(620px, calc(100vw - 32px)); }
+
 /* ---------- Modals & Toasts ---------- */
 .modal-backdrop {
   position: fixed; inset: 0; z-index: 100; display: grid; place-items: center;

@@ -41,6 +41,7 @@ export const rt = {
         case 'welcome':
           this.me = msg.id;
           this.players.clear();
+          this.coins = msg.coins ?? [];
           for (const p of msg.players) this.players.set(p.id, p);
           this.emit('welcome', msg);
           this.emit('players');
@@ -67,6 +68,14 @@ export const rt = {
           if (p) { p.game = msg.game; this.emit('game', p); this.emit('players'); }
           break;
         }
+        case 'coin':
+          this.coins = [...(this.coins ?? []), msg.coin];
+          this.emit('coin', msg);
+          break;
+        case 'coin_taken':
+          this.coins = (this.coins ?? []).filter((c) => c.id !== msg.id);
+          this.emit('coin_taken', msg);
+          break;
         default:
           this.emit(msg.t, msg);
       }

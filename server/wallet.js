@@ -12,9 +12,16 @@ export const RESCUE_THRESHOLD = 1_00;
 export const BONUS_INTERVAL = 24 * 60 * 60 * 1000;
 export const RESCUE_INTERVAL = 60 * 60 * 1000;
 
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const yesterdayStr = () => new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+const dailyAmountFor = (u) => {
+  const streak = u.last_daily_day === yesterdayStr() ? (u.streak ?? 0) + 1 : 1;
+  return Math.min(1500_00, 500_00 + 100_00 * (streak - 1));
+};
+
 export function publicUser(u) {
   const now = Date.now();
-  const nextBonusAt = (u.last_bonus_at ?? 0) + BONUS_INTERVAL;
+  const nextBonusAt = new Date(todayStr() + 'T00:00:00Z').getTime() + 86400000;
   const nextRescueAt = (u.last_rescue_at ?? 0) + RESCUE_INTERVAL;
   return {
     id: u.id,
@@ -28,9 +35,10 @@ export function publicUser(u) {
     },
     createdAt: u.created_at,
     bonus: {
-      available: now >= nextBonusAt,
+      available: u.last_daily_day !== todayStr(),
       nextAt: nextBonusAt,
-      amount: DAILY_BONUS,
+      amount: dailyAmountFor(u),
+      streak: u.streak ?? 0,
     },
     rescue: {
       available: u.balance < RESCUE_THRESHOLD && now >= nextRescueAt,
@@ -55,6 +63,15 @@ export function debit(userId, cents) {
   if (u.balance < cents) throw new HttpError(400, 'Nicht genug Guthaben');
   const balance = u.balance - cents;
   db.prepare('UPDATE users SET balance = ? WHERE id = ?').run(balance, userId);
+  return balance;
+}
+
+/** Gutschrift (Bonus, Aufgabe, Erfolg, Chip) – innerhalb einer Transaktion aufrufen. */
+export function credit(userId, cents, type, meta = {}) {
+  const u = getUser(userId);
+  const balance = u.balance + cents;
+  db.prepare('UPDATE users SET balance = ? WHERE id = ?').run(balance, userId);
+  insertTx.run(userId, type, null, cents, 0, 0, balance, JSON.stringify(meta), Date.now());
   return balance;
 }
 
@@ -84,18 +101,19 @@ walletRouter.get('/', (req, res) => {
 });
 
 walletRouter.post('/daily-bonus', (req, res) => {
-  const user = transaction(() => {
+  // Tagesbonus mit Serie: 500 + 100 je Folgetag (max. 1.500), Serie reißt bei verpasstem Tag
+  const out = transaction(() => {
     const u = getUser(req.user.id);
-    const now = Date.now();
-    if (now < (u.last_bonus_at ?? 0) + BONUS_INTERVAL) {
-      throw new HttpError(400, 'Tagesbonus wurde bereits abgeholt');
-    }
-    const balance = u.balance + DAILY_BONUS;
-    db.prepare('UPDATE users SET balance = ?, last_bonus_at = ? WHERE id = ?').run(balance, now, u.id);
-    insertTx.run(u.id, 'bonus', null, DAILY_BONUS, 0, 0, balance, JSON.stringify({ label: 'Tagesbonus' }), now);
-    return getUser(u.id);
+    const day = todayStr();
+    if (u.last_daily_day === day) throw new HttpError(400, 'Tagesbonus wurde heute bereits abgeholt');
+    const streak = u.last_daily_day === yesterdayStr() ? (u.streak ?? 0) + 1 : 1;
+    const amount = Math.min(1500_00, 500_00 + 100_00 * (streak - 1));
+    db.prepare('UPDATE users SET streak = ?, last_daily_day = ?, last_bonus_at = ? WHERE id = ?').run(streak, day, Date.now(), u.id);
+    const balance = credit(u.id, amount, 'bonus', { label: `Tagesbonus (Tag ${streak})`, streak });
+    if (streak >= 7) queueMicrotask(() => bus.emit('daily-streak', { userId: u.id, streak })); // nach Commit, nicht verschachtelt
+    return { amount, streak, balance };
   });
-  res.json({ user: publicUser(user), amount: DAILY_BONUS });
+  res.json({ user: publicUser(getUser(req.user.id)), amount: out.amount, streak: out.streak });
 });
 
 walletRouter.post('/rescue', (req, res) => {

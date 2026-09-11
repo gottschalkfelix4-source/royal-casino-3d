@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { store, subscribe, setUser, setActiveGames } from './state.js';
+import { store, subscribe, setUser, setActiveGames, setBalance } from './state.js';
 import { h, fmt, toast, openModal, countTo } from './ui.js';
 import { sound } from './sound.js';
 import { getGame } from './games/registry.js';
@@ -8,6 +8,7 @@ import { renderProfile, renderLeaderboard } from './views/profile.js';
 import { rt } from './realtime.js';
 import { hall } from './views/hall.js';
 import { voice } from './voice.js';
+import { openRewards } from './rewards.js';
 import { getQuality, setQuality } from './three/engine.js';
 
 const QUALITY_LABEL = { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' };
@@ -37,8 +38,9 @@ function renderTopbar() {
     balanceEl = h('span', {}, fmt(u.balance));
     shownBalance = u.balance;
     topbar.append(h('a.balance-pill', { href: '#/profile', title: 'Guthaben' }, h('span.coin', {}, '🪙'), balanceEl));
-    if (u.bonus?.available) topbar.append(h('button.btn.btn-gold.btn-sm', { onclick: claimBonus }, '🎁 Tagesbonus'));
-    else if (u.rescue?.available) topbar.append(h('button.btn.btn-red.btn-sm', { onclick: claimRescue }, '🆘 Notfall-Guthaben'));
+    topbar.append(h('button.btn.btn-sm', { class: `btn btn-sm ${u.bonus?.available ? 'btn-gold' : ''}`, onclick: () => openRewards(), title: 'Tagesbonus, Aufgaben, Erfolge' },
+      '🎁 Belohnungen', u.bonus?.available ? h('span.badge', {}, '!') : null));
+    if (u.rescue?.available) topbar.append(h('button.btn.btn-red.btn-sm', { onclick: claimRescue }, '🆘 Notfall-Guthaben'));
     topbar.append(h('div.user-menu', {},
       h('a.avatar', { href: '#/profile' }, u.username[0].toUpperCase()),
       h('span.username', {}, u.username),
@@ -54,6 +56,13 @@ function renderTopbar() {
 
 voice.onChange(() => { topbarSignature = ''; renderTopbar(); });
 rt.on('replaced', () => toast('Du bist in einem anderen Tab/Fenster im Casino – dieser Tab ist jetzt offline. Neu laden, um hier weiterzuspielen.', 'error', 8000));
+rt.on('reward', (m) => {
+  if (typeof m.balance === 'number') setBalance(m.balance);
+  if (m.kind === 'achievement') { sound.play('bigwin'); toast(`🏅 Erfolg „${m.title}“: +🪙 ${fmt(m.amount)}`, 'gold', 6000); }
+  else if (m.kind === 'mission_done') { sound.play('win'); toast(`📋 Aufgabe erfüllt: ${m.title} – 🪙 ${fmt(m.amount)} unter „Belohnungen“ abholen`, 'gold', 6000); }
+  else if (m.kind === 'pickup') { sound.play('coin'); toast(`🪙 Chip gefunden: +${fmt(m.amount)} (heute ${fmt(m.today)} / 500,00)`, 'success', 2500); }
+  else if (m.kind === 'pickup_cap') toast('Tageslimit für Chips erreicht (🪙 500) – morgen geht es weiter', 'info');
+});
 
 subscribe(() => {
   const u = store.user;

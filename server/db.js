@@ -61,7 +61,36 @@ db.exec(`
     updated_at INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_games_active ON games(user_id, type, status);
+
+  CREATE TABLE IF NOT EXISTS missions (
+    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    day      TEXT NOT NULL,
+    key      TEXT NOT NULL,
+    progress INTEGER NOT NULL DEFAULT 0,
+    claimed  INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day, key)
+  );
+
+  CREATE TABLE IF NOT EXISTS achievements (
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    key        TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (user_id, key)
+  );
 `);
+
+// Spätere Spalten (Migration für bestehende Datenbanken)
+const columns = new Set(db.prepare('PRAGMA table_info(users)').all().map((c) => c.name));
+for (const [name, def] of [
+  ['streak', 'INTEGER NOT NULL DEFAULT 0'],
+  ['last_daily_day', 'TEXT'],
+  ['pickup_day', 'TEXT'],
+  ['pickup_today', 'INTEGER NOT NULL DEFAULT 0'],
+  ['pickups_total', 'INTEGER NOT NULL DEFAULT 0'],
+  ['win_streak', 'INTEGER NOT NULL DEFAULT 0'],
+]) {
+  if (!columns.has(name)) db.exec(`ALTER TABLE users ADD COLUMN ${name} ${def}`);
+}
 
 /** Führt fn() in einer exklusiven SQLite-Transaktion aus. */
 export function transaction(fn) {

@@ -59,10 +59,12 @@ try {
   check('me', r.data.user?.username === 'tester');
 
   console.log('Wallet');
-  r = await api('POST', '/api/wallet/daily-bonus');
-  check('daily bonus', r.status === 200 && r.data.user.balance === 1_500_000, JSON.stringify(r.data));
-  r = await api('POST', '/api/wallet/daily-bonus');
+  r = await api('POST', '/api/rewards/daily');
+  check('daily bonus (Tag 1 = 500)', r.status === 200 && r.data.amount === 500_00 && r.data.streak === 1 && r.data.user.balance === 1_050_000, JSON.stringify(r.data));
+  r = await api('POST', '/api/rewards/daily');
   check('daily bonus twice rejected', r.status === 400);
+  r = await api('GET', '/api/rewards');
+  check('rewards summary', r.status === 200 && r.data.missions.length === 3 && r.data.achievements.length > 5 && r.data.daily.claimedToday, JSON.stringify(r.data.daily));
   r = await api('POST', '/api/wallet/rescue');
   check('rescue rejected with balance', r.status === 400);
 
@@ -150,9 +152,24 @@ try {
     check('cashout', r.status === 200 && r.data.game.status === 'won');
   }
 
+  console.log('Belohnungen');
+  await new Promise((res) => setTimeout(res, 200)); // Ereignisse aus den Runden verarbeiten lassen
+  r = await api('GET', '/api/rewards');
+  check('Erfolg "Erste Runde" freigeschaltet', r.data.achievements.find((a) => a.key === 'first_round')?.unlocked === true);
+  check('Missionsfortschritt gezählt', r.data.missions.some((m) => m.progress > 0), JSON.stringify(r.data.missions));
+  const done = r.data.missions.find((m) => m.done && !m.claimed);
+  if (done) {
+    r = await api('POST', `/api/rewards/missions/${done.key}/claim`);
+    check('Mission abholen', r.status === 200 && r.data.amount === done.reward, JSON.stringify(r.data));
+    r = await api('POST', `/api/rewards/missions/${done.key}/claim`);
+    check('Mission doppelt abholen abgelehnt', r.status === 400);
+  }
+  r = await api('GET', '/api/wallet/history?limit=200');
+  check('Erfolgs-Gutschrift im Verlauf', r.data.history.some((t) => t.type === 'achievement'));
+
   console.log('Verlauf & Rangliste');
   r = await api('GET', '/api/wallet/history?limit=10');
-  check('history', r.status === 200 && r.data.history.length > 0 && r.data.history[0].type === 'round');
+  check('history', r.status === 200 && r.data.history.length > 0);
   r = await api('GET', '/api/wallet/leaderboard');
   check('leaderboard', r.status === 200 && r.data.leaderboard[0].username === 'tester' && r.data.myRank === 1);
 
