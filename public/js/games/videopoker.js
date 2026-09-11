@@ -15,7 +15,7 @@ const Y = 1.05;
 const DX = 1.3;
 
 export default class VideoPoker extends GameBase {
-  engineOptions() { return { fov: 38, position: [0, 3.4, 7.6], target: [0, 1.0, 0], background: 0x06080f }; }
+  engineOptions() { return { fov: 42, position: [0, 2.6, 6.8], target: [0, 0.9, 0], background: 0x06080f }; }
 
   buildScene() {
     const { engine } = this;

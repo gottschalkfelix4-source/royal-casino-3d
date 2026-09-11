@@ -11,7 +11,7 @@ const PITCH = 1.25;
 const TILE = 1.1;
 
 export default class Mines extends GameBase {
-  engineOptions() { return { fov: 38, position: [0, 9.5, 6.5], target: [0, 0, -0.2], background: 0x06090c }; }
+  engineOptions() { return { fov: 42, position: [0, 6.5, 7.2], target: [0, 0, -0.4], background: 0x06090c }; }
 
   buildScene() {
     const { engine } = this;

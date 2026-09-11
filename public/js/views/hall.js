@@ -110,7 +110,7 @@ class Hall {
       rt.on('welcome', () => { for (const id of [...this.avatars.keys()]) this.removeAvatar(id); for (const p of rt.players.values()) this.ensureAvatar(p); this.assignSeats(); }),
       rt.on('disconnect', () => { for (const id of [...this.avatars.keys()]) this.removeAvatar(id); }),
       rt.on('pos', (p) => { const a = this.ensureAvatar(p); if (a) { a.target.set(p.x, 0, p.z); a.ry = p.ry; a.anim = p.anim; } }),
-      rt.on('game', () => this.assignSeats()),
+      rt.on('game', () => { this.assignSeats(); this.updateSpectateCam(); }),
       rt.on('round', (r) => {
         const net = r.payout - r.bet;
         const a = this.avatars.get(r.id);
@@ -155,13 +155,21 @@ class Hall {
     // Im Hintergrund sparsamer rendern
     // Bloom + große Halle: Pixeldichte in der Lobby auf 1,5 begrenzen, im Hintergrund auf 1
     this.engine.setPixelRatioCap(mode === 'walk' ? 1.5 : 1);
-    if (mode === 'spectate' && this.spectateStation) {
-      const st = this.spectateStation;
-      // Kamera an einen freien Platz, leicht zurück und über Augenhöhe
-      const seat = st.seats[0];
-      const dir = new THREE.Vector3(seat.x - st.position.x, 0, seat.z - st.position.z).normalize();
-      this.spectateCam = { pos: new THREE.Vector3(seat.x + dir.x * 1.4, EYE + 0.25, seat.z + dir.z * 1.4), look: st.position.clone().setY(1.0) };
-    }
+    this.updateSpectateCam();
+  }
+
+  /** Eigener Sitzplatz: erster Platz, der nicht von Mitspielern belegt ist; Kamera in Sitz-Augenhöhe */
+  updateSpectateCam() {
+    const st = this.spectateStation;
+    if (this.mode !== 'spectate' || !st) return;
+    const others = [...rt.players.values()].filter((p) => p.game === st.id && p.id !== rt.me).length;
+    const seat = st.seats[others % st.seats.length];
+    const eye = seat.sit ? 1.22 : EYE;
+    const dir = new THREE.Vector3(seat.x - st.position.x, 0, seat.z - st.position.z).normalize();
+    this.spectateCam = {
+      pos: new THREE.Vector3(seat.x + dir.x * 0.15, eye, seat.z + dir.z * 0.15),
+      look: st.position.clone().setY(seat.sit ? 0.9 : 1.3),
+    };
   }
 
   // ---------- Figuren ----------
@@ -237,11 +245,13 @@ class Hall {
       }
       if (best !== this.nearStation) { this.nearStation = best; this.emit('near', best); }
     } else if (this.mode === 'spectate' && this.spectateCam) {
-      // Kamera sanft zum Tisch, leichtes Schwenken
+      // Sitzend am Tisch: Kamera auf dem eigenen Platz, leichtes Atmen/Umschauen
       const c = this.spectateCam;
-      engine.camera.position.lerp(c.pos, Math.min(1, dt * 2));
+      const target = c.pos.clone();
+      target.y += Math.sin(t * 1.4) * 0.012;
+      engine.camera.position.lerp(target, Math.min(1, dt * 2.5));
       const look = c.look.clone();
-      look.x += Math.sin(t * 0.3) * 0.6;
+      look.x += Math.sin(t * 0.25) * 0.25;
       engine.camera.lookAt(look);
     }
 

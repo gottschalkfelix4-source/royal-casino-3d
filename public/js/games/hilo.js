@@ -12,7 +12,7 @@ const HIST_Y = 0.85;
 const HIST_Z = -1.6;
 
 export default class HiLo extends GameBase {
-  engineOptions() { return { fov: 38, position: [0, 3.6, 7.4], target: [0, 1.1, 0], background: 0x090612 }; }
+  engineOptions() { return { fov: 42, position: [0, 2.7, 6.6], target: [0, 1.0, 0], background: 0x090612 }; }
 
   buildScene() {
     const { engine } = this;

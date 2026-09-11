@@ -17,7 +17,8 @@ const X0 = -1.3;
 const DX = 0.62;
 
 export default class Blackjack extends GameBase {
-  engineOptions() { return { fov: 38, position: [0, 8.2, 7.4], target: [0, 0, -0.5], background: 0x07090d }; }
+  // Sitzende Spielerperspektive an der Tischkante
+  engineOptions() { return { fov: 42, position: [0, 3.6, 6.2], target: [0, 0.2, -1.0], background: 0x07090d }; }
 
   buildScene() {
     const { engine } = this;

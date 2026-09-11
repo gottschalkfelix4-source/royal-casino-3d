@@ -15,7 +15,7 @@ const SIMPLE = [
 const REST = [[-1.1, 0, -0.3], [0.9, 0, 0.5], [0.1, 0, -1.2]];
 
 export default class Dice extends GameBase {
-  engineOptions() { return { fov: 40, position: [0, 7.5, 6.5], target: [0, 0.3, 0], background: 0x07090d }; }
+  engineOptions() { return { fov: 42, position: [0, 3.4, 5.6], target: [0, 0.2, -0.6], background: 0x07090d }; }
 
   buildScene() {
     const { engine } = this;

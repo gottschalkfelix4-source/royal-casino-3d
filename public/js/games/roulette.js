@@ -44,7 +44,7 @@ function numberRingTexture() {
 export default class Roulette extends GameBase {
   engineOptions() {
     // Ziel liegt vor dem Kessel, damit er im oberen Bildbereich über dem Setztisch sitzt
-    return { fov: 40, position: [0, 12, 12], target: [0, 0.4, 3.2], background: 0x07090d, exposure: 1.0 };
+    return { fov: 42, position: [0, 6.5, 11], target: [0, 0.4, 2.6], background: 0x07090d, exposure: 1.0 };
   }
 
   buildScene() {

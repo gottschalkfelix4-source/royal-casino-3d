@@ -11,7 +11,7 @@ const SPOTS = { player: { x: -2.6, label: 'PLAYER', odds: '1:1', color: '#3b82f6
 const HAND_Z = -1.2;
 
 export default class Baccarat extends GameBase {
-  engineOptions() { return { fov: 38, position: [0, 8.4, 7.6], target: [0, 0, -0.2], background: 0x07090d }; }
+  engineOptions() { return { fov: 42, position: [0, 3.6, 6.4], target: [0, 0.2, -0.8], background: 0x07090d }; }
 
   buildScene() {
     const { engine } = this;

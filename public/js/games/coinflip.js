@@ -33,7 +33,7 @@ function faceTexture(kind) {
 }
 
 export default class CoinFlip extends GameBase {
-  engineOptions() { return { fov: 38, position: [0, 3.2, 7], target: [0, 1.0, 0], background: 0x0b0a12 }; }
+  engineOptions() { return { fov: 42, position: [0, 2.4, 6.2], target: [0, 0.9, 0], background: 0x0b0a12 }; }
 
   buildScene() {
     const { engine } = this;
