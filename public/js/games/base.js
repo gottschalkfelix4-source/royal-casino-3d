@@ -97,7 +97,12 @@ export class GameBase {
     this.buildPanel();
     this.buildTableSection();
     this.engine.start();
-    this.ready().catch((e) => toast(e.message, 'error'));
+    // Bedienelemente sperren, bis ready() (Konfiguration laden, laufende Runde wiederherstellen) fertig ist
+    this.busy = true;
+    this.setBusy(true);
+    this.ready()
+      .catch((e) => { if (!this.destroyed) toast(e.message, 'error'); })
+      .finally(() => { this.busy = false; if (!this.destroyed) this.setBusy(false); });
   }
 
   /** Mitspieler an diesem Tisch + Tisch-Chat (Multiplayer) */

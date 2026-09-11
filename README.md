@@ -14,6 +14,8 @@ Dann im Browser öffnen: http://localhost:3000
 
 - `npm run dev` startet den Server mit automatischem Neustart bei Änderungen.
 - `node scripts/smoke.js` führt einen End-to-End-Test aller API-Endpunkte gegen eine temporäre Datenbank aus.
+- `node scripts/mp-test.js` testet den Multiplayer-Server mit echten WebSocket-Clients (`walk 3000` lässt zwei Testspieler live herumlaufen).
+- `scripts/qa-browser.js` in die Browser-Konsole einfügen: spielt alle 12 Spiele in der Halle automatisch durch und meldet Fehler.
 - `npm run sim:slots` simuliert den Slot-Automaten (RTP ≈ 93 %).
 - Port ändern: `PORT=8080 npm start`, Datenverzeichnis: `CASINO_DATA_DIR=/pfad`.
 

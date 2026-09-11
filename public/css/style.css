@@ -292,6 +292,7 @@ body.hall .game-stage.embedded .game-hud, body.hall .game-stage.embedded .game-b
   padding: 8px 14px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); border: 1px solid var(--line);
   color: var(--muted); font-size: 13px; pointer-events: none; backdrop-filter: blur(6px);
 }
+.game-stage:has(.game-dock) .stage-hint { bottom: auto; top: 64px; }
 .game-stage .back-link {
   position: absolute; top: 14px; left: 14px; z-index: 5;
   padding: 8px 12px; border-radius: 10px; background: rgba(0, 0, 0, 0.5); border: 1px solid var(--line);

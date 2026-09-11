@@ -146,32 +146,46 @@ export class Engine {
     return spot;
   }
 
+  /** Ein Simulationsschritt (Tweens, Updater, optional Rendern) */
+  step(render = true) {
+    const dt = Math.min(this.clock.getDelta(), 0.1);
+    const now = performance.now();
+    this.lastFrame = now;
+    this.tweener.update(now);
+    for (const u of this.updaters) u(dt, now / 1000);
+    if (this.shakeAmount > 0.001) {
+      const s = this.shakeAmount;
+      this.camera.position.x += (Math.random() - 0.5) * s;
+      this.camera.position.y += (Math.random() - 0.5) * s;
+      this.shakeAmount *= 0.88;
+    }
+    if (!render) return;
+    if (this.composer) this.composer.render();
+    else this.renderer.render(this.scene, this.camera);
+  }
+
   start() {
     if (this.running || this.disposed) return;
     this.running = true;
     this.clock.start();
+    this.lastFrame = performance.now();
     const loop = () => {
       if (!this.running) return;
       this.raf = requestAnimationFrame(loop);
-      const dt = Math.min(this.clock.getDelta(), 0.1);
-      const now = performance.now();
-      this.tweener.update(now);
-      for (const u of this.updaters) u(dt, now / 1000);
-      if (this.shakeAmount > 0.001) {
-        const s = this.shakeAmount;
-        this.camera.position.x += (Math.random() - 0.5) * s;
-        this.camera.position.y += (Math.random() - 0.5) * s;
-        this.shakeAmount *= 0.88;
-      }
-      if (this.composer) this.composer.render();
-      else this.renderer.render(this.scene, this.camera);
+      this.step(true);
     };
     loop();
+    // Watchdog: liefert der Browser keine Frames (Tab im Hintergrund, gedrosselt), laufen Tweens und
+    // Spiellogik per Timer weiter, damit Runden nicht "hängen" – gerendert wird dann nicht.
+    this.watchdog = setInterval(() => {
+      if (this.running && performance.now() - this.lastFrame > 400) this.step(false);
+    }, 100);
   }
 
   stop() {
     this.running = false;
     if (this.raf) cancelAnimationFrame(this.raf);
+    clearInterval(this.watchdog);
   }
 
   onUpdate(fn) {
