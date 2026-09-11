@@ -46,9 +46,6 @@ export default class Wheel extends GameBase {
     const { engine } = this;
     engine.addLights({ key: [4, 6, 10], keyIntensity: 1.8, hemi: 0.5, fill: 0.6 });
     engine.addSpot({ position: [0, 8, 9], target: [0, 0, 0], intensity: 700, angle: 0.6, color: 0xfff0d0 });
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), new THREE.MeshStandardMaterial({ color: 0x0f1220, roughness: 0.9 }));
-    back.position.z = -1.5;
-    engine.scene.add(back);
     engine.setFit(10.5, 11);
     this.wheel = new THREE.Group();
     engine.scene.add(this.wheel);

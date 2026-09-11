@@ -50,7 +50,7 @@ export default class Crash extends GameBase {
     engine.scene.add(this.stars);
     engine.setFit(13.5, 11);
     // Planet / Boden
-    const planet = new THREE.Mesh(new THREE.SphereGeometry(30, 64, 64), new THREE.MeshStandardMaterial({ color: 0x1d2a4a, roughness: 0.9 }));
+    const planet = new THREE.Mesh(new THREE.SphereGeometry(30, 64, 64), new THREE.MeshStandardMaterial({ color: 0x1d2a4a, roughness: 0.9, transparent: true, opacity: 0.85 }));
     planet.position.set(0, -34.5, -4);
     engine.scene.add(planet);
     const glow = new THREE.Mesh(new THREE.SphereGeometry(30.6, 64, 64), new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.12, side: THREE.BackSide }));

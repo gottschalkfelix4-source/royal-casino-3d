@@ -27,13 +27,14 @@ export class Engine {
   constructor(container, opts = {}) {
     const {
       fov = 45, position = [0, 6, 10], target = [0, 0, 0], background = 0x07090d,
-      shadows = true, exposure = 1.0, envIntensity = 0.7, fog = null, bloom = null,
+      shadows = true, exposure = 1.0, envIntensity = 0.7, fog = null, bloom = null, alpha = false,
     } = opts;
     this.container = container;
     this.disposed = false;
     this.quality = QUALITY[getQuality()];
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: this.quality.dpr < 2 || (window.devicePixelRatio || 1) < 1.5, powerPreference: 'high-performance', stencil: false });
+    this.renderer = new THREE.WebGLRenderer({ antialias: this.quality.dpr < 2 || (window.devicePixelRatio || 1) < 1.5, powerPreference: 'high-performance', stencil: false, alpha });
+    if (alpha) this.renderer.setClearColor(0x000000, 0);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.dpr));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -44,7 +45,7 @@ export class Engine {
     container.prepend(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(background);
+    if (!alpha) this.scene.background = new THREE.Color(background);
     if (fog) this.scene.fog = new THREE.Fog(background, fog[0], fog[1]);
 
     this.camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 500);
@@ -77,6 +78,14 @@ export class Engine {
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
+    this.resize();
+  }
+
+  /** Pixeldichte zur Laufzeit begrenzen (z. B. Hintergrund-Rendering sparsamer) */
+  setPixelRatioCap(cap) {
+    const r = Math.min(window.devicePixelRatio || 1, this.quality.dpr, cap);
+    this.renderer.setPixelRatio(r);
+    this.composer?.setPixelRatio(r);
     this.resize();
   }
 

@@ -39,7 +39,15 @@ button { cursor: pointer; }
 a { color: inherit; text-decoration: none; }
 ::selection { background: rgba(212, 175, 55, 0.35); }
 
-#app { display: flex; flex-direction: column; min-height: 100vh; }
+#app { display: flex; flex-direction: column; min-height: 100vh; position: relative; z-index: 1; }
+
+/* Dauerhafte 3D-Halle hinter der App */
+#hall-layer { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+#hall-layer.interactive { pointer-events: auto; }
+#hall-layer canvas { width: 100% !important; height: 100% !important; display: block; }
+.lobby.transparent { pointer-events: none; }
+.lobby.transparent > * { pointer-events: auto; }
+.lobby.transparent .lobby-prompt, .lobby.transparent .lobby-ticker, .lobby.transparent .crosshair, .lobby.transparent .lobby-hint { pointer-events: none; }
 .view { flex: 1; display: flex; flex-direction: column; }
 
 /* ---------- Topbar ---------- */
@@ -248,7 +256,13 @@ a { color: inherit; text-decoration: none; }
   display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-rows: minmax(0, 1fr);
   height: calc(100vh - var(--topbar-h)); min-height: 0; overflow: hidden; flex: none;
 }
-.game-stage { position: relative; overflow: hidden; background: var(--bg); min-height: 0; }
+.game-stage { position: relative; overflow: hidden; background: transparent; min-height: 0; }
+/* Abdunkelung über der Live-Halle, damit Spielszene und Texte lesbar bleiben */
+.game-stage::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse at 50% 60%, rgba(5, 7, 12, 0.35) 0%, rgba(5, 7, 12, 0.75) 100%);
+}
+.game-stage .three-canvas { z-index: 1; }
 .game-panel { min-height: 0; }
 .three-canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; outline: none; }
 .game-panel {
@@ -449,6 +463,8 @@ input[type='range'] { width: 100%; accent-color: var(--gold); }
 
 /* ---------- Profil / Rangliste ---------- */
 .page { max-width: 1100px; width: 100%; margin: 0 auto; padding: 34px 24px 70px; display: flex; flex-direction: column; gap: 22px; }
+.page .card, .page .stat-box { background: rgba(10, 13, 20, 0.86); backdrop-filter: blur(10px); }
+.page h1, .page > p { text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8); }
 .page h1 { font-family: var(--font-display); letter-spacing: 0.06em; margin: 0; color: var(--gold-2); }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
 .card { padding: 18px; border-radius: 16px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); box-shadow: var(--shadow); }

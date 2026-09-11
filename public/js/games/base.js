@@ -31,7 +31,8 @@ export class GameBase {
     root.append(this.stage, this.panel);
     this.panel.append(h('h2', {}, h('span.icon', {}, this.meta.icon), this.meta.name));
 
-    this.engine = new Engine(this.stage, this.engineOptions());
+    // Transparent rendern, damit die Live-Halle dahinter sichtbar bleibt
+    this.engine = new Engine(this.stage, { ...this.engineOptions(), alpha: true });
     this.buildScene();
     this.buildPanel();
     this.buildTableSection();

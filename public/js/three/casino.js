@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { makeCanvas, canvasTexture, roundRect, goldMaterial, woodTexture, feltTexture, textSprite, createChip, createCard, createDie } from './assets.js';
+import { createAvatar } from './avatars.js';
 
 /**
  * Prozedural gebaute Casino-Halle im Stil der 2000er: Musterteppich, Kronleuchter,
@@ -617,6 +618,18 @@ export function buildCasino(engine) {
     }
   }
   animated.push((dt, t) => { pd.userData.spin.rotation.y += dt * 2; pd.userData.spin.position.y = 1.5 + Math.sin(t * 2) * 0.1; });
+
+  // Croupiers hinter den Tischen (Blickrichtung zu den Spielern)
+  const DEALERS = [['blackjack', 'Croupier Max', 0, -1.7], ['baccarat', 'Croupier Lea', 0, -1.6], ['roulette', 'Croupier Tom', 0.6, -1.5], ['dice', 'Croupier Ana', 0, -1.5]];
+  for (const [id, name, lx, lz] of DEALERS) {
+    const st = stations.find((s) => s.id === id);
+    if (!st) continue;
+    const av = createAvatar({ name, dealer: true });
+    av.position.set(st.group.position.x + lx, 0, st.group.position.z + lz);
+    av.rotation.y = Math.PI; // schaut nach +z zu den Gästen
+    scene.add(av);
+    animated.push((dt, t) => av.userData.dealerStep(dt, t));
+  }
 
   // Kamerapfad einmal durch die Halle
   const path = new THREE.CatmullRomCurve3([

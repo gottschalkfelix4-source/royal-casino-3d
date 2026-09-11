@@ -6,6 +6,7 @@ import { getGame } from './games/registry.js';
 import { renderLobby } from './views/lobby.js';
 import { renderProfile, renderLeaderboard } from './views/profile.js';
 import { rt } from './realtime.js';
+import { hall } from './views/hall.js';
 import { getQuality, setQuality } from './three/engine.js';
 
 const QUALITY_LABEL = { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' };
@@ -74,6 +75,7 @@ function cycleQuality() {
   const next = order[(order.indexOf(getQuality()) + 1) % order.length];
   setQuality(next);
   toast(`Grafikqualität: ${QUALITY_LABEL[next]}`, 'info');
+  hall.rebuild();
   route(); // Ansicht mit neuer Qualität neu aufbauen
 }
 
@@ -194,6 +196,7 @@ async function route() {
     viewEl.className = 'view';
     viewEl.innerHTML = '';
     viewEl.append(h('div.loading', {}, h('div.spinner'), `${meta.icon} ${meta.name} wird geladen…`));
+    hall.setMode('spectate', meta.id);
     try {
       const mod = await meta.load();
       if ((location.hash || '#/') !== hash) return;
@@ -208,8 +211,8 @@ async function route() {
     }
     return;
   }
-  if (hash === '#/profile' && store.user) return renderProfile(viewEl);
-  if (hash === '#/leaderboard' && store.user) return renderLeaderboard(viewEl);
+  if (hash === '#/profile' && store.user) { hall.setMode('idle'); return renderProfile(viewEl); }
+  if (hash === '#/leaderboard' && store.user) { hall.setMode('idle'); return renderLeaderboard(viewEl); }
   await refreshActiveGames();
   if ((location.hash || '#/') !== hash) return;
   current = renderLobby(viewEl, { openAuth });

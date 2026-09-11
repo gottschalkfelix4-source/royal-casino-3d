@@ -69,7 +69,7 @@ export default class Slots extends GameBase {
     engine.addSpot({ position: [5, 6, R + 6], target: [0, 0, R], intensity: 500, color: 0xa8c8ff, angle: 0.6 });
 
     // Boden mit Reflexionen
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x0a0c11, roughness: 0.35, metalness: 0.7 }));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 10), new THREE.MeshStandardMaterial({ color: 0x0a0c11, roughness: 0.35, metalness: 0.7 }));
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -2.6;
     scene.add(floor);

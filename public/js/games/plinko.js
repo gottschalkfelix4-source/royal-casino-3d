@@ -23,7 +23,8 @@ export default class Plinko extends GameBase {
     const { engine } = this;
     engine.addLights({ key: [3, 8, 10], keyIntensity: 1.8, hemi: 0.5, fill: 0.6 });
     engine.addSpot({ position: [0, 6, 10], target: [0, -2, 0], intensity: 500, angle: 0.9, color: 0xe6d0ff });
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(40, 30), new THREE.MeshStandardMaterial({ color: 0x120e1f, roughness: 0.9 }));
+    // Halbtransparentes Brett, damit die Halle dahinter sichtbar bleibt
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(15, 14), new THREE.MeshPhysicalMaterial({ color: 0x120e1f, roughness: 0.2, transparent: true, opacity: 0.55, clearcoat: 1 }));
     back.position.z = -1.2;
     engine.scene.add(back);
     engine.setFit(14, 13);

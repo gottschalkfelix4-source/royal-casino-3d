@@ -20,7 +20,7 @@ export default class Mines extends GameBase {
     const base = new THREE.Mesh(new THREE.BoxGeometry(N * PITCH + 0.8, 0.4, N * PITCH + 0.8), new THREE.MeshStandardMaterial({ color: 0x141a24, roughness: 0.6, metalness: 0.3 }));
     base.position.y = -0.2; base.receiveShadow = true;
     engine.scene.add(base);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x0a0d12, roughness: 0.9 }));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), new THREE.MeshStandardMaterial({ color: 0x0a0d12, roughness: 0.9 }));
     floor.rotation.x = -Math.PI / 2; floor.position.y = -0.41; floor.receiveShadow = true;
     engine.scene.add(floor);
     engine.setFit(8, 8.5);

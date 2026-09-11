@@ -39,7 +39,7 @@ export default class CoinFlip extends GameBase {
     const { engine } = this;
     engine.addLights({ key: [3, 8, 5], keyIntensity: 2.4, hemi: 0.5, fill: 0.8, shadowSize: 8 });
     engine.addSpot({ position: [0, 7, 4], target: [0, 1, 0], intensity: 600, angle: 0.6, color: 0xfff0c8 });
-    const floor = new THREE.Mesh(new THREE.CircleGeometry(20, 64), new THREE.MeshStandardMaterial({ color: 0x1a1230, roughness: 0.6, metalness: 0.3 }));
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(4, 64), new THREE.MeshStandardMaterial({ color: 0x1a1230, roughness: 0.6, metalness: 0.3 }));
     floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
     engine.scene.add(floor);
     const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 2.0, 0.5, 64), new THREE.MeshPhysicalMaterial({ color: 0x2a1f4a, roughness: 0.3, clearcoat: 1 }));

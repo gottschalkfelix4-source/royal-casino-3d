@@ -45,6 +45,9 @@ Die Lobby ist eine begehbare 3D-Casino-Halle im Stil der 2000er (Musterteppich, 
 - **Andere Spieler** sind als Figuren mit Namensschild sichtbar – beim Herumlaufen und sitzend/stehend an
   dem Tisch oder Automaten, an dem sie gerade spielen. Gewinne und Verluste erscheinen live über der Figur
   und im Ticker; im Spiel zeigt „Am Tisch“ die Mitspieler an derselben Station samt Tisch-Chat.
+- **Live-Hintergrund**: Die Halle läuft als eigene Ebene hinter der App dauerhaft weiter ([hall.js](public/js/views/hall.js)).
+  Im Spiel rendert die Spielszene transparent darüber, die Kamera der Halle parkt am jeweiligen Tisch – man sieht
+  weiterhin Mitspieler, Bots und die animierten Croupiers (Blackjack, Baccarat, Roulette, Würfel), die periodisch Karten geben.
 - **Technik**: WebSocket (`/ws`, Paket `ws`), Auth über das Session-Cookie, Positionen 10 Hz, Chat mit Rate-Limit.
 - **Bots**: Damit die Halle nicht leer ist, laufen standardmäßig 3 als 🤖 markierte Bots herum.
   Abschalten mit `CASINO_BOTS=0`, mehr mit z. B. `CASINO_BOTS=6`.
