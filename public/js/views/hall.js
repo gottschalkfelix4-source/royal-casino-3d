@@ -71,10 +71,18 @@ class Hall {
     const canvas = engine.renderer.domElement;
     this.canvas = canvas;
     this.dragging = false; this.dragMoved = 0; this.lastX = 0; this.lastY = 0;
-    canvas.addEventListener('pointerdown', (e) => { if (this.mode !== 'walk') return; this.dragging = true; this.dragMoved = 0; this.lastX = e.clientX; this.lastY = e.clientY; canvas.setPointerCapture?.(e.pointerId); });
+    canvas.addEventListener('pointerdown', (e) => {
+      if (this.mode !== 'walk' || e.button !== 0) return;
+      this.dragging = true; this.dragMoved = 0; this.lastX = e.clientX; this.lastY = e.clientY;
+      canvas.setPointerCapture?.(e.pointerId);
+      canvas.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    canvas.addEventListener('pointercancel', () => { this.dragging = false; });
     canvas.addEventListener('pointerup', (e) => {
       if (this.mode !== 'walk') return;
       this.dragging = false;
+      canvas.style.cursor = this.hovered ? 'pointer' : 'grab';
       if (this.dragMoved < 6) { const hit = engine.pick(e, this.hitboxes, false)[0]; if (hit) this.enter(this.stationOf(hit.object)); }
     });
     canvas.addEventListener('pointermove', (e) => {
@@ -151,6 +159,7 @@ class Hall {
     this.dragging = false;
     this.setHover(null);
     this.layer.classList.toggle('interactive', mode === 'walk');
+    document.body.classList.toggle('walk', mode === 'walk');
     this.canvas.style.cursor = mode === 'walk' ? 'grab' : '';
     // Im Hintergrund sparsamer rendern
     // Bloom + große Halle: Pixeldichte in der Lobby auf 1,5 begrenzen, im Hintergrund auf 1
