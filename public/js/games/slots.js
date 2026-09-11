@@ -237,7 +237,8 @@ export default class Slots extends GameBase {
       this.showResult(res, bet);
       if (this.auto) {
         await this.engine.delay(res.payout > 0 ? 1600 : 500);
-        if (this.auto && !this.destroyed && this.balance >= this.bet.value) queueMicrotask(() => this.spin());
+        // Nächsten Spin erst starten, wenn run() die Sperre freigegeben hat (daher setTimeout statt Microtask)
+        if (this.auto && !this.destroyed && this.balance >= this.bet.value) setTimeout(() => { if (this.auto && !this.busy) this.spin(); }, 30);
         else if (this.auto) this.toggleAuto();
       }
     });

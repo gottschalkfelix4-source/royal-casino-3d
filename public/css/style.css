@@ -397,7 +397,8 @@ body.hall .game-stage.embedded .game-hud, body.hall .game-stage.embedded .game-b
 input[type='range'] { width: 100%; accent-color: var(--gold); }
 
 /* ---------- Roulette-Tisch ---------- */
-.rl-table { display: grid; grid-template-columns: 40px repeat(12, 40px) 48px; grid-auto-rows: 36px; gap: 3px; user-select: none; }
+.rl-table { display: grid; grid-template-columns: 34px repeat(12, 34px) 42px; grid-auto-rows: 30px; gap: 3px; user-select: none; }
+.game-dock.rl { padding: 8px; background: rgba(8, 11, 16, 0.6); }
 .rl-cell {
   position: relative; display: grid; place-items: center; border-radius: 6px; font-weight: 800; font-size: 13px;
   border: 1px solid rgba(255, 255, 255, 0.25); cursor: pointer; transition: transform 0.08s, filter 0.15s;

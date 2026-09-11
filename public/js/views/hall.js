@@ -127,7 +127,7 @@ class Hall {
       rt.on('welcome', () => { for (const id of [...this.avatars.keys()]) this.removeAvatar(id); for (const p of rt.players.values()) this.ensureAvatar(p); this.assignSeats(); }),
       rt.on('disconnect', () => { for (const id of [...this.avatars.keys()]) this.removeAvatar(id); }),
       rt.on('pos', (p) => { const a = this.ensureAvatar(p); if (a) { a.target.set(p.x, 0, p.z); a.ry = p.ry; a.anim = p.anim; } }),
-      rt.on('game', () => { this.assignSeats(); this.updateSpectateCam(); }),
+      rt.on('game', () => { this.assignSeats(); }),
       rt.on('round', (r) => {
         const net = r.payout - r.bet;
         const a = this.avatars.get(r.id);
@@ -165,6 +165,7 @@ class Hall {
     this.ensure();
     this.mode = mode;
     this.spectateStation = mode === 'spectate' ? this.stationById(stationId) : null;
+    if (mode !== 'spectate' || this.mySeatChoice?.station !== stationId) this.mySeatChoice = null;
     this.keys.clear();
     this.dragging = false;
     this.setHover(null);
@@ -179,10 +180,16 @@ class Hall {
     this.updateSpectateCam();
   }
 
-  /** Eigener Sitzplatz: erster Platz, der nicht von Mitspielern belegt ist */
+  /**
+   * Eigener Sitzplatz: beim Betreten einmal gewählt (erster freier Platz) und danach fest –
+   * Mitspieler, die später kommen, bekommen die übrigen Plätze und verschieben mich nicht.
+   */
   mySeat(st) {
+    if (this.mySeatChoice?.station === st.id) return { seat: st.seats[this.mySeatChoice.index], index: this.mySeatChoice.index };
     const others = [...rt.players.values()].filter((p) => p.game === st.id && p.id !== rt.me).length;
-    return { seat: st.seats[others % st.seats.length], index: others % st.seats.length };
+    const index = others % st.seats.length;
+    this.mySeatChoice = { station: st.id, index };
+    return { seat: st.seats[index], index };
   }
 
   /** Kamera in Sitz-Augenhöhe auf dem eigenen Platz, Blick auf Tisch bzw. Bildschirm */
@@ -195,8 +202,9 @@ class Hall {
     // Richtung vom Blickziel (Tischfläche/Bildschirm) zum Platz – nicht vom Stationsmittelpunkt (Slot-Bank!)
     const dir = new THREE.Vector3(seat.x - look.x, 0, seat.z - look.z).normalize();
     if (seat.sit && isTable) {
-      // Sitzend am Tisch: etwas zur Tischkante gelehnt, Blick schräg nach unten auf die Platte
-      this.spectateCam = { pos: new THREE.Vector3(seat.x - dir.x * 0.35, 1.34, seat.z - dir.z * 0.35), look: look.setY(0.95) };
+      // Sitzend am Tisch: etwas zur Tischkante gelehnt, Blick deutlich nach unten auf die Platte
+      // (Blickziel unter Tischhöhe, damit Karten/Kessel in der oberen Bildhälfte liegen, nicht hinter dem Setztisch-Overlay)
+      this.spectateCam = { pos: new THREE.Vector3(seat.x - dir.x * 0.35, 1.4, seat.z - dir.z * 0.35), look: look.setY(0.55) };
     } else {
       // Vor einem Bildschirm (Automat, Glücksrad): auf dem Platz bleiben, Bildschirm auf Augenhöhe anschauen
       this.spectateCam = { pos: new THREE.Vector3(seat.x, seat.sit ? 1.3 : EYE, seat.z), look };
@@ -274,7 +282,10 @@ class Hall {
   assignSeats() {
     for (const s of this.casino.stations) {
       const here = [...rt.players.values()].filter((p) => p.game === s.id && p.id !== rt.me).sort((a, b) => a.id - b.id);
-      here.forEach((p, i) => { const a = this.ensureAvatar(p); if (a) a.seat = { ...s.seats[i % s.seats.length] }; });
+      // Meinen Platz an dieser Station für andere sperren
+      const mine = this.mode === 'spectate' && this.mySeatChoice?.station === s.id ? this.mySeatChoice.index : -1;
+      const free = s.seats.map((_, i) => i).filter((i) => i !== mine);
+      here.forEach((p, i) => { const a = this.ensureAvatar(p); if (a) a.seat = { ...s.seats[free[i % free.length]] }; });
     }
     for (const [id, a] of this.avatars) { const p = rt.players.get(id); if (!p?.game) a.seat = null; }
   }

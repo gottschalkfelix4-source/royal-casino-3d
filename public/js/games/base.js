@@ -14,6 +14,7 @@ class EmbeddedEngine {
     this.host = host;
     this.scene = root;
     this.camera = host.camera;
+    this.cameraTarget = host.cameraTarget;
     this.tweener = host.tweener;
     this.quality = host.quality;
     this.embedded = true;

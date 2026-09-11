@@ -567,7 +567,8 @@ export function buildCasino(engine) {
   for (let i = 0; i < 3; i++) { const c = createChip([500, 2500, 10000][i]); c.position.set(0.4 + i * 0.5, 0.99, 0.3 - i * 0.2); rl.add(c); }
   for (let i = 0; i < 3; i++) rl.add(stool(-0.5 + i * 1.0, 1.5));
   const rlSt = addStation('roulette', '🎡 Roulette', rl, { x: -8, z: 4, hit: [5, 2.4, 3.6], seats: [[-0.5, 1.5], [0.5, 1.5], [1.5, 1.5]] });
-  setMount(rlSt, { type: 'table', scale: 0.11, offset: [-0.6, 0.95, 0], hide: [mini], pull: 0 });
+  // Kessel auf der Dealer-Seite, damit er über dem Setztisch-Overlay sichtbar bleibt
+  setMount(rlSt, { type: 'table', scale: 0.1, offset: [-0.4, 0.95, -0.5], hide: [mini], pull: 0 });
   animated.push((dt) => { mini.userData.spin.rotation.y += dt * 0.6; });
 
   // Blackjack
