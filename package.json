@@ -1,0 +1,19 @@
+{
+  "name": "royal-casino-3d",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Online-Casino mit 3D-Spielen, Benutzerkonten und virtuellem Geld",
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "sim:slots": "node scripts/sim-slots.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "three": "^0.180.0"
+  }
+}
