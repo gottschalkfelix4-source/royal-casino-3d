@@ -367,9 +367,10 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
   // Kreditanzeige unter dem Fenster
   const display = makeDisplay();
   const lcd = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.064), new THREE.MeshStandardMaterial({ map: display.tex, emissive: 0xffffff, emissiveMap: display.tex, emissiveIntensity: 1.1, roughness: 0.4 }));
-  lcd.position.set(0, winBot - 0.075, FRONT_Z + 0.002);
+  lcd.position.set(0, winBot - 0.075, FRONT_Z + 0.008);
+  lcd.material.polygonOffset = true; lcd.material.polygonOffsetFactor = -2; lcd.material.polygonOffsetUnits = -2;
   const lcdFrame = new THREE.Mesh(box(0.36, 0.084, 0.012), m.chrome);
-  lcdFrame.position.set(0, winBot - 0.075, FRONT_Z - 0.004);
+  lcdFrame.position.set(0, winBot - 0.075, FRONT_Z - 0.004); // Vorderseite bei +2 mm, LCD sitzt 6 mm davor
   g.add(lcdFrame, lcd);
 
   // Tastenfeld (geneigt) mit Tasten, Beschriftung, Geldeinwurf
@@ -379,7 +380,8 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
   const deckBody = new THREE.Mesh(rbox(0.64, 0.06, 0.24, 0.015), m.black);
   deck.add(deckBody);
   const deckLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.22), new THREE.MeshStandardMaterial({ map: deckLabelTexture(), transparent: true, roughness: 0.5, depthWrite: false }));
-  deckLabel.rotation.x = -Math.PI / 2; deckLabel.position.y = 0.031;
+  deckLabel.rotation.x = -Math.PI / 2; deckLabel.position.y = 0.034;
+  deckLabel.material.polygonOffset = true; deckLabel.material.polygonOffsetFactor = -2; deckLabel.material.polygonOffsetUnits = -2;
   deck.add(deckLabel);
   const btn = (mat, x, r, h = 0.018) => { const b = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.05, h, 24), mat); b.position.set(x, 0.03 + h / 2, 0.0); deck.add(b); const rim = new THREE.Mesh(new THREE.TorusGeometry(r * 1.08, 0.004, 6, 24), m.chrome); rim.rotation.x = Math.PI / 2; rim.position.set(x, 0.032, 0); deck.add(rim); return b; };
   btn(m.buttons.green, -0.2, 0.026);
@@ -390,7 +392,7 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
   // Geldeinwurf/Bill-Acceptor rechts unter dem Deck
   g.add(merged([
     { geo: box(0.09, 0.05, 0.02), p: [0.24, BODY_Y0 + 0.05, FRONT_Z + 0.005] },
-    { geo: box(0.05, 0.004, 0.022), p: [0.24, BODY_Y0 + 0.05, FRONT_Z + 0.006] },
+    { geo: box(0.05, 0.004, 0.03), p: [0.24, BODY_Y0 + 0.05, FRONT_Z + 0.006] },
     { geo: box(0.05, 0.02, 0.02), p: [-0.24, BODY_Y0 + 0.05, FRONT_Z + 0.005] },
   ], m.chromeDull));
 
@@ -405,11 +407,11 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
   // Top-Glas (beleuchtetes Artwork) mit Chromrahmen und schwarzem Kasten dahinter
   const TOP_Y0 = top + 0.025; const TOP_H = 0.36;
   const topBox = new THREE.Mesh(rbox(BODY_W, TOP_H, 0.42, 0.02), m.redDark);
-  topBox.position.set(0, TOP_Y0 + TOP_H / 2, FRONT_Z - 0.25); topBox.castShadow = true;
+  topBox.position.set(0, TOP_Y0 + TOP_H / 2, FRONT_Z - 0.26); topBox.castShadow = true; // Vorderseite bei -50 mm
   g.add(topBox);
   const artTex = topGlassTexture(variant);
   const art = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.32), new THREE.MeshStandardMaterial({ map: artTex, emissive: 0xffffff, emissiveMap: artTex, emissiveIntensity: 1.25, roughness: 0.35 }));
-  art.position.set(0, TOP_Y0 + TOP_H / 2, FRONT_Z - 0.038);
+  art.position.set(0, TOP_Y0 + TOP_H / 2, FRONT_Z - 0.042);
   const artGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.64, 0.34), m.glass);
   artGlass.position.set(0, TOP_Y0 + TOP_H / 2, FRONT_Z - 0.03); artGlass.renderOrder = 2;
   g.add(art, artGlass);
@@ -426,7 +428,7 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
   marqueeBack.position.set(0, MQ_Y, FRONT_Z - 0.3);
   const marqueeTex = marqueeTexture(name);
   const marquee = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.14), new THREE.MeshStandardMaterial({ map: marqueeTex, emissive: 0xffffff, emissiveMap: marqueeTex, emissiveIntensity: 1.6, roughness: 0.4 }));
-  marquee.position.set(0, MQ_Y, FRONT_Z - 0.238);
+  marquee.position.set(0, MQ_Y, FRONT_Z - 0.232);
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.08, 10), m.chrome);
   post.position.set(0, TOP_Y0 + TOP_H + 0.04, FRONT_Z - 0.3);
   g.add(marqueeBack, marquee, post);
@@ -440,8 +442,8 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
     const t = i / LAMPS; const per = 2 * (0.6 + 0.2);
     let d = t * per; let x; let y;
     if (d < 0.6) { x = -0.3 + d; y = 0.11; } else if (d < 0.8) { x = 0.3; y = 0.11 - (d - 0.6); } else if (d < 1.4) { x = 0.3 - (d - 0.8); y = -0.11; } else { x = -0.3; y = -0.11 + (d - 1.4); }
-    lampPos.push([x, MQ_Y + y, FRONT_Z - 0.235]);
-    lm.setPosition(x, MQ_Y + y, FRONT_Z - 0.235);
+    lampPos.push([x, MQ_Y + y, FRONT_Z - 0.226]);
+    lm.setPosition(x, MQ_Y + y, FRONT_Z - 0.226);
     lamps.setMatrixAt(i, lm);
     lamps.setColorAt(i, new THREE.Color(0xffd76a));
   }
