@@ -17,7 +17,7 @@ export function renderLobby(root, { openAuth }) {
   const renderWelcome = (u) => {
     welcome.replaceChildren(...[
       h('div.lobby-title', {}, 'ROYAL CASINO'),
-      h('div.lobby-sub', {}, u ? `${u.username} · 🪙 ${fmt(u.balance)} · ` : 'Zwölf Spiele · Virtuelles Spielgeld · ', online),
+      h('div.lobby-sub', {}, u ? `${u.username} · 🪙 ${fmt(u.balance)} · ` : `${GAMES.length} Spiele · Virtuelles Spielgeld · `, online),
       u ? null : h('div.row', { style: { marginTop: '10px' } },
         h('button.btn.btn-gold', { onclick: () => openAuth('register') }, '🎁 Registrieren'),
         h('button.btn', { onclick: () => openAuth('login') }, 'Anmelden'),

@@ -30,6 +30,10 @@ export const MISSION_POOL = [
   { key: 'mines3', title: 'Decke bei Mines 3 Felder auf und zahle aus', type: 'mines', target: 1, reward: 300_00 },
   { key: 'chat', title: 'Schreibe eine Nachricht im Chat', type: 'chat', target: 1, reward: 100_00 },
   { key: 'pick3', title: 'Sammle 3 Chips in der Halle ein', type: 'pickup', target: 3, reward: 150_00 },
+  { key: 'keno2', title: 'Spiele 2 Runden Keno', type: 'rounds', game: 'keno', target: 2, reward: 200_00 },
+  { key: 'scratch3', title: 'Rubbele 3 Lose frei', type: 'rounds', game: 'scratch', target: 3, reward: 200_00 },
+  { key: 'derby1', title: 'Gewinne ein Derby-Rennen', type: 'wins', game: 'derby', target: 1, reward: 300_00 },
+  { key: 'poker2', title: 'Spiele 2 Runden 3-Card Poker', type: 'rounds', game: 'poker3', target: 2, reward: 250_00 },
 ];
 
 export const ACHIEVEMENTS = [
@@ -39,7 +43,7 @@ export const ACHIEVEMENTS = [
   { key: 'rounds_500', title: 'Inventar', desc: '500 Runden gespielt', reward: 2500_00 },
   { key: 'win_10x', title: 'Glückspilz', desc: 'Eine Runde mit mindestens 10× Einsatz gewonnen', reward: 500_00 },
   { key: 'win_50x', title: 'Jackpot!', desc: 'Eine Runde mit mindestens 50× Einsatz gewonnen', reward: 1500_00 },
-  { key: 'all_games', title: 'Weltenbummler', desc: 'Alle 12 Spiele gespielt', reward: 1000_00 },
+  { key: 'all_games', title: 'Weltenbummler', desc: `Alle ${GAME_IDS.length} Spiele gespielt`, reward: 1000_00 },
   { key: 'streak_5', title: 'Heiße Hand', desc: '5 Siege in Folge', reward: 400_00 },
   { key: 'balance_20k', title: 'High Roller', desc: 'Guthaben von 🪙 20.000 erreicht', reward: 500_00 },
   { key: 'balance_100k', title: 'Whale', desc: 'Guthaben von 🪙 100.000 erreicht', reward: 2500_00 },

@@ -447,6 +447,35 @@ input[type='range'] { width: 100%; accent-color: var(--gold); }
 .bet-cell.lost { opacity: 0.45; }
 .bet-cell .rl-chip { right: -7px; top: -9px; z-index: 2; } /* Chip-Marke in der Ecke, nicht über der Beschriftung */
 
+/* ---------- Keno ---------- */
+.keno-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+.keno-num {
+  aspect-ratio: 1; border-radius: 6px; border: 1px solid var(--line-strong); padding: 0;
+  background: rgba(255, 255, 255, 0.05); color: #cfe8dc; font-weight: 700; font-size: 11px;
+  cursor: pointer; transition: background 0.12s, transform 0.1s;
+}
+.keno-num:hover { background: rgba(124, 240, 174, 0.15); }
+.keno-num.selected { background: linear-gradient(180deg, var(--gold-2), var(--gold)); color: #1a1305; border-color: var(--gold-2); }
+.keno-num:disabled { opacity: 0.6; cursor: not-allowed; }
+.keno-payout .prow .pays { display: block; text-align: right; }
+
+/* ---------- Rubbellos ---------- */
+.scratch-wrap { display: grid; place-items: center; padding: 4px; }
+.scratch-canvas { width: 100%; max-width: 320px; aspect-ratio: 1; border-radius: 12px; touch-action: none; cursor: crosshair; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
+
+/* ---------- Derby ---------- */
+.derby-horses { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.derby-horse {
+  display: flex; justify-content: space-between; align-items: center; gap: 6px; border-left-width: 4px;
+  padding: 8px 10px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 12px;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line-strong); color: var(--muted);
+  transition: transform 0.1s, background 0.15s;
+}
+.derby-horse:hover { transform: translateY(-1px); }
+.derby-horse.selected { background: rgba(212, 175, 55, 0.18); color: var(--text); box-shadow: 0 0 14px rgba(212, 175, 55, 0.28); }
+.derby-horse .odds { font-variant-numeric: tabular-nums; color: var(--gold-2); }
+.derby-horse:disabled { opacity: 0.6; cursor: not-allowed; }
+
 /* ---------- Belohnungen ---------- */
 .badge { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 6px; border-radius: 999px; background: var(--red); color: #fff; font-size: 10px; font-weight: 900; }
 .rewards { display: flex; flex-direction: column; gap: 14px; max-height: 70vh; overflow-y: auto; padding-right: 4px; }

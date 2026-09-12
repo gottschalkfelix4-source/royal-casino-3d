@@ -1,6 +1,6 @@
 # 🎰 Royal Casino 3D
 
-Online-Casino mit zwölf 3D-animierten Spielen, Benutzerkonten und virtuellem Spielgeld.
+Online-Casino mit siebzehn 3D-animierten Spielen, Benutzerkonten und virtuellem Spielgeld.
 Kein echtes Geld – reines Unterhaltungsprojekt.
 
 ## Starten
@@ -15,7 +15,8 @@ Dann im Browser öffnen: http://localhost:3000
 - `npm run dev` startet den Server mit automatischem Neustart bei Änderungen.
 - `node scripts/smoke.js` führt einen End-to-End-Test aller API-Endpunkte gegen eine temporäre Datenbank aus.
 - `node scripts/mp-test.js` testet den Multiplayer-Server mit echten WebSocket-Clients (`walk 3000` lässt zwei Testspieler live herumlaufen).
-- `scripts/qa-browser.js` in die Browser-Konsole einfügen: spielt alle 12 Spiele in der Halle automatisch durch und meldet Fehler.
+- `scripts/qa-browser.js` in die Browser-Konsole einfügen: spielt alle Spiele in der Halle automatisch durch und meldet Fehler.
+- `node scripts/smoke-keno.js` (ebenso `smoke-poker3`, `smoke-war`, `smoke-scratch`, `smoke-derby`) testet die Logik und Endpunkte der neueren Spiele einzeln, inklusive Monte-Carlo-Schätzung der Auszahlungsquote.
 - `npm run sim:slots` simuliert den Slot-Automaten (RTP ≈ 93 %).
 - Port ändern: `PORT=8080 npm start`, Datenverzeichnis: `CASINO_DATA_DIR=/pfad`.
 
@@ -37,6 +38,11 @@ Voraussetzung: Node.js ≥ 22.13 (nutzt das eingebaute `node:sqlite`, keine nati
 | 🪙 Münzwurf | Kopf oder Zahl, 1,96× |
 | 🎯 Glücksrad | 24 Segmente mit Multiplikatoren bis 5× |
 | 🔺 Hi-Lo | Höher/niedriger-Kette mit wachsendem Multiplikator |
+| 🎱 Keno | 1–10 Zahlen aus 80 tippen, 20 werden gezogen – Kugelmaschine mit Zahlentafel, bis 10.000× |
+| ♣️ 3-Card Poker | Ante, Play und Pair Plus gegen den Dealer (qualifiziert ab Dame), Ante-Bonus bis 5:1, Pair Plus bis 40:1 |
+| ⚔️ Casino War | Höhere Karte gewinnt; bei Gleichstand Krieg (Einsatz ×2) oder Aufgeben (½ zurück), Doppelgleichstand-Bonus |
+| 🎫 Rubbellos | Lose in drei Preisstufen, 3×3 Felder mit der Maus freirubbeln, drei gleiche Symbole zahlen bis 500× |
+| 🏇 Derby | Sechs Pferde mit festen Quoten laufen als Diorama unter der Glashaube, Wette auf den Sieger |
 
 ## Lobby & Multiplayer
 
@@ -96,7 +102,7 @@ docker compose up -d          # nutzt ghcr.io/gottschalkfelix4-source/royal-casi
   - Tagesbonus 🪙 500, +100 je Tag in Folge bis 🪙 1.500; ein verpasster Tag setzt die Serie zurück
   - 3 Tagesaufgaben (z. B. „3 Runden Blackjack“, „an 3 Tischen spielen“, „Chips sammeln“), Fortschritt automatisch aus den Runden, 🪙 100–400 je Aufgabe
   - Leuchtende Chips (🪙 10–50) liegen in der Halle – drüberlaufen sammelt sie ein, max. 🪙 500 pro Tag
-  - 13 Erfolge mit einmaligem Bonus (erste Runde, 100 Runden, 10×-Gewinn, alle 12 Spiele, 5 Siege in Folge, High Roller, 7-Tage-Serie …)
+  - 13 Erfolge mit einmaligem Bonus (erste Runde, 100 Runden, 10×-Gewinn, alle Spiele, 5 Siege in Folge, High Roller, 7-Tage-Serie …)
 - Profil mit Statistiken und vollständigem Buchungsverlauf, Rangliste nach Guthaben.
 
 ## Architektur
@@ -117,6 +123,9 @@ docker compose up -d          # nutzt ghcr.io/gottschalkfelix4-source/royal-casi
   Mitspielern drehen von selbst. `roulettewheel.js` ist der Kessel (ruhende Schale mit Kugelbahn und Rauten, drehender
   Rotor mit Fächern, Stegen, Zahlenkranz), `roulettelayout.js` das Tableau mit Feldkoordinaten – Einsätze liegen als
   3D-Chips auf dem Tisch, der Dolly markiert die Gewinnzahl, beim Drehen fährt die Kamera an den Kessel heran.
+  Weitere Stationen liegen als eigene Module unter `public/js/three/stations/` (Keno-Kugelmaschine, Poker- und War-Tisch,
+  Rubbellos-Automat, Derby-Diorama); jedes Modul liefert eine Gruppe mit `userData` (Hitbox, Plätze, Mount, Leerlauf-Animation),
+  die `casino.js` über `addModuleStation` in die Halle setzt.
 - **Datenbank**: `data/casino.db` (wird beim ersten Start angelegt).
 
 ## Projektstruktur

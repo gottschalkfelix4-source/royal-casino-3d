@@ -11,6 +11,11 @@ export const GAMES = [
   { id: 'coinflip', name: 'Münzwurf', icon: '🪙', accent: '#eab308', tagline: 'Kopf oder Zahl – 1,96× Auszahlung', load: () => import('./coinflip.js') },
   { id: 'wheel', name: 'Glücksrad', icon: '🎯', accent: '#06b6d4', tagline: 'Dreh das Rad – bis zu 5× Einsatz', load: () => import('./wheel.js') },
   { id: 'hilo', name: 'Hi-Lo', icon: '🔺', accent: '#f97316', tagline: 'Höher oder niedriger? Multiplikator-Kette', load: () => import('./hilo.js') },
+  { id: 'keno', name: 'Keno', icon: '🎱', accent: '#22c55e', tagline: 'Bis zu 10 Zahlen tippen – Treffer zahlen bis 10.000×', load: () => import('./keno.js') },
+  { id: 'poker3', name: '3-Card Poker', icon: '♣️', accent: '#60a5fa', tagline: 'Drei Karten gegen den Dealer – Pair Plus bis 40:1', load: () => import('./poker3.js') },
+  { id: 'war', name: 'Casino War', icon: '⚔️', accent: '#f43f5e', tagline: 'Höhere Karte gewinnt – bei Gleichstand: Krieg!', load: () => import('./war.js') },
+  { id: 'scratch', name: 'Rubbellos', icon: '🎫', accent: '#9ca3af', tagline: 'Drei gleiche Symbole freirubbeln – bis 500× Lospreis', load: () => import('./scratch.js') },
+  { id: 'derby', name: 'Derby', icon: '🏇', accent: '#b45309', tagline: 'Sechs Pferde, eine Wette – Quoten bis 22×', load: () => import('./derby.js') },
 ];
 
 export const getGame = (id) => GAMES.find((g) => g.id === id);

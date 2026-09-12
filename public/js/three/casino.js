@@ -7,6 +7,11 @@ import { rouletteLayoutTexture, LAYOUT, layoutCell, layoutToLocal } from './roul
 import { marbleTexture, carpetTexture, runnerTexture, wallTexture, ceilingTexture, neonTexture } from './textures.js';
 import { mat, merged, contactShadow, casinoChair, gameTable, chipRack, column, bar, chandelier, pedestal, fortuneWheel, cabinet, rewardsBoard, STAND_CENTER_Y, ropePost, sconce, painting, dolly } from './furniture.js';
 import { buildSlotMachine } from './slotmachine.js';
+import { buildKenoStation } from './stations/keno.js';
+import { buildPoker3Station } from './stations/poker3.js';
+import { buildWarStation } from './stations/war.js';
+import { buildScratchStation } from './stations/scratch.js';
+import { buildDerbyStation } from './stations/derby.js';
 
 /**
  * Prozedural gebaute Casino-Halle im Las-Vegas-Stil: Marmorboden mit Teppichinseln und roten Läufern
@@ -125,6 +130,10 @@ export function buildCasino(engine) {
     { x0: -19.7, z0: -5.4, x1: -14.5, z1: 5.4, kind: 'island' },   // Slot-Bank
     { x0: 16.3, z0: -2.6, x1: 19.7, z1: 10.6, kind: 'island' },    // Automaten rechte Wand
     { x0: -8.6, z0: -14.7, x1: 8.6, z1: -10.5, kind: 'island' },   // Rückwand: Glücksrad, Crash, Plinko
+    { x0: -19.7, z0: 6.9, x1: -15.7, z1: 10.3, kind: 'island' },    // Keno-Lounge (linke Wand)
+    { x0: -13.5, z0: 9.4, x1: -6.5, z1: 14.6, kind: 'island' },     // 3-Card Poker (Eingang links)
+    { x0: 9.4, z0: -14.7, x1: 15.6, z1: -10.3, kind: 'island' },    // Casino War (hinten rechts)
+    { x0: 8, z0: 9.2, x1: 13, z1: 13.2, kind: 'island' },           // Derby-Diorama (Eingang rechts)
   ];
   for (const z of ZONES) carpetPiece(scene, z);
 
@@ -166,7 +175,7 @@ export function buildCasino(engine) {
   ], m.brass));
   // Gemälde an den Seitenwänden, Wandleuchten an allen Wänden
   let pSeed = 0;
-  for (const [x, z, ry] of [[-w / 2 + 0.05, 8, Math.PI / 2], [-w / 2 + 0.05, -8, Math.PI / 2], [w / 2 - 0.05, -8, -Math.PI / 2], [w / 2 - 0.05, 13, -Math.PI / 2], [-11, d / 2 - 0.05, Math.PI], [11, d / 2 - 0.05, Math.PI], [11, -d / 2 + 0.05, 0]]) {
+  for (const [x, z, ry] of [[-w / 2 + 0.05, 12.5, Math.PI / 2], [-w / 2 + 0.05, -8, Math.PI / 2], [w / 2 - 0.05, -8, -Math.PI / 2], [w / 2 - 0.05, 13, -Math.PI / 2], [-11, d / 2 - 0.05, Math.PI], [11, d / 2 - 0.05, Math.PI], [11, -d / 2 + 0.05, 0]]) {
     const p = painting(1.4, 1.0, pSeed++); p.position.set(x, 3.3, z); p.rotation.y = ry; scene.add(p);
   }
   for (let x = -16; x <= 16; x += 8) {
@@ -392,6 +401,23 @@ export function buildCasino(engine) {
   setMount(pdSt, { type: 'table', scale: 0.14, offset: [0, 0.93, 0], hide: [pd.userData.spin], pull: 0 });
   animated.push((dt, t) => { pd.userData.spin.rotation.y += dt * 2; pd.userData.spin.position.y = 1.5 + Math.sin(t * 2) * 0.1; });
 
+  // ---------- Stationen aus eigenen Modulen (Keno, 3-Card Poker, Casino War, Rubbellos, Derby) ----------
+  // Jedes Modul liefert eine Gruppe mit userData { hit, labelY, seats, face, sit, chairs, mount, update, dealer }
+  const moduleDealers = [];
+  const addModuleStation = (id, name, group, { x, z, rotY = 0 }) => {
+    const u = group.userData;
+    const st = addStation(id, name, group, { x, z, rotY, hit: u.hit, labelY: u.labelY ?? 2.9, seats: u.seats, face: u.face ?? [0, 0], sit: u.sit ?? true, chairs: !!u.chairs });
+    if (u.mount) setMount(st, u.mount);
+    if (u.update) animated.push((dt, t) => u.update(dt, t));
+    if (u.dealer) moduleDealers.push([id, u.dealer.name, u.dealer.lx, u.dealer.lz]);
+    return st;
+  };
+  addModuleStation('keno', '🎱 Keno', buildKenoStation(), { x: -17.4, z: 8.6, rotY: Math.PI / 2 });
+  addModuleStation('poker3', '♣️ 3-Card Poker', buildPoker3Station(), { x: -10, z: 11.8 });
+  addModuleStation('war', '⚔️ Casino War', buildWarStation(), { x: 12.5, z: -12.6 });
+  addModuleStation('scratch', '🎫 Rubbellos', buildScratchStation(), { x: 19.3, z: 4, rotY: -Math.PI / 2 });
+  addModuleStation('derby', '🏇 Derby', buildDerbyStation(), { x: 10.5, z: 11.2 });
+
   // ---------- Samtkordeln, Pflanzen ----------
   const ropeMat = new THREE.MeshStandardMaterial({ color: 0x8a1030, roughness: 0.85 });
   for (const side of [-1, 1]) {
@@ -409,7 +435,7 @@ export function buildCasino(engine) {
   const placePlant = (plant, x, z) => { plant.position.set(x, 0, z); scene.add(plant); plants.push(plant); const cs = contactShadow(1.4, 1.4, 0.5); cs.position.set(x, 0.02, z); scene.add(cs); };
   let seed = 0.13;
   for (const [px, pz] of [[-18.5, 13], [18.5, 13], [-18.5, -13], [18.5, -13], [-6.2, 13.6], [6.2, 13.6]]) placePlant(createPalm({ height: 2.2 + (seed += 0.17) % 0.5, fronds: 11, seed }), px, pz);
-  for (const [px, pz] of [[-12.9, -9.9], [12.9, -9.9], [-12.9, 9.9], [12.9, 9.9], [-3.1, -9.9], [3.1, -9.9]]) placePlant(createFicus({ height: 1.6 + (seed += 0.11) % 0.4, seed }), px, pz);
+  for (const [px, pz] of [[-12.9, -9.9], [16.5, -11.5], [-12.9, 9.9], [15.6, 12.5], [-3.1, -9.9], [3.1, -9.9]]) placePlant(createFicus({ height: 1.6 + (seed += 0.11) % 0.4, seed }), px, pz);
   animated.push((dt, t) => { for (const p of plants) p.userData.sway(t); });
 
   // ---------- Info-Tafeln ----------
@@ -433,7 +459,7 @@ export function buildCasino(engine) {
   scene.add(boardSpot, boardSpot.target);
 
   // ---------- Croupiers ----------
-  const DEALERS = [['blackjack', 'Croupier Max', 0, -0.5], ['baccarat', 'Croupier Lea', 0, -1.6], ['roulette', 'Croupier Tom', -0.6, -1.6], ['dice', 'Croupier Ana', 0, -1.5]];
+  const DEALERS = [['blackjack', 'Croupier Max', 0, -0.5], ['baccarat', 'Croupier Lea', 0, -1.6], ['roulette', 'Croupier Tom', -0.6, -1.6], ['dice', 'Croupier Ana', 0, -1.5], ...moduleDealers];
   for (const [id, name, lx, lz] of DEALERS) {
     const st = stations.find((s) => s.id === id);
     if (!st) continue;

@@ -198,6 +198,22 @@ export function layoutTexture(kind, W = 1024, H = 512) {
     ctx.font = '700 40px Cinzel, Georgia, serif'; ctx.fillText('HI · LO', W / 2, 90);
     ctx.font = '600 22px Inter, Arial'; ctx.fillText('HÖHER ODER NIEDRIGER · KETTE FÜR MULTIPLIKATOR', W / 2, 135);
     roundRect(ctx, W / 2 - 90, 190, 180, 250, 16); ctx.stroke();
+  } else if (kind === 'poker3') {
+    ctx.font = '700 40px Cinzel, Georgia, serif'; ctx.fillText('3-CARD POKER', W / 2, 70);
+    ctx.font = '600 22px Inter, Arial'; ctx.fillText('DEALER QUALIFIZIERT AB DAME · ANTE-BONUS BIS 5:1', W / 2, 115);
+    [['ANTE', '1 : 1'], ['PLAY', '1 : 1'], ['PAIR PLUS', 'bis 40 : 1']].forEach(([t, o], i) => {
+      const x = 180 + i * 332;
+      roundRect(ctx, x - 130, 250, 260, 150, 18); ctx.stroke();
+      ctx.font = '700 38px Cinzel, Georgia, serif'; ctx.fillText(t, x, 315);
+      ctx.font = '600 26px Inter, Arial'; ctx.fillText(o, x, 365);
+    });
+  } else if (kind === 'war') {
+    ctx.font = '700 42px Cinzel, Georgia, serif'; ctx.fillText('CASINO WAR', W / 2, 80);
+    ctx.font = '600 22px Inter, Arial'; ctx.fillText('HÖHERE KARTE GEWINNT · GLEICHSTAND = KRIEG', W / 2, 125);
+    ctx.strokeRect(W / 2 - 300, 220, 260, 160); ctx.strokeRect(W / 2 + 40, 220, 260, 160);
+    ctx.font = '600 24px Inter, Arial'; ctx.fillText('DEALER', W / 2 - 170, 400); ctx.fillText('SPIELER', W / 2 + 170, 400);
+    roundRect(ctx, W / 2 - 110, 250, 220, 100, 14); ctx.stroke();
+    ctx.font = '700 30px Cinzel, Georgia, serif'; ctx.fillText('KRIEG', W / 2, 315);
   }
   return canvasTexture(canvas);
 }

@@ -8,7 +8,7 @@ export const EARN_WAYS = [
   { icon: '📅', title: 'Tagesbonus', text: '🪙 500 pro Tag, +100 für jeden Tag in Folge – bis 🪙 1.500. Serie halten!' },
   { icon: '📋', title: 'Tagesaufgaben', text: 'Jeden Tag 3 Aufgaben (z. B. „3 Runden Blackjack“). Fortschritt läuft automatisch, Belohnung 🪙 100–400.' },
   { icon: '🪙', title: 'Chips in der Halle', text: 'Leuchtende Chips liegen in der Halle – drüberlaufen sammelt 🪙 10–50 ein. Bis 🪙 500 am Tag.' },
-  { icon: '🏆', title: 'Erfolge', text: '13 einmalige Boni: erste Runde, 100 Runden, 10×-Gewinn, alle 12 Spiele, 5 Siege in Folge … bis 🪙 2.500.' },
+  { icon: '🏆', title: 'Erfolge', text: '13 einmalige Boni: erste Runde, 100 Runden, 10×-Gewinn, alle Spiele, 5 Siege in Folge … bis 🪙 2.500.' },
 ];
 
 /** Einmalige "Was ist neu"-Meldung nach dem Update (Server merkt sich pro Konto, dass sie gezeigt wurde). */
