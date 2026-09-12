@@ -28,8 +28,9 @@ export default class HiLo extends GameBase {
   buildPanel() {
     this.bet = betControl({ balance: () => this.balance, value: 50_00 });
     this.startBtn = bigButton('🔺 STARTEN', () => this.start());
-    this.higherBtn = h('button.btn.btn-green.btn-big', { onclick: () => this.guess('higher') }, '▲ Höher');
-    this.lowerBtn = h('button.btn.btn-red.btn-big', { onclick: () => this.guess('lower') }, '▼ Niedriger');
+    // Zweizeilig: Beschriftung oben, Quote und Chance klein darunter (passt in die Panelbreite)
+    this.higherBtn = h('button.btn.btn-green.btn-big.btn-2line', { onclick: () => this.guess('higher') }, h('span.lbl', {}, '▲ Höher oder gleich'), h('span.sub', {}, ''));
+    this.lowerBtn = h('button.btn.btn-red.btn-big.btn-2line', { onclick: () => this.guess('lower') }, h('span.lbl', {}, '▼ Niedriger oder gleich'), h('span.sub', {}, ''));
     this.skipBtn = h('button.btn', { onclick: () => this.skip() }, '⏭ Karte überspringen');
     this.cashBtn = h('button.btn.btn-gold.btn-big', { onclick: () => this.cashout() }, '💰 Auszahlen');
     this.actions = h('div.hidden', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } }, this.higherBtn, this.lowerBtn, this.skipBtn, this.cashBtn);
@@ -73,8 +74,8 @@ export default class HiLo extends GameBase {
     this.startBtn.classList.toggle('hidden', !!this.game);
     if (this.game) {
       const o = game.odds;
-      this.higherBtn.textContent = `▲ Höher oder gleich · ${fmtMult(o.higher.mult)} (${Math.round(o.higher.p * 100)} %)`;
-      this.lowerBtn.textContent = `▼ Niedriger oder gleich · ${fmtMult(o.lower.mult)} (${Math.round(o.lower.p * 100)} %)`;
+      this.higherBtn.querySelector('.sub').textContent = `${fmtMult(o.higher.mult)} · Chance ${Math.round(o.higher.p * 100)} %`;
+      this.lowerBtn.querySelector('.sub').textContent = `${fmtMult(o.lower.mult)} · Chance ${Math.round(o.lower.p * 100)} %`;
       this.cashBtn.textContent = `💰 Auszahlen 🪙 ${fmt(Math.floor(game.bet * game.multiplier))}`;
       this.multBox.set(fmtMult(game.multiplier), game.multiplier > 1 ? 'gold' : '');
       this.payBox.set(`🪙 ${fmt(Math.floor(game.bet * game.multiplier))}`, game.multiplier > 1 ? 'win' : '');

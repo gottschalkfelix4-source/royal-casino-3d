@@ -56,7 +56,7 @@ export default class Blackjack extends GameBase {
     this.dealBtn = bigButton('🃏 AUSTEILEN', () => this.start());
     this.hitBtn = h('button.btn.btn-green', { onclick: () => this.action('hit') }, '➕ Karte');
     this.standBtn = h('button.btn.btn-red', { onclick: () => this.action('stand') }, '✋ Halten');
-    this.doubleBtn = h('button.btn.btn-gold', { onclick: () => this.action('double') }, '2× Verdoppeln');
+    this.doubleBtn = h('button.btn.btn-gold', { onclick: () => this.action('double') }, 'Verdoppeln');
     this.actions = h('div.grid-3.hidden', {}, this.hitBtn, this.standBtn, this.doubleBtn);
     this.status = statBox('Status', 'Bereit');
     this.history = historyStrip(12);

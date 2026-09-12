@@ -125,7 +125,15 @@ body.hall .game-stage.embedded .game-hud, body.hall .game-stage.embedded .game-b
 .btn-red { background: linear-gradient(180deg, #ff6b5b, var(--red) 55%, var(--red-dark)); color: #fff; border-color: #ff9b90; box-shadow: 0 4px 18px rgba(231, 76, 60, 0.3); }
 .btn-red:hover { background: linear-gradient(180deg, #ff8072, #f05a4a 55%, #b83a2d); }
 .btn-ghost { background: transparent; }
-.btn-big { padding: 16px 20px; font-size: 17px; border-radius: 14px; letter-spacing: 0.04em; width: 100%; font-family: var(--font-display); font-weight: 700; }
+.btn-big { padding: 16px 20px; font-size: 17px; border-radius: 14px; letter-spacing: 0.04em; width: 100%; font-family: var(--font-display); font-weight: 700; white-space: normal; line-height: 1.2; }
+/* Zweizeilige große Taste: Beschriftung + kleine Zusatzzeile (z. B. Quote) */
+.btn-2line { flex-direction: column; gap: 3px; padding: 11px 14px; }
+.btn-2line .lbl { display: block; }
+.btn-2line .sub { display: block; font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: 0; opacity: 0.85; }
+.btn-2line .sub:empty { display: none; }
+/* Im Spielpanel brechen lange Beschriftungen um, statt aus der Taste zu laufen */
+.game-panel .btn { white-space: normal; line-height: 1.25; }
+.range-label { flex: none; white-space: nowrap; min-width: 68px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
 .btn-block { width: 100%; }
 .btn.selected { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.35), 0 0 18px rgba(212, 175, 55, 0.25); }
@@ -428,15 +436,16 @@ input[type='range'] { width: 100%; accent-color: var(--gold); }
 .rl-dock .rl-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
 .bet-cells { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .bet-cell {
-  position: relative; padding: 12px 6px; border-radius: 12px; text-align: center; cursor: pointer; font-size: 12px; min-width: 0;
-  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line-strong); font-weight: 800;
+  position: relative; padding: 12px 4px; border-radius: 12px; text-align: center; cursor: pointer; font-size: 11px; min-width: 0;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line-strong); font-weight: 800; letter-spacing: 0;
+  white-space: nowrap; overflow: visible;
   transition: transform 0.1s, border-color 0.15s, background 0.15s;
 }
 .bet-cell:hover { transform: translateY(-2px); border-color: rgba(212, 175, 55, 0.6); }
 .bet-cell .odds { display: block; font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 3px; }
 .bet-cell.winner { border-color: var(--gold-2); box-shadow: 0 0 20px rgba(212, 175, 55, 0.5); background: rgba(212, 175, 55, 0.18); }
 .bet-cell.lost { opacity: 0.45; }
-.bet-cell .rl-chip { right: 6px; top: 6px; }
+.bet-cell .rl-chip { right: -7px; top: -9px; z-index: 2; } /* Chip-Marke in der Ecke, nicht über der Beschriftung */
 
 /* ---------- Belohnungen ---------- */
 .badge { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 6px; border-radius: 999px; background: var(--red); color: #fff; font-size: 10px; font-weight: 900; }

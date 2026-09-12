@@ -60,7 +60,7 @@ export default class Mines extends GameBase {
   buildPanel() {
     this.bet = betControl({ balance: () => this.balance, value: 50_00 });
     this.minesInput = h('input', { type: 'range', min: 1, max: 24, value: 3, oninput: () => this.updateMinesLabel() });
-    this.minesLabel = h('span', {}, '3 Minen');
+    this.minesLabel = h('span.range-label', {}, '3 Minen');
     this.startBtn = bigButton('💣 STARTEN', () => this.start());
     this.cashBtn = bigButton('💰 AUSZAHLEN', () => this.cashout(), 'btn-green');
     this.cashBtn.classList.add('hidden');
