@@ -29,7 +29,7 @@ export function renderLobby(root, { openAuth }) {
   const updateOnline = () => { online.textContent = `● ${[...rt.players.values()].filter((p) => !p.bot).length || (store.user ? 1 : 0)} online`; };
   updateOnline();
 
-  const hint = h('div.lobby-hint', {}, h('span.kbd', {}, 'W A S D'), ' laufen · Maus ziehen: umsehen · ', h('span.kbd', {}, 'E'), ' / Klick: spielen · ', h('span.kbd', {}, 'Enter'), ' Chat');
+  const hint = h('div.lobby-hint', {}, h('span.kbd', {}, 'W A S D'), ' laufen · Maus ziehen: umsehen · Mausrad: zoomen · ', h('span.kbd', {}, 'E'), ' / Klick: spielen · ', h('span.kbd', {}, 'Enter'), ' Chat');
   const prompt = h('div.lobby-prompt');
   const ticker = h('div.lobby-ticker');
   const crosshair = h('div.crosshair');

@@ -51,7 +51,7 @@ Blumenläufern, helle Kassettendecke mit goldenen Bogenrippen und Lichtvouten, T
 Kronleuchter, Bar. Die fertige Halle wird beim Start einmal als Cubemap aufgenommen und dient als
 Umgebungsspiegelung für Marmor, Gold und Chrom.
 
-- **Steuerung**: `W A S D` / Pfeiltasten laufen, `Shift` rennen, Maus ziehen zum Umsehen, `Q`/`E` drehen.
+- **Steuerung**: `W A S D` / Pfeiltasten laufen, `Shift` rennen, Maus ziehen zum Umsehen, Mausrad zoomt (raus/rein), `Q`/`E` drehen.
   In der Nähe eines Tisches: `E` oder Klick startet das Spiel. `Enter` fokussiert den Chat.
 - **Andere Spieler** sind als Figuren mit Namensschild sichtbar – beim Herumlaufen und sitzend/stehend an
   dem Tisch oder Automaten, an dem sie gerade spielen. Gewinne und Verluste erscheinen live über der Figur

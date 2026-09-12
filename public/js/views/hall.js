@@ -27,6 +27,7 @@ class Hall {
     this.hovered = null;
     this.nearStation = null;
     this.spectateStation = null;
+    this.zoom = 1; // Mausrad: >1 = weiter weg (größerer Blickwinkel), <1 = näher heran
   }
 
   on(type, fn) {
@@ -112,6 +113,12 @@ class Hall {
       }
     });
     canvas.addEventListener('pointerleave', () => { this.dragging = false; this.setHover(null); });
+    // Mausrad: raus-/hereinzoomen (Blickwinkel). Über dem Spielpanel wird nicht gefangen, dort scrollt es normal.
+    canvas.addEventListener('wheel', (e) => {
+      if (this.mode === 'idle') return;
+      e.preventDefault();
+      this.zoom = Math.max(0.6, Math.min(2.2, this.zoom * Math.exp(e.deltaY * 0.0012)));
+    }, { passive: false });
     window.addEventListener('keydown', (e) => {
       if (this.mode !== 'walk') return;
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -281,6 +288,9 @@ class Hall {
   /** Kamera vorübergehend auf ein Ziel richten (z. B. Kessel beim Drehen): pos/look in Weltkoordinaten, fov optional */
   setFocus({ pos = null, look = null, fov = null } = {}) { this.focus = { pos, look, fov }; }
   clearFocus() { this.focus = null; }
+
+  /** Mausrad-Zoom auf einen Basis-Blickwinkel anwenden, auf sinnvolle Grenzen begrenzt */
+  fovFor(base) { return Math.max(25, Math.min(105, base * this.zoom)); }
 
   /**
    * Spielszene direkt in die Halle einbauen (auf die Tischplatte bzw. in den Automaten).
@@ -468,7 +478,8 @@ class Hall {
     if ((this.frame++ % 3) === 0) engine.renderer.shadowMap.needsUpdate = true;
 
     if (this.mode === 'walk') {
-      if (Math.abs(engine.camera.fov - 70) > 0.05) { engine.camera.fov += (70 - engine.camera.fov) * Math.min(1, dt * 4); engine.camera.updateProjectionMatrix(); }
+      const walkFov = this.fovFor(70);
+      if (Math.abs(engine.camera.fov - walkFov) > 0.05) { engine.camera.fov += (walkFov - engine.camera.fov) * Math.min(1, dt * 4); engine.camera.updateProjectionMatrix(); }
       const speed = (keys.has('shift') ? 5.5 : 3.2) * dt;
       const fwd = new THREE.Vector3(-Math.sin(me.yaw), 0, -Math.cos(me.yaw));
       const right = new THREE.Vector3(Math.cos(me.yaw), 0, -Math.sin(me.yaw));
@@ -514,7 +525,7 @@ class Hall {
       const target = basePos.clone();
       target.y += Math.sin(t * 1.4) * 0.012;
       engine.camera.position.lerp(target, Math.min(1, dt * 2.5));
-      const wantFov = f?.fov ?? c.fov ?? 70;
+      const wantFov = this.fovFor(f?.fov ?? c.fov ?? 70);
       if (Math.abs(engine.camera.fov - wantFov) > 0.05) { engine.camera.fov += (wantFov - engine.camera.fov) * Math.min(1, dt * 3); engine.camera.updateProjectionMatrix(); }
       const d = baseLook.clone().sub(basePos);
       const baseYaw = Math.atan2(-d.x, -d.z);
