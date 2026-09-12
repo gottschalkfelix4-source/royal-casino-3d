@@ -314,15 +314,21 @@ export function buildCasino(engine) {
   const dollyDeco = dolly();
   const dp = layoutToLocal(layoutCell('straight:23')); dollyDeco.position.set(0.78 + dp.x, 0.958, dp.z);
   rl.add(dollyDeco); rlDeco.push(dollyDeco);
-  const rlSeats = [[-0.9, 1.55], [0.1, 1.55], [1.1, 1.55]];
-  const rlSt = addStation('roulette', '🎡 Roulette', rl, { x: -8, z: 4.4, hit: [5.4, 2.4, 3.8], seats: rlSeats, face: (lx) => [lx, 0], chairs: true });
+  // Sitzordnung: zwei Plätze an der Längsseite nahe am Kessel, ein Kopfplatz am Tischende mit freiem Blick über das
+  // ganze Tableau zum Kessel – so sitzt nie ein Mitspieler zwischen Spieler und Kessel.
+  const rlSeats = [[-0.9, 1.55], [0.25, 1.55], [2.85, 0]];
+  const rlSt = addStation('roulette', '🎡 Roulette', rl, { x: -8, z: 4.4, hit: [6.4, 2.4, 3.8], seats: rlSeats, face: (lx, lz) => (lz > 1 ? [lx, 0] : [0, 0]), chairs: true });
   setMount(rlSt, {
-    type: 'fixed', scale: 1, pull: 0, hide: rlDeco, fov: 62,
-    // Sitzkamera: leicht erhöht hinter dem eigenen Platz, Kessel (links) und Tableau (rechts) gemeinsam im Bild
-    cam: (i) => ({
-      pos: rl.localToWorld(new THREE.Vector3(-0.35 + rlSeats[i][0] * 0.45, 1.62, 2.25)),
-      look: rl.localToWorld(new THREE.Vector3(-0.45, 0.9, -0.15)),
-    }),
+    type: 'fixed', scale: 1, pull: 0, hide: rlDeco, fov: 64,
+    // Sitzkamera auf dem EIGENEN Platz (Augenhöhe sitzend, leicht zur Tischkante gebeugt); Blickziel zwischen
+    // Kessel und Tableau, je nach Platz verschoben.
+    cam: (i) => {
+      const [sx, sz] = rlSeats[i];
+      const look = sz > 1 ? new THREE.Vector3(-0.8 + sx * 0.3, 0.9, -0.2) : new THREE.Vector3(-0.2, 0.9, 0);
+      const dir = new THREE.Vector3(look.x - sx, 0, look.z - sz).normalize();
+      const pos = new THREE.Vector3(sx + dir.x * 0.3, sz > 1 ? 1.42 : 1.5, sz + dir.z * 0.3);
+      return { pos: rl.localToWorld(pos), look: rl.localToWorld(look) };
+    },
     extra: () => ({ wheel: wheelState, layout: rl.userData.decal, table: rl, chipY: 0.958 }),
   });
   animated.push((dt) => {
@@ -427,7 +433,7 @@ export function buildCasino(engine) {
   scene.add(boardSpot, boardSpot.target);
 
   // ---------- Croupiers ----------
-  const DEALERS = [['blackjack', 'Croupier Max', 0, -0.5], ['baccarat', 'Croupier Lea', 0, -1.6], ['roulette', 'Croupier Tom', -0.2, -1.6], ['dice', 'Croupier Ana', 0, -1.5]];
+  const DEALERS = [['blackjack', 'Croupier Max', 0, -0.5], ['baccarat', 'Croupier Lea', 0, -1.6], ['roulette', 'Croupier Tom', -0.6, -1.6], ['dice', 'Croupier Ana', 0, -1.5]];
   for (const [id, name, lx, lz] of DEALERS) {
     const st = stations.find((s) => s.id === id);
     if (!st) continue;

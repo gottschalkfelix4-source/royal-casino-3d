@@ -412,7 +412,12 @@ class Hall {
     if (!a) {
       const av = createAvatar({ name: p.name, bot: p.bot });
       this.engine.scene.add(av);
-      a = { av, target: new THREE.Vector3(p.x, 0, p.z), ry: p.ry ?? 0, anim: p.anim, seat: null };
+      // Materialien der Figur (je Figur eigene Instanzen) für weiches Ausblenden vor der Sitzkamera
+      const materials = new Map();
+      av.traverse((o) => { if (o.material && !materials.has(o.material)) materials.set(o.material, o.material.depthWrite); });
+      const label = av.userData.label;
+      label.userData.baseScale = label.scale.clone();
+      a = { av, target: new THREE.Vector3(p.x, 0, p.z), ry: p.ry ?? 0, anim: p.anim, seat: null, materials: [...materials.entries()], opacity: 1 };
       av.position.copy(a.target);
       this.avatars.set(p.id, a);
     }
@@ -544,6 +549,9 @@ class Hall {
     }
 
     const camPos = engine.camera.position;
+    // Blickachse im Sitzen: Figuren, die nah davor stehen (Nachbarn, Croupier), werden durchsichtig
+    const lookDir = this.mode === 'spectate' && this.spectateCam ? (this.focus?.look ?? this.spectateCam.look).clone().sub(camPos).normalize() : null;
+    const toAv = new THREE.Vector3();
     for (const [id, a] of this.avatars) {
       const p = rt.players.get(id);
       if (!p) continue;
@@ -551,7 +559,24 @@ class Hall {
       const dist = a.av.position.distanceTo(camPos);
       const near = dist < 4.5;
       a.av.userData.lookAt(near ? camPos : null);
-      a.av.visible = !(this.mode === 'spectate' && dist < 1.05);
+      a.av.visible = !(this.mode === 'spectate' && dist < 0.9);
+      let wantOpacity = 1;
+      if (lookDir) {
+        toAv.copy(a.av.position).setY(a.av.position.y + 1.2).sub(camPos);
+        const d = toAv.length();
+        const cosA = toAv.normalize().dot(lookDir);
+        // Näher als 3,4 m und innerhalb ≈ 45° um die Blickachse: je zentraler, desto durchsichtiger (bis 14 %)
+        if (d < 3.4 && cosA > 0.7) wantOpacity = 1 - 0.86 * Math.min(1, (cosA - 0.7) / 0.18);
+      }
+      if (Math.abs(a.opacity - wantOpacity) > 0.005) {
+        a.opacity += (wantOpacity - a.opacity) * Math.min(1, dt * 6);
+        const tr = a.opacity < 0.995;
+        for (const [m, dw] of a.materials) { m.transparent = tr || m.isSpriteMaterial; m.opacity = a.opacity; m.depthWrite = tr ? false : dw; }
+      }
+      // Namensschild: aus der Nähe kleiner, damit es nicht das halbe Bild füllt
+      const label = a.av.userData.label;
+      const base = label.userData.baseScale;
+      if (base) { const f = Math.max(0.4, Math.min(1, dist / 5)); label.scale.set(base.x * f, base.y * f, 1); }
       if (a.seat) {
         a.av.position.lerp(new THREE.Vector3(a.seat.x, 0, a.seat.z), 0.2);
         a.av.rotation.y += (a.seat.ry - a.av.rotation.y) * 0.2;
