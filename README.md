@@ -105,9 +105,18 @@ docker compose up -d          # nutzt ghcr.io/gottschalkfelix4-source/royal-casi
   serverseitig (`crypto.randomInt`); der Browser bekommt nur Ergebnisse. Jede Buchung ist eine SQLite-Transaktion.
   Mehrstufige Spiele (Blackjack, Video Poker, Mines, Crash, Hi-Lo) speichern ihren Zustand in der Tabelle `games`
   und werden nach einem Reload wiederhergestellt.
-- **Client** (`public/`): Vanilla JS (ES-Module) + Three.js. Alle Texturen (Karten, Chips, Würfel, Walzen, Filz)
-  werden prozedural per Canvas erzeugt – keine Asset-Dateien nötig. `public/js/three/engine.js` kapselt Renderer,
-  Kamera, Tweens und Picking; `public/js/games/base.js` ist die Basisklasse aller Spiele.
+- **Client** (`public/`): Vanilla JS (ES-Module) + Three.js. Alle Texturen (Karten, Chips, Würfel, Walzen, Filz,
+  Marmor, Teppich) werden prozedural per Canvas erzeugt – keine Asset-Dateien nötig. `public/js/three/engine.js`
+  kapselt Renderer, Kamera, Tweens und Picking; `public/js/games/base.js` ist die Basisklasse aller Spiele.
+- **Halle** (`public/js/three/`): `casino.js` baut den Raum (Boden aus Marmor mit überlappungsfreien, 12 mm dicken
+  Teppichinseln und Läufern mit Messingbordüre, Decke, Wände, Stationen und Montagepunkte), `textures.js` die
+  Oberflächen, `furniture.js` Stühle, Spieltische (Lederrail, Zarge, Chip-Rack, Kartenschlitten, Limit-Schild),
+  Säulen, Bar, Kronleuchter, Arcade-Gehäuse. `slotmachine.js` ist der einarmige Bandit: fünf echte Walzen hinter
+  Glas, Hebel mit Zug-Animation, Tastenfeld, Kreditanzeige, beleuchtetes Top-Glas und Lauflicht. Das Slot-Spiel baut
+  seine Walzen im selben Maßstab exakt an derselben Stelle ein und zieht beim Drehen den Hebel; Automaten mit
+  Mitspielern drehen von selbst. `roulettewheel.js` ist der Kessel (ruhende Schale mit Kugelbahn und Rauten, drehender
+  Rotor mit Fächern, Stegen, Zahlenkranz), `roulettelayout.js` das Tableau mit Feldkoordinaten – Einsätze liegen als
+  3D-Chips auf dem Tisch, der Dolly markiert die Gewinnzahl, beim Drehen fährt die Kamera an den Kessel heran.
 - **Datenbank**: `data/casino.db` (wird beim ersten Start angelegt).
 
 ## Projektstruktur

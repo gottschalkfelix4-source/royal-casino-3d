@@ -4,13 +4,16 @@ import { api } from '../api.js';
 import { h, fmt } from '../ui.js';
 import { sound } from '../sound.js';
 import { section, statBox, historyStrip, chipSelector } from '../widgets.js';
-import { burst } from '../three/assets.js';
+import { burst, createChip, CHIP, CHIP_STYLES } from '../three/assets.js';
 import { buildRouletteWheel, ORDER, colorOf, POCKET, R_TRACK, R_POCKET, Y_TRACK, Y_POCKET } from '../three/roulettewheel.js';
+import { layoutCell, layoutToLocal } from '../three/roulettelayout.js';
+import { dolly } from '../three/furniture.js';
 
 const OUTSIDE = [
   { key: 'low', label: '1–18' }, { key: 'even', label: 'GERADE' }, { key: 'red', label: 'ROT' },
   { key: 'black', label: 'SCHWARZ' }, { key: 'odd', label: 'UNGERADE' }, { key: 'high', label: '19–36' },
 ];
+const CHIP_SCALE = 0.19; // Chip-Durchmesser ≈ 13,7 cm auf dem Hallentisch
 
 export default class Roulette extends GameBase {
   engineOptions() {
@@ -24,19 +27,26 @@ export default class Roulette extends GameBase {
     engine.addLights({ key: [5, 12, 6], keyIntensity: 2.4, hemi: 0.5, fill: 0.7, shadowSize: 8 });
     engine.addSpot({ position: [0, 12, 3], target: [0, 0, 0], intensity: 700, angle: 0.55, color: 0xffe6c0 });
 
-    if (!engine.embedded) {
+    if (engine.embedded) {
+      // In der Halle: der große Kessel im Tisch gehört der Halle, das Spiel dreht seinen Rotor und die Kugel;
+      // Einsätze liegen als 3D-Chips auf dem echten Tableau.
+      const ex = engine.mount.extra;
+      this.rotor = ex.wheel.rotor; this.ball = ex.wheel.ball; this.wheelGroup = ex.wheel.wheelGroup;
+      this.layoutDecal = ex.layout; this.chipY = ex.chipY;
+      this.chipRoot = new THREE.Group();
+      scene.add(this.chipRoot); // scene = Wurzel am Tisch (Weltmaßstab, Tischkoordinaten)
+      this.dollyMesh = dolly(); this.dollyMesh.visible = false;
+      scene.add(this.dollyMesh);
+      this.chipMeshes = new Map();
+    } else {
       const floor = new THREE.Mesh(new THREE.CircleGeometry(7, 64), new THREE.MeshStandardMaterial({ color: 0x0d1a14, roughness: 0.9 }));
       floor.rotation.x = -Math.PI / 2; floor.position.y = -0.01; floor.receiveShadow = true;
       scene.add(floor);
+      engine.setFit(11, 12);
+      const { group, rotor, ball } = buildRouletteWheel({ ball: true });
+      scene.add(group); group.add(ball);
+      this.rotor = rotor; this.ball = ball; this.wheelGroup = group;
     }
-    engine.setFit(11, 12);
-
-    // Gemeinsames Kesselmodell (auch in der Halle verwendet)
-    const { group: wheel, ball } = buildRouletteWheel({ ball: true });
-    scene.add(wheel);
-    this.wheel = wheel;
-    this.ball = ball;
-    scene.add(this.ball);
     this.ballPhi = Math.PI / 3;
     this.ballR = R_POCKET;
     this.ballY = Y_POCKET;
@@ -45,8 +55,8 @@ export default class Roulette extends GameBase {
 
     engine.onUpdate((dt) => {
       if (!this.spinning) {
-        this.wheel.rotation.y += dt * 0.12;
-        this.ballPhi = this.wheel.rotation.y + this.lockedIndex * POCKET;
+        this.rotor.rotation.y += dt * 0.12;
+        this.ballPhi = this.rotor.rotation.y + this.lockedIndex * POCKET;
         this.placeBall();
       }
     });
@@ -152,6 +162,50 @@ export default class Roulette extends GameBase {
       if (amt) el.append(h('span.rl-chip', {}, fmt(amt).replace(',00', '')));
     }
     this.totalBox.set(`🪙 ${fmt(this.totalBet())}`);
+    this.renderChips3D();
+  }
+
+  /** Position eines Wettfelds in Tischkoordinaten (Wurzel = Tisch) */
+  cellPosition(key) {
+    const p = layoutToLocal(layoutCell(key));
+    return new THREE.Vector3(this.layoutDecal.position.x + p.x, this.chipY, this.layoutDecal.position.z + p.z);
+  }
+
+  /** Gesetzte Beträge als Chip-Stapel auf dem echten Tableau (nur in der Halle) */
+  renderChips3D() {
+    if (!this.chipRoot) return;
+    for (const [key, group] of this.chipMeshes) {
+      if (!this.bets.has(key)) { this.chipRoot.remove(group); this.chipMeshes.delete(key); }
+    }
+    for (const [key, amount] of this.bets) {
+      // Stückelung wie ein Dealer: große Werte unten, max. 8 Chips sichtbar
+      const chips = [];
+      let rest = amount;
+      for (const st of [...CHIP_STYLES].reverse()) while (rest >= st.value && chips.length < 8) { chips.push(st.value); rest -= st.value; }
+      if (chips.length === 0) chips.push(amount);
+      chips.reverse();
+      let group = this.chipMeshes.get(key);
+      const sig = chips.join(',');
+      if (group && group.userData.sig === sig) continue;
+      if (group) this.chipRoot.remove(group);
+      group = new THREE.Group();
+      group.userData.sig = sig;
+      const base = this.cellPosition(key);
+      const jitter = (i) => (Math.sin(i * 12.9898 + key.length) * 0.5) * 0.008;
+      chips.forEach((v, i) => {
+        const c = createChip(v);
+        c.scale.setScalar(CHIP_SCALE);
+        c.position.set(jitter(i), CHIP.h * CHIP_SCALE * (i + 0.5), jitter(i + 7));
+        c.rotation.y = i * 1.3;
+        group.add(c);
+      });
+      group.position.copy(base);
+      this.chipRoot.add(group);
+      this.chipMeshes.set(key, group);
+      // neuer Stapel fällt kurz aufs Tuch
+      const y0 = base.y;
+      this.engine.tween(220, (k) => { group.position.y = y0 + (1 - k) * 0.06; }, Easing.outQuad);
+    }
   }
 
   setBusy(b) {
@@ -163,6 +217,7 @@ export default class Roulette extends GameBase {
     return this.run(async () => {
       if (this.bets.size === 0) { this.banner('Bitte zuerst setzen', 'Klicke auf den Tisch', 'info', 1600); return; }
       this.cells.forEach((el) => el.classList.remove('winner'));
+      if (this.dollyMesh) this.dollyMesh.visible = false;
       const bets = [...this.bets.entries()].map(([key, amount]) => ({ ...this.parseKey(key), amount }));
       const res = await api.post('/games/roulette/spin', { bets });
       if (this.destroyed) return;
@@ -173,15 +228,29 @@ export default class Roulette extends GameBase {
     });
   }
 
+  /** Blick zum Kessel (Halle): näher heran und Bildwinkel enger, damit der Kessel groß im Bild steht */
+  focusWheel(on) {
+    if (!this.engine.embedded) return;
+    if (!on) { this.engine.clearFocus(); return; }
+    const cam = this.engine.camera.position.clone();
+    const target = this.wheelGroup.getWorldPosition(new THREE.Vector3());
+    const dir = new THREE.Vector3().subVectors(target, cam); dir.y = 0;
+    const dist = dir.length(); dir.normalize();
+    const pos = cam.clone().addScaledVector(dir, Math.max(0, dist - 1.8));
+    pos.y = 1.85;
+    this.engine.focus({ pos, look: target.clone().setY(1.0), fov: 46 });
+  }
+
   async animateSpin(index) {
     const { engine } = this;
     this.spinning = true;
     sound.play('spin');
     const camPos = engine.camera.position.clone();
     const camTarget = engine.cameraTarget.clone();
-    engine.moveCamera([camPos.x, camPos.y * 0.8, camPos.z * 0.8], [0, 0.5, 2.2], 1400);
+    if (engine.embedded) this.focusWheel(true);
+    else engine.moveCamera([camPos.x, camPos.y * 0.8, camPos.z * 0.8], [0, 0.5, 2.2], 1400);
     const T = 6500;
-    const w0 = this.wheel.rotation.y;
+    const w0 = this.rotor.rotation.y;
     const wDelta = Math.PI * 2 * 2.2;
     const wEnd = w0 + wDelta;
     const alpha = index * POCKET;
@@ -191,10 +260,10 @@ export default class Roulette extends GameBase {
     const bDelta = need + Math.PI * 2 * 9;
     let lastTick = 0;
     await engine.tween(T, (k) => {
-      this.wheel.rotation.y = w0 + wDelta * Easing.outCubic(k);
+      this.rotor.rotation.y = w0 + wDelta * Easing.outCubic(k);
       const kb = Easing.outQuart(k);
       this.ballPhi = b0 - bDelta * kb;
-      let drop = k < 0.6 ? 0 : Easing.inOutQuad((k - 0.6) / 0.4);
+      const drop = k < 0.6 ? 0 : Easing.inOutQuad((k - 0.6) / 0.4);
       this.ballR = R_TRACK + (R_POCKET - R_TRACK) * drop;
       this.ballY = Y_TRACK + (Y_POCKET - Y_TRACK) * drop;
       if (k > 0.66 && k < 0.95) {
@@ -207,7 +276,8 @@ export default class Roulette extends GameBase {
     this.lockedIndex = index;
     sound.play('stop');
     this.spinning = false;
-    engine.moveCamera(camPos.toArray(), camTarget.toArray(), 2500);
+    if (engine.embedded) { clearTimeout(this.focusTimer); this.focusTimer = setTimeout(() => this.focusWheel(false), 2600); }
+    else engine.moveCamera(camPos.toArray(), camTarget.toArray(), 2500);
   }
 
   showResult(res) {
@@ -222,13 +292,29 @@ export default class Roulette extends GameBase {
       }
     }
     this.cells.get(`straight:${number}`)?.classList.add('winner');
+    // Dolly auf die Gewinnzahl, verlorene Chips werden eingezogen, gewonnene bleiben kurz liegen
+    if (this.dollyMesh) {
+      this.dollyMesh.position.copy(this.cellPosition(`straight:${number}`)).add(new THREE.Vector3(0.03, 0, -0.03));
+      this.dollyMesh.visible = true;
+      const won = new Set(bets.filter((b) => b.won).map((b) => (b.value == null ? b.type : `${b.type}:${b.value}`)));
+      const done = (key, g) => { this.chipRoot.remove(g); if (this.chipMeshes.get(key) === g) this.chipMeshes.delete(key); };
+      for (const [key, group] of this.chipMeshes) {
+        const g = group; const y0 = g.position.y; const z0 = g.position.z;
+        if (won.has(key)) this.engine.tween(2200, (k) => { g.position.y = y0 + Math.sin(k * Math.PI) * 0.02; }).then(() => done(key, g));
+        else this.engine.tween(900, (k) => { g.position.z = z0 - k * 0.9; g.position.y = y0 + k * 0.05; g.scale.setScalar(1 - k * 0.6); }, Easing.inQuad).then(() => done(key, g));
+      }
+      // Einsätze bleiben für die nächste Runde stehen: Chips nach der Animation wieder auflegen
+      clearTimeout(this.relayTimer);
+      this.relayTimer = setTimeout(() => { if (!this.destroyed) this.renderChips3D(); }, 2400);
+    }
     const total = bets.reduce((s, b) => s + b.amount, 0);
     if (payout > 0) {
       const net = payout - total;
       sound.play(net > total ? 'bigwin' : 'win');
       this.banner(`${number} ${label}`, `Auszahlung 🪙 ${fmt(payout)} (${net >= 0 ? '+' : ''}${fmt(net)})`, 'win', 3500);
       this.lastBox.set(`🪙 ${fmt(payout)}`, net >= 0 ? 'win' : 'lose');
-      burst(this.engine, new THREE.Vector3(0, 2.2, 0), { count: 70, colors: [0xffd76a, 0xffffff, 0xff7a7a], speed: 5, size: 0.07 });
+      const at = this.engine.embedded ? this.wheelGroup.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(0, 0.3, 0)) : new THREE.Vector3(0, 2.2, 0);
+      burst(this.engine, at, { count: 70, colors: [0xffd76a, 0xffffff, 0xff7a7a], speed: this.engine.embedded ? 1.2 : 5, size: this.engine.embedded ? 0.02 : 0.07, gravity: this.engine.embedded ? 2.5 : 9 });
     } else {
       sound.play('lose');
       this.banner(`${number} ${label}`, `Verloren: 🪙 ${fmt(total)}`, 'lose', 3000);
@@ -236,5 +322,12 @@ export default class Roulette extends GameBase {
     }
     this.setBalance(res.balance);
     this.undoStack = [];
+  }
+
+  destroy() {
+    clearTimeout(this.focusTimer);
+    clearTimeout(this.relayTimer);
+    if (this.engine?.embedded) this.engine.clearFocus();
+    super.destroy();
   }
 }

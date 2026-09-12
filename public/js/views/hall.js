@@ -245,19 +245,42 @@ class Hall {
     const st = this.spectateStation;
     if (this.mode !== 'spectate' || !st) return;
     const { seat } = this.mySeat(st);
-    const isTable = !this.mounted || st.mount?.type === 'table';
+    const isTable = !this.mounted || st.mount?.type !== 'screen';
     const look = this.mounted?.lookAt?.clone() ?? st.position.clone().setY(0.95);
     // Richtung vom Blickziel (Tischfläche/Bildschirm) zum Platz – nicht vom Stationsmittelpunkt (Slot-Bank!)
     const dir = new THREE.Vector3(seat.x - look.x, 0, seat.z - look.z).normalize();
-    if (seat.sit && isTable) {
-      // Sitzend am Tisch: etwas zur Tischkante gelehnt, Blick deutlich nach unten auf die Platte
-      // (Blickziel unter Tischhöhe, damit Karten/Kessel in der oberen Bildhälfte liegen, nicht hinter dem Setztisch-Overlay)
-      this.spectateCam = { pos: new THREE.Vector3(seat.x - dir.x * 0.35, 1.4, seat.z - dir.z * 0.35), look: look.setY(st.mount?.lookY ?? 0.55) };
+    const fov = this.mounted?.fov ?? 70;
+    const custom = this.mounted && st.mount?.cam ? st.mount.cam(this.mounted.index) : null;
+    if (custom) {
+      // Station legt die Sitzkamera selbst fest (z. B. Roulette: Kessel und Tableau gemeinsam im Bild)
+      this.spectateCam = { pos: custom.pos.clone(), look: custom.look.clone(), fov };
+    } else if (seat.sit && isTable) {
+      // Sitzend am Tisch: etwas zur Tischkante gelehnt, Blick nach unten auf die Platte
+      this.spectateCam = { pos: new THREE.Vector3(seat.x - dir.x * 0.35, 1.4, seat.z - dir.z * 0.35), look: look.setY(st.mount?.lookY ?? 0.55), fov };
     } else {
       // Vor einem Bildschirm (Automat, Glücksrad): auf dem Platz bleiben, Bildschirm auf Augenhöhe anschauen
-      this.spectateCam = { pos: new THREE.Vector3(seat.x, seat.sit ? 1.3 : EYE, seat.z), look };
+      this.spectateCam = { pos: new THREE.Vector3(seat.x, seat.sit ? 1.3 : EYE, seat.z), look, fov };
     }
   }
+
+  /**
+   * Im Spiel liegt rechts das Bedienpanel über der Halle: Blick so weit nach rechts drehen, dass die Spielszene
+   * in der Mitte des sichtbaren Bühnenbereichs steht (Yaw-Korrektur in rad).
+   */
+  viewBias() {
+    const stage = document.querySelector('.game-stage');
+    const cw = this.canvas?.clientWidth || 1;
+    const sw = stage?.clientWidth ?? cw;
+    const offset = (cw - sw) / 2;
+    if (offset <= 0) return 0;
+    const cam = this.engine.camera;
+    const halfW = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) * cam.aspect;
+    return Math.atan((halfW * offset) / (cw / 2));
+  }
+
+  /** Kamera vorübergehend auf ein Ziel richten (z. B. Kessel beim Drehen): pos/look in Weltkoordinaten, fov optional */
+  setFocus({ pos = null, look = null, fov = null } = {}) { this.focus = { pos, look, fov }; }
+  clearFocus() { this.focus = null; }
 
   /**
    * Spielszene direkt in die Halle einbauen (auf die Tischplatte bzw. in den Automaten).
@@ -270,7 +293,7 @@ class Hall {
     const m = st.mount;
     const { seat, index } = this.mySeat(st);
     const root = new THREE.Group();
-    const hidden = [...m.hide];
+    const hidden = [...(typeof m.hide === 'function' ? m.hide(index) : m.hide)];
     let lookAt;
     if (m.type === 'table') {
       // Spielfläche etwas zum eigenen Platz rücken, damit die eigenen Karten/Chips nah liegen
@@ -278,6 +301,11 @@ class Hall {
       root.position.set(st.position.x + m.offset.x + toSeat.x, m.offset.y, st.position.z + m.offset.z + toSeat.z);
       root.rotation.y = seat.ry;
       lookAt = root.position.clone();
+    } else if (m.type === 'fixed') {
+      // Weltkoordinaten der Station: das Spiel arbeitet in Metern direkt auf dem Hallentisch
+      root.position.copy(st.group.position).add(m.offset);
+      root.rotation.copy(st.group.rotation);
+      lookAt = root.position.clone().setY(0.95);
     } else {
       const obj = typeof m.object === 'function' ? m.object(index) : m.object;
       obj.updateWorldMatrix(true, false);
@@ -288,17 +316,22 @@ class Hall {
       if (obj.isMesh) hidden.push(obj); // Bildschirm-Attrappe ausblenden
       lookAt = obj.getWorldPosition(new THREE.Vector3());
     }
+    if (m.look) lookAt = m.look(index);
     root.scale.setScalar(m.scale);
     for (const o of hidden) o.visible = false;
     this.engine.scene.add(root);
-    this.mounted = { root, lookAt };
+    const extra = m.extra ? m.extra(index) : {};
+    if (extra.wheel) extra.wheel.controlled = true;
+    this.mounted = { root, lookAt, fov: m.fov ?? 70, station: st, index, extra };
+    this.focus = null;
     this.updateSpectateCam();
     return {
-      root,
+      root, station: st, index, extra,
       dispose: () => {
         this.engine.scene.remove(root);
         for (const o of hidden) o.visible = true;
-        if (this.mounted?.root === root) this.mounted = null;
+        if (extra.wheel) extra.wheel.controlled = false;
+        if (this.mounted?.root === root) { this.mounted = null; this.focus = null; }
       },
     };
   }
@@ -398,7 +431,10 @@ class Hall {
       // Meinen Platz an dieser Station für andere sperren
       const mine = this.mode === 'spectate' && this.mySeatChoice?.station === s.id ? this.mySeatChoice.index : -1;
       const free = s.seats.map((_, i) => i).filter((i) => i !== mine);
-      here.forEach((p, i) => { const a = this.ensureAvatar(p); if (a) a.seat = { ...s.seats[free[i % free.length]] }; });
+      const used = new Set(mine >= 0 ? [mine] : []);
+      here.forEach((p, i) => { const a = this.ensureAvatar(p); const idx = free[i % free.length]; used.add(idx); if (a) a.seat = { ...s.seats[idx] }; });
+      // Automaten mit Spieler drehen ihre Walzen von selbst
+      s.machines?.forEach((mc, i) => { mc.userData.occupied = used.has(i) && i !== mine; });
     }
     for (const [id, a] of this.avatars) { const p = rt.players.get(id); if (!p?.game) a.seat = null; }
   }
@@ -421,6 +457,7 @@ class Hall {
     if ((this.frame++ % 3) === 0) engine.renderer.shadowMap.needsUpdate = true;
 
     if (this.mode === 'walk') {
+      if (Math.abs(engine.camera.fov - 70) > 0.05) { engine.camera.fov += (70 - engine.camera.fov) * Math.min(1, dt * 4); engine.camera.updateProjectionMatrix(); }
       const speed = (keys.has('shift') ? 5.5 : 3.2) * dt;
       const fwd = new THREE.Vector3(-Math.sin(me.yaw), 0, -Math.cos(me.yaw));
       const right = new THREE.Vector3(Math.cos(me.yaw), 0, -Math.sin(me.yaw));
@@ -459,15 +496,19 @@ class Hall {
       }
       if ((best?.id ?? null) !== (this.nearStation?.id ?? null)) { this.nearStation = best; this.emit('near', best); }
     } else if (this.mode === 'spectate' && this.spectateCam) {
-      // Sitzend am Tisch: Kamera auf dem eigenen Platz, leichtes Atmen; Maus-Drag zum Umsehen
+      // Sitzend am Tisch: Kamera auf dem eigenen Platz, leichtes Atmen; Maus-Drag zum Umsehen; optionaler Fokus (z. B. Kessel)
       const c = this.spectateCam;
-      const target = c.pos.clone();
+      const f = this.focus;
+      const basePos = f?.pos ?? c.pos; const baseLook = f?.look ?? c.look;
+      const target = basePos.clone();
       target.y += Math.sin(t * 1.4) * 0.012;
       engine.camera.position.lerp(target, Math.min(1, dt * 2.5));
-      const d = c.look.clone().sub(c.pos);
+      const wantFov = f?.fov ?? c.fov ?? 70;
+      if (Math.abs(engine.camera.fov - wantFov) > 0.05) { engine.camera.fov += (wantFov - engine.camera.fov) * Math.min(1, dt * 3); engine.camera.updateProjectionMatrix(); }
+      const d = baseLook.clone().sub(basePos);
       const baseYaw = Math.atan2(-d.x, -d.z);
       const basePitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
-      const yaw = baseYaw + this.lookOffset.yaw; const pitch = basePitch + this.lookOffset.pitch;
+      const yaw = baseYaw + this.lookOffset.yaw - this.viewBias(); const pitch = basePitch + this.lookOffset.pitch;
       engine.camera.lookAt(
         engine.camera.position.x - Math.sin(yaw) * Math.cos(pitch),
         engine.camera.position.y + Math.sin(pitch),
@@ -500,9 +541,11 @@ class Hall {
     for (const [id, a] of this.avatars) {
       const p = rt.players.get(id);
       if (!p) continue;
-      // Figuren in der Nähe schauen den Betrachter an
-      const near = a.av.position.distanceTo(camPos) < 4.5;
+      // Figuren in der Nähe schauen den Betrachter an; wer direkt vor der Sitzkamera steht, wird ausgeblendet
+      const dist = a.av.position.distanceTo(camPos);
+      const near = dist < 4.5;
       a.av.userData.lookAt(near ? camPos : null);
+      a.av.visible = !(this.mode === 'spectate' && dist < 1.05);
       if (a.seat) {
         a.av.position.lerp(new THREE.Vector3(a.seat.x, 0, a.seat.z), 0.2);
         a.av.rotation.y += (a.seat.ry - a.av.rotation.y) * 0.2;

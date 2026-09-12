@@ -10,9 +10,11 @@ import { disposeObject } from '../three/assets.js';
  * gleiche API wie Engine, aber Szene = Gruppe auf dem Hallentisch, Kamera = Hallenkamera.
  */
 class EmbeddedEngine {
-  constructor(host, root, canvas, onDispose) {
+  constructor(host, mounted, canvas) {
     this.host = host;
-    this.scene = root;
+    this.scene = mounted.root;
+    this.mount = mounted; // { station, index, extra } – z. B. Automat, Kessel, Layout des Hallentischs
+    const onDispose = mounted.dispose;
     this.camera = host.camera;
     this.cameraTarget = host.cameraTarget;
     this.tweener = host.tweener;
@@ -40,6 +42,9 @@ class EmbeddedEngine {
   start() {}
   stop() {}
   moveCamera() { return Promise.resolve(); }
+  /** Kamera der Halle vorübergehend ausrichten (pos/look Weltkoordinaten, fov) */
+  focus(opts) { hall.setFocus(opts); }
+  clearFocus() { hall.clearFocus(); }
   onUpdate(fn) { const off = this.host.onUpdate(fn); this.updaters.push(off); return off; }
   tween(...args) { return this.host.tween(...args); }
   delay(ms) { return this.host.delay(ms); }
@@ -88,7 +93,7 @@ export class GameBase {
     // Spielszene direkt in der Halle (auf dem echten Tisch / im Automaten), sonst eigene transparente Szene
     const mounted = store.user ? hall.mountGame(this.meta.id) : null;
     if (mounted) {
-      this.engine = new EmbeddedEngine(hall.engine, mounted.root, hall.canvas, mounted.dispose);
+      this.engine = new EmbeddedEngine(hall.engine, mounted, hall.canvas);
       this.stage.classList.add('embedded');
     } else {
       this.engine = new Engine(this.stage, { ...this.engineOptions(), alpha: true });

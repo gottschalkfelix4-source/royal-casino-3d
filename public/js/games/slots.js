@@ -5,56 +5,12 @@ import { h, fmt, fmtMult } from '../ui.js';
 import { sound } from '../sound.js';
 import { betControl, section, bigButton, statBox, historyStrip } from '../widgets.js';
 import { makeCanvas, canvasTexture, roundRect, goldMaterial, burst } from '../three/assets.js';
+import { CELLS, R, REEL_W, PITCH, ANGLE, stripTexture, buildReel, stopAngle } from '../three/slotmachine.js';
 
-const CELLS = 24;
-const CELL = 1.05;
-const R = (CELLS * CELL) / (2 * Math.PI); // Walzenradius ≈ 4.0
-const REEL_W = 1.0;
-const PITCH = 1.14; // Abstand der Walzen
-const ANGLE = (Math.PI * 2) / CELLS;
-
-const SYMBOL_DRAW = {
-  cherry: { emoji: '🍒' }, lemon: { emoji: '🍋' }, orange: { emoji: '🍊' }, plum: { emoji: '🍇' },
-  bell: { emoji: '🔔' }, diamond: { emoji: '💎' },
-  bar: { text: 'BAR', color: '#f5d97a', bg: '#2a1e05' },
-  seven: { text: '7', color: '#ff4d4d', bg: '#2a0808' },
-  wild: { text: 'WILD', color: '#7cf0ae', bg: '#0b2a1c' },
-};
 const SYMBOL_LABEL = {
   cherry: '🍒 Kirsche', lemon: '🍋 Zitrone', orange: '🍊 Orange', plum: '🍇 Trauben', bell: '🔔 Glocke',
   bar: '🟨 BAR', seven: '7️⃣ Sieben', diamond: '💎 Diamant', wild: '🌟 Wild',
 };
-
-function stripTexture(strip) {
-  const S = 128;
-  const { canvas, ctx } = makeCanvas(CELLS * S, S);
-  strip.forEach((sym, i) => {
-    const x = i * S;
-    const g = ctx.createLinearGradient(x, 0, x, S);
-    g.addColorStop(0, '#f8f6ee'); g.addColorStop(0.5, '#ffffff'); g.addColorStop(1, '#e8e4d8');
-    ctx.fillStyle = g;
-    ctx.fillRect(x, 0, S, S);
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 3;
-    ctx.strokeRect(x + 1.5, 1.5, S - 3, S - 3);
-    const d = SYMBOL_DRAW[sym];
-    ctx.save();
-    ctx.translate(x + S / 2, S / 2);
-    ctx.rotate(Math.PI / 2); // Symbol aufrecht auf der Walze
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (d.emoji) {
-      ctx.font = '84px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
-      ctx.fillText(d.emoji, 0, 6);
-    } else {
-      ctx.fillStyle = d.bg; roundRect(ctx, -52, -34, 104, 68, 12); ctx.fill();
-      ctx.fillStyle = d.color; ctx.font = `900 ${d.text.length > 2 ? 40 : 66}px Cinzel, Georgia, serif`;
-      ctx.fillText(d.text, 0, 4);
-    }
-    ctx.restore();
-  });
-  const tex = canvasTexture(canvas);
-  tex.wrapS = THREE.RepeatWrapping;
-  return tex;
-}
 
 export default class Slots extends GameBase {
   engineOptions() {
@@ -86,7 +42,12 @@ export default class Slots extends GameBase {
         this.marks.traverse((o) => { if (o.material?.opacity !== undefined) o.material.opacity = k; });
       }
     });
-    if (engine.embedded) return; // In der Halle: Walzen sitzen im echten Automaten
+    if (engine.embedded) {
+      // In der Halle: Walzen sitzen im echten Automaten; Hebel und Anzeige gehören dem Automaten
+      this.machine = engine.mount?.extra?.machine ?? null;
+      this.machine?.userData.setDisplay(this.credits(this.balance), '0', 'BEREIT');
+      return;
+    }
 
     // Boden mit Reflexionen
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 10), new THREE.MeshStandardMaterial({ color: 0x0a0c11, roughness: 0.35, metalness: 0.7 }));
@@ -165,17 +126,14 @@ export default class Slots extends GameBase {
   }
 
   buildReels(strips) {
-    const geo = new THREE.CylinderGeometry(R, R, REEL_W, 96, 1, true);
-    geo.rotateZ(Math.PI / 2);
     strips.forEach((strip, i) => {
-      const mat = new THREE.MeshStandardMaterial({ map: stripTexture(strip), roughness: 0.6, metalness: 0.05 });
-      const reel = new THREE.Mesh(geo, mat);
-      reel.position.x = (i - 2) * PITCH;
-      reel.rotation.x = ANGLE * (Math.floor(Math.random() * CELLS) + 0.5);
+      const reel = buildReel(i, stripTexture(strip));
       this.reelGroup.add(reel);
       this.reels.push(reel);
     });
   }
+
+  credits(cents) { return Math.round(cents / 100).toLocaleString('de-DE'); }
 
   buildPanel() {
     this.bet = betControl({ balance: () => this.balance, value: 100_00 });
@@ -211,6 +169,13 @@ export default class Slots extends GameBase {
     this.spinBtn.disabled = b;
   }
 
+  destroy() {
+    clearTimeout(this.exciteTimer);
+    this.machine?.userData.setExcite(false);
+    this.machine?.userData.setDisplay(this.credits(this.balance), '0', 'INSERT COIN');
+    super.destroy();
+  }
+
   toggleAuto() {
     this.auto = !this.auto;
     this.autoBtn.textContent = `Auto-Spin: ${this.auto ? 'An' : 'Aus'}`;
@@ -230,6 +195,14 @@ export default class Slots extends GameBase {
       if (this.destroyed) return;
       this.setBalance(res.balance - res.payout);
       this.spinning = true;
+      if (this.machine) {
+        // Einarmiger Bandit: erst den Hebel ziehen, die Walzen laufen an, sobald er unten ist
+        this.machine.userData.setExcite(false);
+        this.machine.userData.setDisplay(this.credits(res.balance - res.payout), '0', 'VIEL GLÜCK');
+        this.machine.userData.pullLever();
+        await this.engine.delay(260);
+        if (this.destroyed) return;
+      }
       sound.play('spin');
       await Promise.all(res.stops.map((stop, i) => this.spinReel(i, stop, i * 120)));
       this.spinning = false;
@@ -259,7 +232,7 @@ export default class Slots extends GameBase {
       if (k - lastTick > 0.12) { lastTick = k; sound.play('tick'); }
     }, Easing.linear);
     const a2 = reel.rotation.x;
-    const theta = ANGLE * (stop + 0.5);
+    const theta = stopAngle(stop);
     const target = theta + Math.PI * 2 * Math.ceil((a2 + 1.6 - theta) / (Math.PI * 2));
     await engine.tween(620, (k) => { reel.rotation.x = a2 + (target - a2) * k; }, Easing.outBack);
     reel.rotation.x = target % (Math.PI * 2);
@@ -311,9 +284,16 @@ export default class Slots extends GameBase {
       ));
       burst(this.engine, new THREE.Vector3(0, 0.5, R + 1), { count: big ? 140 : 60, colors: [0xffd76a, 0xffffff, 0xff7a7a, 0x7cf0ae], speed: big ? 8 : 5, size: 0.08 });
       if (big) this.engine.shake(0.12);
+      if (this.machine) {
+        this.machine.userData.setExcite(true);
+        this.machine.userData.setDisplay(this.credits(res.balance), this.credits(payout), big ? 'MEGA GEWINN' : 'GEWINN');
+        clearTimeout(this.exciteTimer);
+        this.exciteTimer = setTimeout(() => this.machine?.userData.setExcite(false), big ? 4200 : 2800);
+      }
     } else {
       this.lastWin.set('Kein Gewinn', 'lose');
       this.history.push('0×', 'lose');
+      this.machine?.userData.setDisplay(this.credits(res.balance), '0', 'NOCHMAL?');
     }
     this.setBalance(res.balance);
   }
