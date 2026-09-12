@@ -5,9 +5,13 @@ import { contactShadow } from '../furniture.js';
 /**
  * Derby-Diorama unter der Glashaube: elliptische Bahn mit sechs Spuren. Die Pferdefiguren baut
  * das Spiel (siehe export buildHorse); die statische Startaufstellung liefert diese Station.
+ *
+ * Höhen (absolut, damit nichts koplanar flackert):
+ *   Sockel oben 1,00 · Rasenfläche 1,00–1,06 · Innenfeld 1,045–1,095 · Spuren 1,068 · Ziellinie 1,07
+ *   Pferde stehen auf der Rasenoberkante (DERBY_TRACK.y = 1,06).
  */
 export const DERBY_TRACK = {
-  a: 1.3, b: 0.92, step: 0.05, y: 1.02, startAngle: -Math.PI / 2, laneCount: 6,
+  a: 1.3, b: 0.92, step: 0.05, y: 1.06, startAngle: -Math.PI / 2, laneCount: 6,
 };
 
 /** Halbachsen der Spur i (0 = außen) */
@@ -69,39 +73,51 @@ function turfTexture() {
 export function buildDerbyStation() {
   const g = new THREE.Group();
   const m = goldMaterial({ roughness: 0.35 });
+  const TRACK_Y = DERBY_TRACK.y;
+  const RA = DERBY_TRACK.a + 0.18;
+  const RB = DERBY_TRACK.b + 0.18;
 
-  // Sockel
+  // Sockel (Oberkante 1,00)
   const base = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.0, 2.5), new THREE.MeshPhysicalMaterial({ color: 0x2a1b10, roughness: 0.3, clearcoat: 0.8 }));
   base.position.y = 0.5; base.castShadow = true; base.receiveShadow = true;
   g.add(base);
-  const rim = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.06, 2.6), m);
-  rim.position.y = 1.0;
-  g.add(rim);
 
-  // Bahnfläche
+  // Umrandung als Rahmen (nicht als durchgehende Platte, sonst z-fighting mit der Bahn)
+  const frameH = 0.12;
+  const frameY = 1.04;
+  for (const [w, d, x, z] of [[3.3, 0.08, 0, 1.25], [3.3, 0.08, 0, -1.25], [0.08, 2.5, 1.6, 0], [0.08, 2.5, -1.6, 0]]) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(w, frameH, d), m);
+    bar.position.set(x, frameY, z);
+    bar.castShadow = true;
+    g.add(bar);
+  }
+
+  // Rasenfläche: echter flacher Zylinder (1,00–1,06) statt koplanarer Ebene
   const turf = new THREE.Mesh(
-    new THREE.CircleGeometry(1, 96).scale(DERBY_TRACK.a + 0.18, 1, DERBY_TRACK.b + 0.18),
+    new THREE.CylinderGeometry(1, 1, 0.06, 96).scale(RA, 1, RB),
     new THREE.MeshStandardMaterial({ map: turfTexture(), roughness: 1 })
   );
-  turf.rotation.x = -Math.PI / 2; turf.position.y = DERBY_TRACK.y - 0.005; turf.receiveShadow = true;
+  turf.position.y = 1.03;
+  turf.receiveShadow = true;
   g.add(turf);
 
-  // Innenfeld
+  // Innenfeld: in die Rasenfläche eingelassen (1,045–1,095), dadurch keine gemeinsame Deckfläche
   const infield = new THREE.Mesh(
-    new THREE.CircleGeometry(1, 96).scale(DERBY_TRACK.a - 0.32, 1, DERBY_TRACK.b - 0.32),
+    new THREE.CylinderGeometry(1, 1, 0.05, 96).scale(DERBY_TRACK.a - 0.3, 1, DERBY_TRACK.b - 0.3),
     new THREE.MeshStandardMaterial({ color: 0x0f3d20, roughness: 1 })
   );
-  infield.rotation.x = -Math.PI / 2; infield.position.y = DERBY_TRACK.y + 0.01;
+  infield.position.y = 1.07;
+  infield.receiveShadow = true;
   g.add(infield);
 
-  // Spurschienen
-  const laneMat = new THREE.MeshStandardMaterial({ color: 0xf0e6cf, roughness: 0.6, transparent: true, opacity: 0.55 });
+  // Spurschienen knapp über der Rasenoberkante (deckend, sonst Transparenz-Sortierflimmern mit der Glashaube)
+  const laneMat = new THREE.MeshStandardMaterial({ color: 0xf0e6cf, roughness: 0.6 });
   for (let i = 0; i < DERBY_TRACK.laneCount; i++) {
     const { a, b } = laneRadii(i);
     const pts = [];
     for (let k = 0; k <= 72; k++) {
       const ang = (k / 72) * Math.PI * 2;
-      pts.push(new THREE.Vector3(a * Math.cos(ang), DERBY_TRACK.y + 0.006, b * Math.sin(ang)));
+      pts.push(new THREE.Vector3(a * Math.cos(ang), TRACK_Y + 0.008, b * Math.sin(ang)));
     }
     g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 120, 0.006, 6), laneMat));
   }
@@ -109,10 +125,10 @@ export function buildDerbyStation() {
   // Start/Ziel: Ziellinie frontal (Bahnparameter 0)
   const line = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.012), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x666666 }));
   line.rotation.x = -Math.PI / 2; line.rotation.z = Math.PI / 2;
-  line.position.set(0, DERBY_TRACK.y + 0.012, -DERBY_TRACK.b - 0.02);
+  line.position.set(0, TRACK_Y + 0.012, -DERBY_TRACK.b - 0.02);
   g.add(line);
 
-  // Statische Pferde an der Startaufstellung
+  // Statische Pferde an der Startaufstellung (auf der Rasenoberkante)
   const horses = new THREE.Group();
   const colors = ['#e23b2e', '#e0a324', '#c7ccd6', '#5566a0', '#2f9e57', '#8a4bd0'];
   for (let i = 0; i < DERBY_TRACK.laneCount; i++) {
@@ -129,7 +145,7 @@ export function buildDerbyStation() {
     new THREE.SphereGeometry(1, 48, 24, 0, Math.PI * 2, 0, Math.PI / 2).scale(DERBY_TRACK.a + 0.35, 1.0, DERBY_TRACK.b + 0.35),
     new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.02, metalness: 0, clearcoat: 1, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 2 })
   );
-  dome.position.y = DERBY_TRACK.y;
+  dome.position.y = TRACK_Y;
   g.add(dome);
 
   const cs = contactShadow(3.4, 2.7, 0.5);
@@ -139,9 +155,9 @@ export function buildDerbyStation() {
   g.userData = {
     hit: [3.5, 2.5, 2.8], labelY: 2.8,
     seats: [[0, 1.9], [-1.1, 1.75], [1.1, 1.75]], face: [0, 0.2], sit: true, chairs: true,
-    mount: { type: 'fixed', scale: 1, offset: [0, 0, 0], pull: 0, hide: [horses], lookY: DERBY_TRACK.y, fov: 55 },
+    mount: { type: 'fixed', scale: 1, offset: [0, 0, 0], pull: 0, hide: [horses], lookY: TRACK_Y, fov: 55 },
     update: (dt, t) => {
-      horses.children.forEach((h, i) => { h.position.y = Math.sin(t * 3 + i) * 0.006; });
+      horses.children.forEach((h, i) => { h.position.y = TRACK_Y + Math.sin(t * 3 + i) * 0.006; });
     },
   };
   return g;
