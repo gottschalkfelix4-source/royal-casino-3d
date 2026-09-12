@@ -442,11 +442,17 @@ class Hall {
   resolveCollisions(p) {
     p.x = Math.max(-HALL.w / 2 + 0.8, Math.min(HALL.w / 2 - 0.8, p.x));
     p.z = Math.max(-HALL.d / 2 + 0.8, Math.min(HALL.d / 2 - 0.8, p.z));
+    // Stationen als gedrehte Rechtecke (Hitbox + Abstand), damit man nah an Tische und Automaten herankommt
     for (const s of this.casino.stations) {
-      const r = s.radius + 0.55;
+      const hw = s.hit[0] / 2 + 0.45; const hd = s.hit[2] / 2 + 0.45;
+      const c = Math.cos(s.rotY); const sn = Math.sin(s.rotY);
       const dx = p.x - s.position.x; const dz = p.z - s.position.z;
-      const dist = Math.hypot(dx, dz);
-      if (dist < r && dist > 0.001) { p.x = s.position.x + (dx / dist) * r; p.z = s.position.z + (dz / dist) * r; }
+      const lx = dx * c - dz * sn; const lz = dx * sn + dz * c;
+      if (Math.abs(lx) < hw && Math.abs(lz) < hd) {
+        let nx = lx; let nz = lz;
+        if (hw - Math.abs(lx) < hd - Math.abs(lz)) nx = (lx < 0 ? -1 : 1) * hw; else nz = (lz < 0 ? -1 : 1) * hd;
+        p.x = s.position.x + nx * c + nz * sn; p.z = s.position.z - nx * sn + nz * c;
+      }
     }
     if (p.z < -10.6 && p.x < -8.2 && p.x > -17.8) p.z = -10.6;
   }

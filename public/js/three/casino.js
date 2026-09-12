@@ -240,7 +240,7 @@ export function buildCasino(engine) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(hit[0], hit[2]) * 0.55, Math.max(hit[0], hit[2]) * 0.55 + 0.12, 64), new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.03, z);
     scene.add(ring);
-    const st = { id, name, group, hitbox, label, ring, position: new THREE.Vector3(x, 1, z), seats: worldSeats, radius: Math.max(hit[0], hit[2]) / 2, mount: null };
+    const st = { id, name, group, hitbox, label, ring, position: new THREE.Vector3(x, 1, z), seats: worldSeats, radius: Math.max(hit[0], hit[2]) / 2, hit, rotY, mount: null };
     stations.push(st);
     const cs = contactShadow(hit[0] * 1.5, hit[2] * 1.5, 0.5);
     cs.position.set(x, 0.02, z); cs.rotation.z = rotY;

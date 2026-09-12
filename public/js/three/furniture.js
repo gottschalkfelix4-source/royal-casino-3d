@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { makeCanvas, canvasTexture, roundRect, goldMaterial, woodTexture, woodNormal, feltTexture, feltNormal, createChip, CHIP, chipStyle, createCard } from './assets.js';
+import { makeCanvas, canvasTexture, roundRect, goldMaterial, woodTexture, woodNormal, feltTexture, feltNormal, createChip, CHIP, createCard } from './assets.js';
 import { marbleTexture, neonTexture, leatherNormal, brushedNormal } from './textures.js';
 
 /**

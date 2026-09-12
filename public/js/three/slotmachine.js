@@ -179,6 +179,19 @@ function topGlassTexture(variant) {
   return texCache[key];
 }
 
+/** Diagonaler Lichtreflex für Glasscheiben (transparent) */
+function glassSheenTexture() {
+  if (texCache.sheen) return texCache.sheen;
+  const { canvas, ctx } = makeCanvas(256, 256);
+  ctx.clearRect(0, 0, 256, 256);
+  const g = ctx.createLinearGradient(0, 256, 256, 0);
+  g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.42, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0.16)');
+  g.addColorStop(0.56, 'rgba(255,255,255,0.05)'); g.addColorStop(0.62, 'rgba(255,255,255,0.12)'); g.addColorStop(0.7, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+  texCache.sheen = canvasTexture(canvas);
+  return texCache.sheen;
+}
+
 /** Marquee-Schriftzug (Topper) */
 function marqueeTexture(text) {
   const key = `marquee:${text}`;
@@ -261,6 +274,8 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
   const trayIn = new THREE.Mesh(rbox(0.44, 0.06, 0.1, 0.015), m.matte);
   trayIn.position.set(0, 0.545, FRONT_Z - 0.02);
   g.add(tray, trayIn);
+  const coinMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 1, roughness: 0.3 });
+  g.add(merged([[-0.12, 0.0, 0.2], [-0.05, 0.01, 1.1], [0.09, 0.0, 0.6], [0.14, 0.012, 2.2], [0.02, 0.0, 1.7]].map(([x, dy, rot]) => ({ geo: new THREE.CylinderGeometry(0.018, 0.018, 0.003, 20), p: [x, 0.578 + dy, FRONT_Z - 0.02 + (rot % 0.05)], r: [0, rot, 0] })), coinMat));
 
   // Hauptgehäuse: offene Schale (Seiten, Boden, Deckel, Rückwand) in Candy-Rot – die Front mit dem
   // Fensterausschnitt kommt als eigene Platte davor, dahinter liegt die dunkle Walzenkammer
@@ -321,10 +336,12 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
     { geo: marker, p: [-(WIN_W / 2 + fr + 0.014), rowY(row), FRONT_Z + 0.004], r: [0, 0, -Math.PI / 2] },
     { geo: marker, p: [WIN_W / 2 + fr + 0.014, rowY(row), FRONT_Z + 0.004], r: [0, 0, Math.PI / 2] },
   ]), m.marker));
-  // Glasscheibe
+  // Glasscheibe mit weichem Reflexstreifen
   const glass = new THREE.Mesh(new THREE.PlaneGeometry(WIN_W + fr * 2, WIN_H + fr * 2), m.glass);
   glass.position.set(0, WIN_Y, FRONT_Z + 0.011); glass.renderOrder = 2;
-  g.add(glass);
+  const sheen = new THREE.Mesh(new THREE.PlaneGeometry(WIN_W + fr * 2, WIN_H + fr * 2), new THREE.MeshBasicMaterial({ map: glassSheenTexture(), transparent: true, depthWrite: false, opacity: 0.55 }));
+  sheen.position.set(0, WIN_Y, FRONT_Z + 0.012); sheen.renderOrder = 3;
+  g.add(glass, sheen);
 
   // Anzeige-Walzen (werden beim Spielen durch die Spielwalzen ersetzt)
   const reelAnchor = new THREE.Object3D();
@@ -504,6 +521,10 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
     } else if (state.occupied || g.userData.occupied) {
       state.demoTimer -= dt;
       if (state.demoTimer <= 0) g.userData.spinDemo();
+    } else {
+      // Attract-Modus: freie Automaten blinken alle 25–45 s kurz auf
+      state.attract = (state.attract ?? 12 + Math.random() * 30) - dt;
+      if (state.attract <= 0) { state.excite = 1; state.attract = 25 + Math.random() * 20; setTimeout(() => { if (!state.spin) state.excite = 0; }, 1800); }
     }
     // Lauflicht am Marquee
     const speed = state.excite ? 14 : 4;

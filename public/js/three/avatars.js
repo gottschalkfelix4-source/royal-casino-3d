@@ -374,10 +374,10 @@ export function createAvatar({ name, bot = false, dealer = false }) {
   g.userData.setPose = (p) => {
     if (pose === p) return;
     pose = p;
-    label.position.y = (2.0 * heightScale + (accessory === 'hat' ? 0.15 : 0)) - (p === 'sit' ? 0.36 : 0);
+    label.position.y = (2.0 * heightScale + (accessory === 'hat' ? 0.15 : 0)) - (p === 'sit' ? 0.24 : 0);
     // Vorzeichen: positive X-Rotation schwenkt ein hängendes Glied nach VORN (-Z)
     if (p === 'sit') {
-      root.position.y = -0.36;
+      root.position.y = -0.24; // Hüfte auf Sitzhöhe der Casino-Stühle (≈ 0,68 m), Füße auf dem Fußring
       legL.hip.rotation.x = legR.hip.rotation.x = Math.PI / 2 - 0.05;
       legL.knee.rotation.x = legR.knee.rotation.x = -(Math.PI / 2 - 0.05);
       legL.hip.rotation.z = 0.08; legR.hip.rotation.z = -0.08;
