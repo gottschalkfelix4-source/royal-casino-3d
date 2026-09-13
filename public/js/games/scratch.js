@@ -7,7 +7,7 @@ import { section, bigButton, statBox, segmented, historyStrip } from '../widgets
 import { makeCanvas, canvasTexture, buildTable, burst } from '../three/assets.js';
 
 const RES = 384;
-const SYMBOL_LABEL = {};
+const GRID = 24; // Raster für den freigerubbelten Anteil (siehe markScratched)
 
 export default class Scratch extends GameBase {
   engineOptions() { return { fov: 44, position: [0, 3.0, 4.2], target: [0, 0.6, 0], background: 0x120d04 }; }
@@ -22,14 +22,24 @@ export default class Scratch extends GameBase {
     this.ctx = this.canvas.getContext('2d');
     this.revealed = false;
     this.scratching = false;
+    this.scratched = new Set();
     this.fillFoil('LOS KAUFEN');
 
     if (engine.embedded) {
       this.texture = new THREE.CanvasTexture(this.canvas);
       this.texture.colorSpace = THREE.SRGBColorSpace;
-      const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.85), new THREE.MeshStandardMaterial({ map: this.texture, emissive: 0xffffff, emissiveMap: this.texture, emissiveIntensity: 1.1, roughness: 0.4 }));
-      plane.position.set(0, 0, 0.03);
+      // Die Fläche zählt in Spieleinheiten: bei Montage-Maßstab 0.11 wären 0.85 keine zehn Zentimeter
+      // auf dem Automatenbildschirm – das Los war eine Briefmarke in der Mitte einer schwarzen Scheibe.
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 7.2), new THREE.MeshStandardMaterial({ map: this.texture, emissive: 0xffffff, emissiveMap: this.texture, emissiveIntensity: 1.0, roughness: 0.45 }));
+      plane.position.set(0, 0, 0.25);
       engine.scene.add(plane);
+      this.plane = plane;
+      // Im Automaten wird direkt auf dem Bildschirm gerubbelt, nicht nur auf der Kopie im Seitenpanel.
+      const canvas = engine.renderer.domElement;
+      canvas.addEventListener('pointerdown', (e) => this.startScratch(e, true));
+      canvas.addEventListener('pointermove', (e) => this.moveScratch(e, true));
+      canvas.addEventListener('pointerup', () => this.endScratch());
+      canvas.addEventListener('pointercancel', () => this.endScratch());
       this.composite();
       return;
     }
@@ -48,8 +58,8 @@ export default class Scratch extends GameBase {
     const wrap = h('div.scratch-wrap', {}, this.canvas);
     this.canvas.addEventListener('pointerdown', (e) => { this.startScratch(e); e.currentTarget.setPointerCapture?.(e.pointerId); });
     this.canvas.addEventListener('pointermove', (e) => this.moveScratch(e));
-    this.canvas.addEventListener('pointerup', () => { this.scratching = false; });
-    this.canvas.addEventListener('pointerleave', () => { this.scratching = false; });
+    this.canvas.addEventListener('pointerup', () => this.endScratch());
+    this.canvas.addEventListener('pointerleave', () => this.endScratch());
     this.tier = segmented([], 'silber', (v) => this.selectTier(v));
     this.buyBtn = bigButton('🎫 LOS KAUFEN', () => this.buy());
     this.lastBox = statBox('Letztes Los', '–');
@@ -74,9 +84,14 @@ export default class Scratch extends GameBase {
     this.tierEl = segmented(tiers, tiers[0].value, (v) => this.selectTier(v));
     this.tier.el.replaceWith(this.tierEl.el);
     this.tier = this.tierEl;
-    this.prizeEl.replaceChildren(...cfg.symbols.slice().reverse().map((s) =>
-      h('div.prow', {}, h('span.sym', {}, `${s.label} ${s.multiplier}×`))
-    ));
+    // Der Server liefert zu jeder Gewinnstufe auch die Wahrscheinlichkeit mit – die gehört in die Tabelle.
+    const chance = new Map((cfg.prizeTable ?? []).map((p) => [p.multiplier, p.chance]));
+    this.prizeEl.replaceChildren(...cfg.symbols.slice().reverse().map((s) => {
+      const p = chance.get(s.multiplier);
+      return h('div.prow', {},
+        h('span.sym', {}, `${s.label} ${s.multiplier}×`),
+        h('span.pays', {}, p ? `${(p * 100).toLocaleString('de-DE', { maximumFractionDigits: 2 })} %` : ''));
+    }));
     this.hint('Los kaufen und freirubbeln');
   }
 
@@ -115,46 +130,77 @@ export default class Scratch extends GameBase {
     return { x: (e.clientX - rect.left) * (RES / rect.width), y: (e.clientY - rect.top) * (RES / rect.height), r: 26 * (RES / rect.width) };
   }
 
+  /**
+   * Rubbelpunkt auf der Losfläche im Automaten: Treffer-UV in Canvaskoordinaten umrechnen.
+   * Bewusst über die Hallen-Engine statt über EmbeddedEngine.pick – deren Treffer fallen nach
+   * sechs Pixeln Mausbewegung weg (damit ein Klick nach dem Umsehen nicht zählt), und Rubbeln
+   * ist genau so eine Ziehbewegung.
+   */
+  planePoint(e) {
+    if (!this.plane) return null;
+    const hit = (this.engine.host ?? this.engine).pick(e, [this.plane], false)[0];
+    return hit?.uv ? { x: hit.uv.x * RES, y: (1 - hit.uv.y) * RES, r: 30 } : null;
+  }
+
+  point(e, inScene) { return inScene ? this.planePoint(e) : this.canvasPoint(e); }
+
   scratchAt(p) {
     const ctx = this.foilC.ctx;
     ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
+    this.markScratched(p);
   }
 
-  startScratch(e) {
+  /**
+   * Freigerubbelte Fläche in einem groben Raster mitzählen. Vorher wurde dafür bei jeder einzelnen
+   * Mausbewegung der komplette 384×384-Canvas per getImageData zurückgelesen – ein synchroner
+   * Readback pro Bewegungsereignis, der das Rubbeln spürbar hakelig gemacht hat.
+   */
+  markScratched(p) {
+    const cell = RES / GRID;
+    const c0 = Math.max(0, Math.floor((p.x - p.r) / cell)); const c1 = Math.min(GRID - 1, Math.floor((p.x + p.r) / cell));
+    const r0 = Math.max(0, Math.floor((p.y - p.r) / cell)); const r1 = Math.min(GRID - 1, Math.floor((p.y + p.r) / cell));
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) {
+        const dx = (c + 0.5) * cell - p.x; const dy = (r + 0.5) * cell - p.y;
+        if (dx * dx + dy * dy <= p.r * p.r) this.scratched.add(r * GRID + c);
+      }
+    }
+  }
+
+  scratchedFraction() { return this.scratched.size / (GRID * GRID); }
+
+  startScratch(e, inScene = false) {
     if (this.busy || this.revealed || !this.bought) return;
+    const p = this.point(e, inScene);
+    if (!p) return;
     this.scratching = true;
-    this.scratchAt(this.canvasPoint(e));
+    this.lastPoint = p;
+    // Ziehen gehört jetzt dem Los, sonst dreht die Hallenkamera beim Rubbeln mit weg
+    if (inScene) this.engine.lockLook?.(true);
+    this.scratchAt(p);
     this.composite();
     sound.play('click');
   }
 
-  moveScratch(e) {
+  endScratch() {
+    this.scratching = false;
+    this.lastPoint = null;
+    this.engine.lockLook?.(false);
+  }
+
+  moveScratch(e, inScene = false) {
     if (!this.scratching || this.revealed) return;
+    const p = this.point(e, inScene);
+    if (!p) return;
     // Zwischen letzter und aktueller Position interpolieren, damit schnelle Bewegungen durchgehen
-    const p = this.canvasPoint(e);
     const last = this.lastPoint ?? p;
     const steps = Math.max(1, Math.ceil(Math.hypot(p.x - last.x, p.y - last.y) / (p.r * 0.5)));
     for (let i = 1; i <= steps; i++) this.scratchAt({ x: last.x + (p.x - last.x) * i / steps, y: last.y + (p.y - last.y) * i / steps, r: p.r });
     this.lastPoint = p;
     this.composite();
     if (this.scratchedFraction() > 0.5) this.reveal();
-  }
-
-  scratchedFraction() {
-    const { ctx } = this.foilC;
-    const size = RES;
-    const data = ctx.getImageData(0, 0, size, size).data;
-    let clear = 0; let total = 0;
-    const step = 16;
-    for (let y = 0; y < size; y += step) {
-      for (let x = 0; x < size; x += step) {
-        total++;
-        if (data[(y * size + x) * 4 + 3] < 40) clear++;
-      }
-    }
-    return clear / total;
   }
 
   drawCard(grid, winSymbol) {
@@ -185,6 +231,7 @@ export default class Scratch extends GameBase {
       this.revealed = false;
       this.bought = false;
       this.lastPoint = null;
+      this.scratched = new Set();
       const tier = this.tier?.value ?? 'silber';
       const res = await api.post('/games/scratch/buy', { tier });
       if (this.destroyed) return;

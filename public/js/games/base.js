@@ -45,6 +45,8 @@ class EmbeddedEngine {
   /** Kamera der Halle vorübergehend ausrichten (pos/look Weltkoordinaten, fov) */
   focus(opts) { hall.setFocus(opts); }
   clearFocus() { hall.clearFocus(); }
+  /** Ziehen mit der Maus für das Spiel beanspruchen, statt damit den Blick zu drehen */
+  lockLook(v) { hall.lookLocked = v; }
   onUpdate(fn) { const off = this.host.onUpdate(fn); this.updaters.push(off); return off; }
   tween(...args) { return this.host.tween(...args); }
   delay(ms) { return this.host.delay(ms); }
@@ -54,6 +56,7 @@ class EmbeddedEngine {
     return this.host.pick(event, objects, recursive);
   }
   dispose() {
+    hall.lookLocked = false;
     this.updaters.forEach((f) => f());
     this.listeners.forEach(([t, f, o]) => this.canvas.removeEventListener(t, f, o));
     this.canvas.style.cursor = '';

@@ -107,6 +107,9 @@ class Hall {
     this.canvas = canvas;
     this.dragging = false; this.dragMoved = 0; this.lastX = 0; this.lastY = 0;
     this.lookOffset = { yaw: 0, pitch: 0 }; // Umsehen im Sitzen
+    // Ein eingehängtes Spiel kann das Ziehen für sich beanspruchen (Rubbellos: auf dem Bildschirm
+    // rubbeln ist eine Ziehbewegung und darf nicht gleichzeitig den Blick mitdrehen).
+    this.lookLocked = false;
     canvas.addEventListener('pointerdown', (e) => {
       if (this.mode === 'idle' || e.button !== 0) return;
       this.dragging = true; this.dragMoved = 0; this.lastX = e.clientX; this.lastY = e.clientY;
@@ -123,7 +126,7 @@ class Hall {
     });
     canvas.addEventListener('pointermove', (e) => {
       if (this.mode === 'idle') return;
-      if (this.dragging) {
+      if (this.dragging && !this.lookLocked) {
         const dx = e.clientX - this.lastX; const dy = e.clientY - this.lastY;
         this.dragMoved += Math.abs(dx) + Math.abs(dy);
         if (this.mode === 'walk') {
