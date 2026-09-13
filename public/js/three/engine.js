@@ -3,8 +3,11 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Tweener, Easing } from './tween.js';
+import { createGradePass } from './post.js';
+import { setTextureAnisotropy } from './materialmaps.js';
 
 export { THREE, Easing };
 
@@ -14,30 +17,41 @@ export function getQuality() {
   return ['high', 'medium', 'low'].includes(q) ? q : 'high';
 }
 export function setQuality(q) { localStorage.setItem('casino.quality', q); }
+/**
+ * dpr: max. Pixeldichte · shadows/shadowMap: Schatten und Auflösung des Hauptlichts · msaa: Multisampling des
+ * Nachbearbeitungs-Puffers · gtao: Umgebungsverdeckung (Ground-Truth Ambient Occlusion) · reflection: Auflösung
+ * der Bodenspiegelung relativ zum Bild (0 = aus) · reflectionEvery: nur jeder n-te Frame spiegeln · extraShadows:
+ * zusätzliche schattenwerfende Akzentlichter · anisotropy: Anisotropie der Texturen · grade: Vignette/Korn-Pass
+ */
 export const QUALITY = {
-  high: { dpr: 2, shadows: true, shadowMap: 2048 },
-  medium: { dpr: 1.25, shadows: true, shadowMap: 1024 },
-  low: { dpr: 1, shadows: false, shadowMap: 512 },
+  high: { dpr: 2, shadows: true, shadowMap: 2048, msaa: 4, gtao: true, reflection: 0.5, reflectionEvery: 1, extraShadows: 4, anisotropy: 16, grade: { vignette: 0.45, grain: 0.01, aberration: 0.035 } },
+  medium: { dpr: 1.25, shadows: true, shadowMap: 2048, msaa: 4, gtao: false, reflection: 0.35, reflectionEvery: 2, extraShadows: 2, anisotropy: 8, grade: { vignette: 0.45, grain: 0.008, aberration: 0 } },
+  low: { dpr: 1, shadows: false, shadowMap: 1024, msaa: 0, gtao: false, reflection: 0, reflectionEvery: 3, extraShadows: 0, anisotropy: 4, grade: null },
 };
 
 /**
- * Kapselt Renderer, Szene, Kamera, Render-Loop, Tweens und Picking.
+ * Kapselt Renderer, Szene, Kamera, Render-Loop, Nachbearbeitung, Tweens und Picking.
+ * Farbpipeline: lineares HDR-Rendering (HalfFloat) → GTAO → Bloom → AgX-Tonemapping + sRGB (OutputPass).
  */
 export class Engine {
   constructor(container, opts = {}) {
     const {
       fov = 45, position = [0, 6, 10], target = [0, 0, 0], background = 0x07090d,
-      shadows = true, exposure = 1.0, envIntensity = 0.7, fog = null, bloom = null, alpha = false,
+      shadows = true, exposure = 1.0, envIntensity = 0.7, fog = null, bloom = null, alpha = false, post = null,
+      toneMapping = THREE.AgXToneMapping,
     } = opts;
     this.container = container;
     this.disposed = false;
     this.quality = QUALITY[getQuality()];
+    setTextureAnisotropy(this.quality.anisotropy);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: this.quality.dpr < 2 || (window.devicePixelRatio || 1) < 1.5, powerPreference: 'high-performance', stencil: false, alpha });
+    // Nachbearbeitung nur, wenn gewünscht (Halle); transparente Einzelszenen rendern direkt
+    const usePost = !alpha && (post || bloom) && this.quality.msaa > 0;
+    this.renderer = new THREE.WebGLRenderer({ antialias: !usePost, powerPreference: 'high-performance', stencil: false, alpha, depth: true });
     if (alpha) this.renderer.setClearColor(0x000000, 0);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.dpr));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMapping = toneMapping;
     this.renderer.toneMappingExposure = exposure;
     this.renderer.shadowMap.enabled = shadows && this.quality.shadows;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -48,7 +62,7 @@ export class Engine {
     if (!alpha) this.scene.background = new THREE.Color(background);
     if (fog) this.scene.fog = new THREE.Fog(background, fog[0], fog[1]);
 
-    this.camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 500);
+    this.camera = new THREE.PerspectiveCamera(fov, 1, 0.08, 400);
     this.camera.position.set(...position);
     this.cameraTarget = new THREE.Vector3(...target);
     this.camera.lookAt(this.cameraTarget);
@@ -58,13 +72,32 @@ export class Engine {
     this.scene.environmentIntensity = envIntensity;
     pmrem.dispose();
 
-    // Optionale Nachbearbeitung (Bloom für Neon, Lampen, Leuchtschriften)
-    if (bloom) {
-      this.composer = new EffectComposer(this.renderer);
+    // Nachbearbeitung: MSAA-HDR-Puffer → Szene → GTAO → Bloom → Tonemapping/sRGB
+    if (usePost) {
+      const p = { bloom, gtao: this.quality.gtao, ...(post ?? {}) };
+      const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: this.quality.msaa });
+      this.composer = new EffectComposer(this.renderer, rt);
       this.composer.setPixelRatio(this.renderer.getPixelRatio());
-      this.composer.addPass(new RenderPass(this.scene, this.camera));
-      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), bloom.strength ?? 0.5, bloom.radius ?? 0.5, bloom.threshold ?? 0.85);
-      this.composer.addPass(this.bloomPass);
+      this.renderPass = new RenderPass(this.scene, this.camera);
+      this.composer.addPass(this.renderPass);
+      if (p.gtao) {
+        this.gtaoPass = new GTAOPass(this.scene, this.camera, 1, 1, undefined,
+          { radius: 0.35, distanceExponent: 1.5, thickness: 0.6, scale: 1.1, samples: 16, distanceFallOff: 1.0, screenSpaceRadius: false },
+          { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 1, rings: 2, samples: 16 });
+        this.gtaoPass.output = GTAOPass.OUTPUT.Default;
+        this.gtaoPass.blendIntensity = 0.9;
+        this.composer.addPass(this.gtaoPass);
+      }
+      if (p.bloom) {
+        this.bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), p.bloom.strength ?? 0.5, p.bloom.radius ?? 0.5, p.bloom.threshold ?? 0.85);
+        this.composer.addPass(this.bloomPass);
+      }
+      // Vignette + Filmkorn (Qualitätsstufe), abschaltbar über post.grade === false
+      const grade = p.grade === false ? null : (p.grade ?? this.quality.grade);
+      if (grade) {
+        this.gradePass = createGradePass(grade);
+        this.composer.addPass(this.gradePass);
+      }
       this.composer.addPass(new OutputPass());
     }
 
@@ -75,6 +108,7 @@ export class Engine {
     this.pointer = new THREE.Vector2();
     this.shakeAmount = 0;
     this.running = false;
+    this.preRender = null; // Hook vor dem Rendern (z. B. Spiegelung aufnehmen)
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(container);
@@ -84,6 +118,7 @@ export class Engine {
   /** Pixeldichte zur Laufzeit begrenzen (z. B. Hintergrund-Rendering sparsamer) */
   setPixelRatioCap(cap) {
     const r = Math.min(window.devicePixelRatio || 1, this.quality.dpr, cap);
+    if (Math.abs(this.renderer.getPixelRatio() - r) < 1e-3) return;
     this.renderer.setPixelRatio(r);
     this.composer?.setPixelRatio(r);
     this.resize();
@@ -97,6 +132,7 @@ export class Engine {
     this.camera.aspect = w / hgt;
     this.camera.updateProjectionMatrix();
     this.applyFit();
+    this.onResize?.(this.renderer.domElement.width, this.renderer.domElement.height);
   }
 
   /** Kamera-Abstand so wählen, dass ein Bereich (Breite × Höhe um das Kameraziel) immer sichtbar ist. */
@@ -160,6 +196,8 @@ export class Engine {
       this.shakeAmount *= 0.88;
     }
     if (!render) return;
+    this.preRender?.();
+    if (this.gradePass) this.gradePass.uniforms.time.value = now / 1000;
     if (this.composer) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
   }
@@ -235,6 +273,9 @@ export class Engine {
       }
     });
     this.scene.environment?.dispose?.();
+    this.gtaoPass?.dispose?.();
+    this.bloomPass?.dispose?.();
+    this.gradePass?.dispose?.();
     this.composer?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();

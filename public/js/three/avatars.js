@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { textSprite, makeCanvas, canvasTexture, normalMapFromCanvas } from './assets.js';
+import { textSprite, makeCanvas, canvasTexture } from './assets.js';
+import { Simplex } from './noise.js';
+import { fieldNormalCanvas, textureFromCanvas } from './materialmaps.js';
 
 /** Deterministischer Hash aus dem Namen -> Zufallszahlen für Aussehen */
 export function hueFor(name) {
@@ -36,43 +38,56 @@ function lathe(key, profile, segs = 20) {
     return g;
   });
 }
-/** Feine Hautstruktur (Poren) als Normal-Map */
+/** Normal-Textur aus einem prozeduralen Höhenfeld */
+function fieldNormalTex(N, seed, fn, { strength = 1, repeat = [1, 1] } = {}) {
+  const sim = new Simplex(seed);
+  const f = new Float32Array(N * N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) f[y * N + x] = fn(sim, x / N, y / N);
+  const tex = textureFromCanvas(fieldNormalCanvas(f, N, N, { strength }), { repeat });
+  tex.userData.keep = true;
+  return tex;
+}
+
+/** Hautporen und feine Fältchen als Normal-Map */
 function skinNormal() {
   if (texCache.skin) return texCache.skin;
-  const { canvas, ctx } = makeCanvas(128, 128);
-  const img = ctx.createImageData(128, 128);
-  for (let i = 0; i < img.data.length; i += 4) {
-    const v = 128 + (Math.random() - 0.5) * 26;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
-  }
-  ctx.putImageData(img, 0, 0);
-  texCache.skin = normalMapFromCanvas(canvas, { strength: 0.6, repeat: [4, 4] });
+  texCache.skin = fieldNormalTex(128, 17, (sim, u, v) => {
+    const pore = sim.fbm(u * 74, v * 74, { octaves: 3 });
+    const wrinkle = sim.fbm(u * 16 + 4, v * 22 + 2, { octaves: 4 });
+    return 0.5 + pore * 0.24 + wrinkle * 0.3;
+  }, { strength: 0.6, repeat: [4, 4] });
   return texCache.skin;
 }
 
 /** Feine Stoffstruktur (Normal-Map), einmal für alle Figuren */
 function fabricNormal() {
   if (texCache.fabric) return texCache.fabric;
-  const { canvas, ctx } = makeCanvas(128, 128);
-  const img = ctx.createImageData(128, 128);
-  for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
-    const i = (y * 128 + x) * 4;
-    const v = 128 + ((x % 4 < 2) !== (y % 4 < 2) ? 14 : -14) + (Math.random() - 0.5) * 18;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
-  }
-  ctx.putImageData(img, 0, 0);
-  texCache.fabric = normalMapFromCanvas(canvas, { strength: 0.9, repeat: [6, 6] });
+  texCache.fabric = fieldNormalTex(128, 29, (sim, u, v) => {
+    const weave = 0.5 + 0.5 * Math.sin(u * Math.PI * 64) * Math.sin(v * Math.PI * 64);
+    const uneven = sim.fbm(u * 38 + 5, v * 38 + 9, { octaves: 3 });
+    return 0.5 + weave * 0.3 + uneven * 0.2;
+  }, { strength: 0.9, repeat: [6, 6] });
   return texCache.fabric;
 }
-/** Jeansstruktur */
+/** Jeansstruktur (Köperbindung + Faserrauschen) */
 function denimNormal() {
   if (texCache.denim) return texCache.denim;
-  const { canvas, ctx } = makeCanvas(128, 128);
-  ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 128, 128);
-  ctx.strokeStyle = '#9a9a9a'; ctx.lineWidth = 1.5;
-  for (let i = -128; i < 256; i += 5) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + 128, 128); ctx.stroke(); }
-  texCache.denim = normalMapFromCanvas(canvas, { strength: 1.2, repeat: [5, 5] });
+  texCache.denim = fieldNormalTex(128, 37, (sim, u, v) => {
+    const twill = 0.5 + 0.5 * Math.sin((u + v) * Math.PI * 80);
+    const fiber = sim.fbm(u * 90 + 2, v * 90 + 6, { octaves: 3 });
+    return 0.5 + twill * 0.26 + fiber * 0.2;
+  }, { strength: 1.2, repeat: [5, 5] });
   return texCache.denim;
+}
+/** Haar mit langgezogenen Strähnen (Normal-Map) */
+function hairNormal() {
+  if (texCache.hair) return texCache.hair;
+  texCache.hair = fieldNormalTex(128, 47, (sim, u, v) => {
+    const strand = sim.fbm(u * 8, v * 150, { octaves: 3 });
+    const curl = sim.fbm(u * 30 + 3, v * 30 + 8, { octaves: 2 });
+    return 0.5 + strand * 0.38 + curl * 0.12;
+  }, { strength: 1.0, repeat: [2, 10] });
+  return texCache.hair;
 }
 /** Shirt-Muster: uni, Streifen oder Logo */
 function shirtMap(color, variant, rnd) {
@@ -118,7 +133,7 @@ export function createAvatar({ name, bot = false, dealer = false }) {
 
   const skin = new THREE.MeshPhysicalMaterial({ color: skinColor, roughness: 0.52, clearcoat: 0.15, clearcoatRoughness: 0.5, sheen: 0.35, sheenRoughness: 0.7, sheenColor: new THREE.Color(0xffd0b0), normalMap: skinNormal(), normalScale: new THREE.Vector2(0.25, 0.25) });
   const skinDark = new THREE.MeshPhysicalMaterial({ color: new THREE.Color(skinColor).multiplyScalar(0.82), roughness: 0.6 });
-  const hair = new THREE.MeshPhysicalMaterial({ color: hairColor, roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.35, sheen: 0.4, sheenColor: new THREE.Color(hairColor).lerp(new THREE.Color(0xffffff), 0.4) });
+  const hair = new THREE.MeshPhysicalMaterial({ color: hairColor, roughness: 0.42, clearcoat: 0.35, clearcoatRoughness: 0.35, sheen: 0.4, sheenColor: new THREE.Color(hairColor).lerp(new THREE.Color(0xffffff), 0.4), normalMap: hairNormal(), normalScale: new THREE.Vector2(0.35, 0.35) });
   const shirt = outfit === 'suit' ? new THREE.MeshPhysicalMaterial({ color: shirtColor, roughness: 0.55, normalMap: fabricNormal(), normalScale: new THREE.Vector2(0.2, 0.2) })
     : cloth(shirtColor, shirtVariant !== 'plain' ? { map: shirtMap(shirtColor, shirtVariant, rnd), color: 0xffffff } : {});
   const pants = cloth(pantsColor, { sheen: 0.25, normalMap: outfit === 'suit' || dealer ? fabricNormal() : denimNormal() });

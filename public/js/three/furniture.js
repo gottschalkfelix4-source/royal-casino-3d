@@ -15,7 +15,7 @@ export function mat() {
   if (M.brass) return M;
   M.brass = goldMaterial({ roughness: 0.3 });
   M.brassDull = goldMaterial({ roughness: 0.45, color: 0xb8952f });
-  M.chrome = new THREE.MeshStandardMaterial({ color: 0xe4e5ea, metalness: 1, roughness: 0.16, normalMap: brushedNormal(), normalScale: new THREE.Vector2(0.15, 0.15) });
+  M.chrome = new THREE.MeshPhysicalMaterial({ color: 0xe4e5ea, metalness: 1, roughness: 0.16, normalMap: brushedNormal(), normalScale: new THREE.Vector2(0.15, 0.15), anisotropy: 0.45, anisotropyRotation: Math.PI / 2, envMapIntensity: 1.1 });
   M.darkWood = new THREE.MeshPhysicalMaterial({ map: woodTexture(), normalMap: woodNormal(), normalScale: new THREE.Vector2(0.45, 0.45), color: 0x8a6a4a, roughness: 0.32, clearcoat: 0.7, clearcoatRoughness: 0.2 });
   M.mahogany = new THREE.MeshPhysicalMaterial({ map: woodTexture(), normalMap: woodNormal(), normalScale: new THREE.Vector2(0.4, 0.4), color: 0x9a5a3a, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.15 });
   M.velvet = new THREE.MeshPhysicalMaterial({ color: 0x4a0d1a, roughness: 0.85, sheen: 0.9, sheenRoughness: 0.55, sheenColor: new THREE.Color(0xa0304d), normalMap: leatherNormal(), normalScale: new THREE.Vector2(0.3, 0.3) });

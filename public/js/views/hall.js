@@ -1,5 +1,7 @@
 import { Engine, THREE } from '../three/engine.js';
 import { buildCasino, HALL } from '../three/casino.js';
+import { batchStatic } from '../three/batch.js';
+import { PlanarReflection, applyFloorReflection } from '../three/reflection.js';
 import { createAvatar, floatText } from '../three/avatars.js';
 import { createChip, textSprite } from '../three/assets.js';
 import { GAMES } from '../games/registry.js';
@@ -44,11 +46,12 @@ class Hall {
     document.body.prepend(this.layer);
     const engine = new Engine(this.layer, {
       fov: 70, position: [0, EYE, 12], target: [0, EYE, 0], background: 0x05040a,
-      shadows: true, exposure: 0.92, envIntensity: 0.45,
-      bloom: { strength: 0.22, radius: 0.4, threshold: 0.95 },
+      shadows: true, exposure: 1.15, envIntensity: 0.45,
+      post: { bloom: { strength: 0.18, radius: 0.5, threshold: 1.0 } },
     });
     this.engine = engine;
-    engine.scene.fog = new THREE.FogExp2(0x1e150e, 0.011);
+    engine.camera.layers.enable(1); // Ebene 1: Beschriftungen/Sprites (nicht in der Bodenspiegelung)
+    engine.scene.fog = new THREE.FogExp2(0x1e150e, 0.009);
     engine.scene.add(new THREE.HemisphereLight(0xfff0dc, 0x5a3f26, 0.42)); // warmes Raumlicht von der hellen Decke
     const key = new THREE.SpotLight(0xffe6c4, 650, 0, 0.9, 0.7, 2);
     key.position.set(0, 6.2, 2);
@@ -58,12 +61,23 @@ class Hall {
     key.shadow.bias = -0.0004;
     engine.scene.add(key, key.target);
     // Wenige Akzentlichter: jedes Licht kostet in jedem Pixel Rechenzeit
+    const accents = [];
     for (const [x, z, c] of [[-14, 0, 0xffb070], [14, 0, 0xc59bff], [0, -11, 0xff2d6f]]) {
       const s = new THREE.SpotLight(c, 380, 0, 1.0, 0.8, 2);
       s.position.set(x, 6.2, z);
       s.target.position.set(x, 0, z);
       engine.scene.add(s, s.target);
+      accents.push(s);
     }
+    // Zusätzliche schattenwerfende Akzentlichter (Qualitätsstufe); nur so viele wie erlaubt
+    const extraShadows = engine.quality.shadows ? Math.min(engine.quality.extraShadows, accents.length) : 0;
+    accents.forEach((s, i) => {
+      if (i >= extraShadows) return;
+      s.castShadow = true;
+      s.shadow.mapSize.set(1024, 1024);
+      s.shadow.bias = -0.0006;
+      s.shadow.camera.near = 1; s.shadow.camera.far = 16;
+    });
     // Schatten der Halle nur alle 3 Frames neu berechnen (Figuren bewegen sich langsam genug)
     engine.renderer.shadowMap.autoUpdate = false;
     engine.renderer.shadowMap.needsUpdate = true;
@@ -71,6 +85,19 @@ class Hall {
     this.casino = buildCasino(engine);
     this.baseHitboxes = [...this.casino.stations.map((s) => s.hitbox), ...this.casino.interactives.map((i) => i.hitbox)];
     this.hitboxes = this.baseHitboxes;
+    // Statische Einrichtung zu wenigen Draw-Calls zusammenfassen (Voraussetzung für Spiegelung + GTAO)
+    const batched = batchStatic(engine.scene);
+    console.debug(`Halle: ${batched.removed} statische Meshes in ${batched.meshes} Batches zusammengefasst`);
+    // Planare Spiegelung im Marmorboden
+    if (engine.quality.reflection > 0 && this.casino.floor) {
+      this.reflection = new PlanarReflection(engine.renderer, engine.scene, { y: 0, scale: engine.quality.reflection, layers: 1 });
+      this.reflection.everyNth = engine.quality.reflectionEvery ?? 1;
+      this.reflection.hidden.add(this.casino.floor);
+      applyFloorReflection(this.casino.floor.material, this.reflection, { strength: 0.9, blur: 5 });
+      engine.onResize = (w, h) => this.reflection.setSize(w, h);
+      engine.preRender = () => { if (this.mode !== 'idle') this.reflection.update(engine.camera); };
+      this.reflection.setSize(engine.renderer.domElement.width, engine.renderer.domElement.height);
+    }
     // Echte Spiegelung: die fertige Halle einmal als Cubemap aufnehmen und als Umgebung für Marmor/Gold/Chrom nutzen
     setTimeout(() => this.captureEnvironment(), 300);
 
@@ -229,9 +256,8 @@ class Hall {
     document.body.classList.toggle('hall', mode !== 'idle');
     this.canvas.style.cursor = mode === 'walk' ? 'grab' : '';
     this.lookOffset = { yaw: 0, pitch: 0 };
-    // Im Hintergrund sparsamer rendern
-    // Bloom + große Halle: Pixeldichte in der Lobby auf 1,5 begrenzen, im Hintergrund auf 1
-    this.engine.setPixelRatioCap(mode === 'walk' ? 1.5 : 1);
+    // Hinter Profilseiten (idle) sparsamer rendern; beim Laufen und Spielen volle Qualität
+    this.engine.setPixelRatioCap(mode === 'idle' ? 1 : this.engine.quality.dpr);
     this.updateSpectateCam();
   }
 
@@ -360,6 +386,7 @@ class Hall {
     beam.position.set(c.x, 1.3, c.z);
     const glow = textSprite(`🪙 ${Math.round(c.value / 100)} · aufheben`, { size: 44, color: '#ffd76a', bg: 'rgba(0,0,0,0.6)', height: 0.28 });
     glow.position.set(c.x, 1.5, c.z);
+    glow.layers.set(1); beam.layers.set(1);
     const halo = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.6, 32), new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }));
     halo.rotation.x = -Math.PI / 2; halo.position.set(c.x, 0.02, c.z);
     // Großzügige Klickfläche (anklicken sammelt ebenfalls ein)
@@ -427,6 +454,7 @@ class Hall {
       av.traverse((o) => { if (o.material && !materials.has(o.material)) materials.set(o.material, o.material.depthWrite); });
       const label = av.userData.label;
       label.userData.baseScale = label.scale.clone();
+      label.layers.set(1);
       a = { av, target: new THREE.Vector3(p.x, 0, p.z), ry: p.ry ?? 0, anim: p.anim, seat: null, materials: [...materials.entries()], opacity: 1 };
       av.position.copy(a.target);
       this.avatars.set(p.id, a);
@@ -475,7 +503,7 @@ class Hall {
   update(dt, t) {
     const { engine, me, keys } = this;
     for (const fn of this.casino.animated) fn(dt, t);
-    if ((this.frame++ % 3) === 0) engine.renderer.shadowMap.needsUpdate = true;
+    if ((this.frame++ % 2) === 0) engine.renderer.shadowMap.needsUpdate = true;
 
     if (this.mode === 'walk') {
       const walkFov = this.fovFor(70);
@@ -549,6 +577,11 @@ class Hall {
     for (const s of this.casino.stations) {
       const active = this.mode === 'walk' && (s === this.hovered || s === this.nearStation);
       s.ring.material.opacity += ((active ? 0.6 + Math.sin(this.hoverTime * 5) * 0.25 : 0) - s.ring.material.opacity) * 0.15;
+      // Schwebende Beschriftungen nur in der Nähe bzw. bei Hover – aus der Ferne stört nichts den Raumeindruck
+      const dist = s.label.position.distanceTo(engine.camera.position);
+      const want = this.mode !== 'walk' ? 0 : active ? 1 : Math.max(0, Math.min(1, (13 - dist) / 6)) * 0.85;
+      const m = s.label.material;
+      if (Math.abs(m.opacity - want) > 0.004) { m.opacity += (want - m.opacity) * Math.min(1, dt * 5); s.label.visible = m.opacity > 0.01; }
     }
     // Kollision mit den Info-Tafeln
     if (this.mode === 'walk') {

@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { trackTexture, getTextureAnisotropy, surfaceMaps, fieldToGrayCanvas, textureFromCanvas } from './materialmaps.js';
+import { Simplex } from './noise.js';
 
 // ---------- Canvas-Helfer ----------
 export function makeCanvas(w, h) {
@@ -8,7 +10,7 @@ export function makeCanvas(w, h) {
   return { canvas, ctx: canvas.getContext('2d') };
 }
 
-export function canvasTexture(canvas, { repeat = null, anisotropy = 8 } = {}) {
+export function canvasTexture(canvas, { repeat = null, anisotropy = getTextureAnisotropy() } = {}) {
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = anisotropy;
@@ -16,6 +18,7 @@ export function canvasTexture(canvas, { repeat = null, anisotropy = 8 } = {}) {
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.repeat.set(repeat[0], repeat[1]);
   }
+  trackTexture(tex);
   return tex;
 }
 
@@ -45,7 +48,9 @@ export function normalMapFromCanvas(source, { strength = 1.5, repeat = null } = 
   }
   ctx.putImageData(out, 0, 0);
   const tex = new THREE.CanvasTexture(canvas);
-  tex.anisotropy = 8;
+  tex.anisotropy = getTextureAnisotropy();
+  tex.userData.keep = true;
+  trackTexture(tex);
   if (repeat) { tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(repeat[0], repeat[1]); }
   return tex;
 }
@@ -81,59 +86,94 @@ const cached = (key, make) => {
   return texCache.get(key);
 };
 
-export function feltTexture(color = '#0f5a3a') {
-  return cached(`felt:${color}`, () => {
-    const { canvas, ctx } = makeCanvas(512, 512);
-    ctx.fillStyle = color;
-    ctx.fillRect(0, 0, 512, 512);
-    const img = ctx.getImageData(0, 0, 512, 512);
-    const d = img.data;
-    for (let i = 0; i < d.length; i += 4) {
-      const n = (Math.random() - 0.5) * 26;
-      d[i] += n; d[i + 1] += n; d[i + 2] += n;
+/** Feine Gewebe-/Faserstruktur als Feld (Wolle, Filz, Papier) */
+function fiberField(N, seed, { fx = 60, fy = 60, cx = 14, cy = 14, roughness = 0.35 } = {}) {
+  const sim = new Simplex(seed);
+  const f = new Float32Array(N * N);
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const u = x / N; const v = y / N;
+      const fiber = sim.fbm(u * fx, v * fy, { octaves: 4 });
+      const clump = sim.fbm(u * cx + 3, v * cy + 7, { octaves: 3 });
+      f[y * N + x] = 0.5 + fiber * roughness + clump * 0.2;
     }
-    ctx.putImageData(img, 0, 0);
-    return canvasTexture(canvas, { repeat: [6, 6] });
-  });
+  }
+  return f;
 }
+
+/** Graustufenfeld als überlagernde Struktur auf einen Canvas legen (Overlay-Blend) */
+function overlayField(ctx, field, N, size, alpha) {
+  const gray = fieldToGrayCanvas(field, N, N, { lo: 0.15, hi: 1.0 });
+  ctx.save();
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.globalAlpha = alpha;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(gray, 0, 0, size, size);
+  ctx.restore();
+}
+
+/** Feines Papier-/Filzkorn */
+function speckle(ctx, w, h, amount) {
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * amount;
+    d[i] += n; d[i + 1] += n; d[i + 2] += n;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function feltMaps(color) {
+  const N = 256;
+  const field = fiberField(N, 61, { fx: 62, fy: 62, cx: 15, cy: 15, roughness: 0.38 });
+  const S = 512;
+  const { canvas, ctx } = makeCanvas(S, S);
+  ctx.fillStyle = color; ctx.fillRect(0, 0, S, S);
+  overlayField(ctx, field, N, S, 0.55);
+  speckle(ctx, S, S, 14);
+  const roughness = fieldToGrayCanvas(field, N, N, { lo: 0.2, hi: 1, invert: true });
+  return surfaceMaps({ key: `felt-v2:${color}`, color: canvas, roughness, height: { data: field, w: N, h: N }, repeat: [6, 6], normalStrength: 1.2, aoRadius: 2, aoStrength: 0.35 });
+}
+
+export function feltTexture(color = '#0f5a3a') { return feltMaps(color).map; }
 
 /** Feine Gewebestruktur als Normal-Map für Filz */
-export function feltNormal() {
-  return cached('felt:normal', () => {
-    const { canvas, ctx } = makeCanvas(256, 256);
-    const img = ctx.createImageData(256, 256);
-    for (let i = 0; i < img.data.length; i += 4) {
-      const v = 120 + Math.random() * 40 + (((i / 4) % 2) ? 6 : -6);
-      img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
-    }
-    ctx.putImageData(img, 0, 0);
-    return normalMapFromCanvas(canvas, { strength: 1.2, repeat: [12, 12] });
-  });
-}
+export function feltNormal() { return feltMaps('#0f5a3a').normalMap; }
 
 /** Holzmaserung als Normal-Map */
-export function woodNormal() {
-  return cached('wood:normal', () => normalMapFromCanvas(woodTexture().image, { strength: 1.0, repeat: [2, 2] }));
-}
+export function woodNormal() { return woodMaps().normalMap; }
 
-export function woodTexture() {
-  return cached('wood', () => {
-    const { canvas, ctx } = makeCanvas(512, 512);
-    const g = ctx.createLinearGradient(0, 0, 512, 0);
-    g.addColorStop(0, '#4a2a12'); g.addColorStop(0.5, '#6b3d1c'); g.addColorStop(1, '#3f2410');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 512, 512);
-    for (let i = 0; i < 90; i++) {
-      ctx.strokeStyle = `rgba(0,0,0,${0.05 + Math.random() * 0.12})`;
-      ctx.lineWidth = 1 + Math.random() * 3;
-      ctx.beginPath();
-      const y = Math.random() * 512;
-      ctx.moveTo(0, y);
-      ctx.bezierCurveTo(170, y + (Math.random() - 0.5) * 30, 340, y + (Math.random() - 0.5) * 30, 512, y);
-      ctx.stroke();
+export function woodTexture() { return woodMaps().map; }
+
+/** Ringförmige, domain-verwarpete Maserung mit Poren (fBm) – Farbe und Normal. */
+function woodMaps() {
+  const N = 256; const S = 512;
+  const sim = new Simplex(83);
+  const height = new Float32Array(N * N);
+  const { canvas, ctx } = makeCanvas(S, S);
+  const img = ctx.createImageData(S, S);
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const u = x / S; const v = y / S;
+      const [wx, wy] = sim.warp(u * 2.2, v * 0.6, 0.5, { octaves: 3 });
+      const turb = sim.turbulence(wx * 1.8, wy * 1.8, { octaves: 4 });
+      const rings = 0.5 + 0.5 * Math.sin((wy * 9 + turb * 6) * Math.PI * 2);
+      const pores = sim.fbm(u * 150, v * 36, { octaves: 3 });
+      const t = Math.pow(rings, 1.6);
+      const p = 0.5 - Math.abs(pores);
+      const r = 60 + t * 95 + p * 18;
+      const g = 36 + t * 58 + p * 12;
+      const b = 18 + t * 30 + p * 8;
+      const o = (y * S + x) * 4;
+      img.data[o] = r < 0 ? 0 : r > 255 ? 255 : r;
+      img.data[o + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
+      img.data[o + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
+      img.data[o + 3] = 255;
+      if (x < N && y < N) height[y * N + x] = rings * 0.7 + Math.abs(pores) * 0.3;
     }
-    return canvasTexture(canvas, { repeat: [2, 2] });
-  });
+  }
+  ctx.putImageData(img, 0, 0);
+  return surfaceMaps({ key: 'wood-v2', color: canvas, height: { data: height, w: N, h: N }, repeat: [2, 2], normalStrength: 1.0, aoRadius: 2, aoStrength: 0.45 });
 }
 
 /** Tischplatte mit Filz und Holzrand. */
@@ -244,6 +284,7 @@ export function cardFaceTexture(r, s) {
         ctx.save(); ctx.translate(x, y); if (py > 0) ctx.rotate(Math.PI); ctx.fillText(suit, 0, 0); ctx.restore();
       }
     }
+    speckle(ctx, W, H, 5);
     return canvasTexture(canvas);
   });
 }
@@ -267,6 +308,7 @@ export function cardBackTexture() {
     ctx.restore();
     ctx.fillStyle = '#d4af37'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = '900 64px Cinzel, Georgia, serif'; ctx.fillText('RC', W / 2, H / 2);
+    speckle(ctx, W, H, 5);
     return canvasTexture(canvas);
   });
 }
@@ -303,6 +345,16 @@ export const CHIP_STYLES = [
 ];
 export const chipStyle = (cents) => [...CHIP_STYLES].reverse().find((c) => c.value <= cents) ?? CHIP_STYLES[0];
 let chipGeo = null;
+let chipRoughTex = null;
+/** Mikro-Rauheit der Chips (gepresstes Clay mit feiner Maserung) */
+function chipRoughness() {
+  if (chipRoughTex) return chipRoughTex;
+  const N = 128;
+  const f = fiberField(N, 91, { fx: 42, fy: 42, cx: 11, cy: 11, roughness: 0.3 });
+  chipRoughTex = textureFromCanvas(fieldToGrayCanvas(f, N, N, { lo: 0.4, hi: 1, invert: true }), { repeat: [1, 1] });
+  chipRoughTex.userData.keep = true;
+  return chipRoughTex;
+}
 
 function chipTextures(style) {
   return cached(`chip:${style.value}`, () => {
@@ -320,12 +372,14 @@ function chipTextures(style) {
     ctx.beginPath(); ctx.arc(128, 128, 94, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = style.text; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = '900 64px Inter, Arial'; ctx.fillText(style.label, 128, 130);
+    speckle(ctx, 256, 256, 8);
     const top = canvasTexture(canvas);
 
     const side = makeCanvas(512, 32);
     side.ctx.fillStyle = style.color; side.ctx.fillRect(0, 0, 512, 32);
     side.ctx.fillStyle = '#ffffff';
     for (let i = 0; i < 8; i++) side.ctx.fillRect(i * 64 - 16, 0, 32, 32);
+    speckle(side.ctx, 512, 32, 10);
     const sideTex = canvasTexture(side.canvas, { repeat: [1, 1] });
     return { top, side: sideTex };
   });
@@ -336,9 +390,9 @@ export function createChip(cents) {
   const style = chipStyle(cents);
   const { top, side } = chipTextures(style);
   const mesh = new THREE.Mesh(chipGeo, [
-    new THREE.MeshStandardMaterial({ map: side, roughness: 0.5 }),
-    new THREE.MeshStandardMaterial({ map: top, roughness: 0.4 }),
-    new THREE.MeshStandardMaterial({ map: top, roughness: 0.4 }),
+    new THREE.MeshStandardMaterial({ map: side, roughnessMap: chipRoughness(), roughness: 0.55 }),
+    new THREE.MeshStandardMaterial({ map: top, roughnessMap: chipRoughness(), roughness: 0.45 }),
+    new THREE.MeshStandardMaterial({ map: top, roughnessMap: chipRoughness(), roughness: 0.45 }),
   ]);
   mesh.castShadow = true;
   mesh.receiveShadow = true;

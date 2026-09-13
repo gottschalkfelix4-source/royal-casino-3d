@@ -12,6 +12,7 @@ import { buildPoker3Station } from './stations/poker3.js';
 import { buildWarStation } from './stations/war.js';
 import { buildScratchStation } from './stations/scratch.js';
 import { buildDerbyStation } from './stations/derby.js';
+import { rng } from './noise.js';
 
 /**
  * Prozedural gebaute Casino-Halle im Las-Vegas-Stil: Marmorboden mit Teppichinseln und roten Läufern
@@ -80,17 +81,17 @@ function carpetPiece(scene, { x0, z0, x1, z1, kind }) {
     geo = new THREE.BoxGeometry(width, T, length);
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * (length / 2));
-    const { map, normal } = runnerTexture(width);
-    const n = normal.clone(); n.repeat.set(width / 1.2, length / 1.2); n.needsUpdate = true;
-    material = new THREE.MeshStandardMaterial({ map, normalMap: n, normalScale: new THREE.Vector2(0.35, 0.35), roughness: 1, metalness: 0 });
+    const { map, normalMap, aoMap } = runnerTexture(width);
+    const n = normalMap.clone(); n.repeat.set(width / 1.2, length / 1.2); n.needsUpdate = true;
+    material = new THREE.MeshStandardMaterial({ map, normalMap: n, normalScale: new THREE.Vector2(0.35, 0.35), aoMap, aoMapIntensity: 0.6, roughness: 1, metalness: 0 });
     rotY = along ? 0 : Math.PI / 2;
   } else {
     geo = new THREE.BoxGeometry(w, T, d);
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) { uv.setX(i, uv.getX(i) * (w / 2)); uv.setY(i, uv.getY(i) * (d / 2)); }
-    const { map, normal } = carpetTexture();
-    const n = normal.clone(); n.repeat.set(w / 1.2, d / 1.2); n.needsUpdate = true;
-    material = new THREE.MeshStandardMaterial({ map, normalMap: n, normalScale: new THREE.Vector2(0.4, 0.4), roughness: 1, metalness: 0 });
+    const { map, normalMap, aoMap } = carpetTexture();
+    const n = normalMap.clone(); n.repeat.set(w / 1.2, d / 1.2); n.needsUpdate = true;
+    material = new THREE.MeshStandardMaterial({ map, normalMap: n, normalScale: new THREE.Vector2(0.4, 0.4), aoMap, aoMapIntensity: 0.6, roughness: 1, metalness: 0 });
   }
   const mesh = new THREE.Mesh(geo, material);
   mesh.position.set(cx, T / 2, cz); mesh.rotation.y = rotY; mesh.receiveShadow = true;
@@ -113,11 +114,17 @@ export function buildCasino(engine) {
   const m = mat();
   const animated = [];
   const stations = [];
+  const jitter = rng(0x51f7); // kleine, deterministische Unregelmäßigkeiten (Figuren/Möbel)
 
   // ---------- Boden: polierter Marmor, darauf Teppichinseln und Läufer (überlappungsfrei) ----------
   const marble = marbleTexture();
-  const marbleFloor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshPhysicalMaterial({ map: marble.map, roughnessMap: marble.roughnessMap, roughness: 1, metalness: 0.04, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 1.1 }));
+  const marbleFloor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshPhysicalMaterial({
+    map: marble.map, roughnessMap: marble.roughnessMap, normalMap: marble.normalMap, aoMap: marble.aoMap,
+    normalScale: new THREE.Vector2(0.45, 0.45), aoMapIntensity: 0.8,
+    roughness: 1, metalness: 0.04, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 0.35,
+  }));
   marbleFloor.rotation.x = -Math.PI / 2; marbleFloor.receiveShadow = true;
+  marbleFloor.userData.noBatch = true; // bekommt die planare Spiegelung (eigenes Shader-Programm)
   scene.add(marbleFloor);
   const ZONES = [
     { x0: -2.6, z0: -10, x1: 2.6, z1: 14.6, kind: 'runner' },      // Hauptläufer vom Eingang bis zur Rückwand-Zone
@@ -138,7 +145,12 @@ export function buildCasino(engine) {
   for (const z of ZONES) carpetPiece(scene, z);
 
   // ---------- Decke ----------
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: ceilingTexture(), roughness: 0.85 }));
+  const ceilingTex = ceilingTexture();
+  const ceilMaps = ceilingTex.userData.maps ?? {};
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({
+    map: ceilingTex, normalMap: ceilMaps.normalMap, roughnessMap: ceilMaps.roughnessMap, aoMap: ceilMaps.aoMap,
+    normalScale: new THREE.Vector2(0.4, 0.4), aoMapIntensity: 0.7, roughness: 1,
+  }));
   ceiling.rotation.x = Math.PI / 2; ceiling.position.y = h;
   scene.add(ceiling);
   const ribMat = goldMaterial({ roughness: 0.3 });
@@ -162,7 +174,12 @@ export function buildCasino(engine) {
   scene.add(merged([[w - 2, 0, -d / 2 + 0.5, 0], [w - 2, 0, d / 2 - 0.5, 0], [d - 2, -w / 2 + 0.5, 0, Math.PI / 2], [d - 2, w / 2 - 0.5, 0, Math.PI / 2]].map(([len, x, z, rot]) => ({ geo: new THREE.BoxGeometry(len, 0.06, 0.12), p: [x, h - 0.12, z], r: [0, rot, 0] })), coveMat));
 
   // ---------- Wände mit Leisten, Bildern und Wandleuchten ----------
-  const wallMat = new THREE.MeshStandardMaterial({ map: wallTexture(), roughness: 0.78 });
+  const wallTex = wallTexture();
+  const wallMaps = wallTex.userData.maps ?? {};
+  const wallMat = new THREE.MeshStandardMaterial({
+    map: wallTex, normalMap: wallMaps.normalMap, roughnessMap: wallMaps.roughnessMap, aoMap: wallMaps.aoMap,
+    normalScale: new THREE.Vector2(0.45, 0.45), aoMapIntensity: 0.7, roughness: 1,
+  });
   const mkWall = (width, x, z, rotY) => {
     const wm = new THREE.Mesh(new THREE.PlaneGeometry(width, h), wallMat);
     wm.position.set(x, h / 2, z); wm.rotation.y = rotY; wm.receiveShadow = true;
@@ -197,6 +214,7 @@ export function buildCasino(engine) {
   for (const [x, z] of [[-8, -4], [8, -4], [-8, 6], [8, 6], [0, 1]]) {
     const c = chandelier(x, z, x === 0 ? 5.6 : 5.3);
     if (x === 0) c.scale.setScalar(1.5);
+    c.userData.crystals.userData.noBatch = true;
     scene.add(c);
     animated.push((dt, t) => { c.userData.crystals.rotation.y = t * 0.15; });
   }
@@ -236,7 +254,13 @@ export function buildCasino(engine) {
     const worldSeats = seats.map(([lx, lz]) => {
       const [fx, fz] = typeof face === 'function' ? face(lx, lz) : face;
       const ry = Math.atan2(lx - fx, lz - fz);
-      if (chairs) { const c = casinoChair({ seatY: 0.68 }); c.position.set(lx, 0, lz); c.rotation.y = ry; group.add(c); }
+      if (chairs) {
+        const c = casinoChair({ seatY: 0.68 });
+        // leicht gedreht/verschoben, als wären die Stühle benutzt worden
+        c.position.set(lx + (jitter() - 0.5) * 0.05, 0, lz + (jitter() - 0.5) * 0.05);
+        c.rotation.y = ry + (jitter() - 0.5) * 0.22;
+        group.add(c);
+      }
       return { x: x + lx * cos + lz * sin, z: z - lx * sin + lz * cos, ry: rotY + ry, sit };
     });
     const hitbox = new THREE.Mesh(new THREE.BoxGeometry(...hit), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
@@ -245,6 +269,7 @@ export function buildCasino(engine) {
     scene.add(hitbox);
     const label = textSprite(name, { size: 60, color: '#ffffff', bg: 'rgba(0,0,0,0.55)', height: 0.55 });
     label.position.set(x, labelY, z);
+    label.layers.set(1); // Beschriftungen: nicht in der Bodenspiegelung
     scene.add(label);
     const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(hit[0], hit[2]) * 0.55, Math.max(hit[0], hit[2]) * 0.55 + 0.12, 64), new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.03, z);
@@ -266,6 +291,15 @@ export function buildCasino(engine) {
    * extra(seatIndex): Objekte, die das Spiel bekommt (z. B. Automat, Kessel, Layout)
    */
   const setMount = (st, { type, scale = 1, object = null, offset = [0, 0, 0], hide = [], rotX = 0, pull = 0.3, lookY = 0.55, look = null, fov = null, extra = null, cam = null }) => {
+    // Alles, was im Spiel ausgeblendet wird oder als Referenzobjekt dient, bleibt vom statischen Batching ausgenommen
+    for (const o of Array.isArray(hide) ? hide : []) o.userData.noBatch = true;
+    if (object && typeof object !== 'function') object.userData.noBatch = true;
+    // Vom Spiel genutzte Zusatzobjekte (Tisch, Kessel, Automat, Layout) ebenfalls vom Batching ausnehmen
+    if (typeof extra === 'function') {
+      try {
+        for (const v of Object.values(extra(0) ?? {})) if (v?.isObject3D) v.userData.noBatch = true;
+      } catch { /* extra benötigt einen Index – dann markiert die Station selbst */ }
+    }
     st.mount = { type, scale, object, offset: new THREE.Vector3(...offset), hide, rotX, pull, lookY, look, fov, extra, cam };
   };
 
@@ -278,6 +312,7 @@ export function buildCasino(engine) {
     const mc = buildSlotMachine({ variant: i, name: NAMES[i] });
     mc.position.z = (i - 2.5) * SLOT_PITCH;
     mc.rotation.y = Math.PI / 2; // Front zeigt nach +x in die Halle
+    mc.userData.noBatch = true; // Hebel, Walzen, Lampen und Anzeige bewegen sich
     slotsGroup.add(mc);
     machines.push(mc);
   }
@@ -306,6 +341,7 @@ export function buildCasino(engine) {
   const WHEEL_S = 0.15; const WHEEL_X = -1.45;
   const { group: wheelGroup, rotor, ball } = buildRouletteWheel({ ball: true });
   wheelGroup.scale.setScalar(WHEEL_S); wheelGroup.position.set(WHEEL_X, 0.95, 0);
+  wheelGroup.userData.noBatch = true; // Rotor und Kugel drehen sich
   wheelGroup.add(ball); // Kugel in Kesselkoordinaten (dreht nicht mit dem Rotor)
   rl.add(wheelGroup);
   const well = new THREE.Mesh(new THREE.LatheGeometry([[BOWL_R * WHEEL_S + 0.005, 0], [BOWL_R * WHEEL_S + 0.09, 0], [BOWL_R * WHEEL_S + 0.09, 0.05], [BOWL_R * WHEEL_S + 0.05, 0.075], [BOWL_R * WHEEL_S + 0.005, 0.075]].map(([r, y]) => new THREE.Vector2(r, y)), 96), m.mahogany);
@@ -320,7 +356,7 @@ export function buildCasino(engine) {
     for (let k = 0; k < n; k++) { const c = createChip(cents); c.scale.setScalar(0.19); c.position.set(0.78 + p.x + (Math.random() - 0.5) * 0.01, 0.958 + 0.016 * k + 0.008, p.z + (Math.random() - 0.5) * 0.01); c.rotation.y = Math.random() * 6; rl.add(c); rlDeco.push(c); }
   };
   placeDeco('straight:17', 25_00, 3); placeDeco('red', 100_00, 2); placeDeco('dozen:2', 5_00, 4); placeDeco('straight:32', 10_00, 1);
-  const dollyDeco = dolly();
+  const dollyDeco = dolly(); dollyDeco.userData.noBatch = true; // wird im Spiel ausgeblendet
   const dp = layoutToLocal(layoutCell('straight:23')); dollyDeco.position.set(0.78 + dp.x, 0.958, dp.z);
   rl.add(dollyDeco); rlDeco.push(dollyDeco);
   // Sitzordnung: zwei Plätze an der Längsseite nahe am Kessel, ein Kopfplatz am Tischende mit freiem Blick über das
@@ -378,6 +414,7 @@ export function buildCasino(engine) {
 
   // ---------- Glücksrad ----------
   const fw = fortuneWheel();
+  fw.userData.noBatch = true; // Rad dreht sich und wird im Spiel komplett ausgeblendet
   const fwSt = addStation('wheel', '🎯 Glücksrad', fw, { x: 0, z: -13.6, hit: [4, 4.3, 1.6], labelY: 4.5, seats: [[0, 2.2], [-1.2, 2.4], [1.2, 2.4]], sit: false });
   setMount(fwSt, { type: 'screen', scale: 0.34, object: () => fw.userData.spin, hide: [fw] });
   animated.push((dt) => { fw.userData.spin.rotation.z -= dt * 0.35; });
@@ -385,7 +422,7 @@ export function buildCasino(engine) {
   // ---------- Arcade-Automaten ----------
   const cab = { hit: [1.6, 2.4, 1.6], labelY: 2.6, seats: [[0, 1.2], [-0.75, 1.25], [0.75, 1.25]], sit: false };
   const screenOf = (cg) => () => cg.userData.bezel;
-  const hideOf = (cg) => [cg.userData.screen, cg.userData.glass];
+  const hideOf = (cg) => { for (const o of [cg.userData.screen, cg.userData.glass, cg.userData.bezel]) o.userData.noBatch = true; return [cg.userData.screen, cg.userData.glass]; };
   const crashCab = cabinet(SCREENS.crash(), 'CRASH', '#ff4d4d');
   setMount(addStation('crash', '🚀 Crash', crashCab, { x: -5.5, z: -13.9, ...cab }), { type: 'screen', scale: 0.07, object: screenOf(crashCab), offset: [0, -0.05, 0.03], hide: hideOf(crashCab) });
   const plinkoCab = cabinet(SCREENS.plinko(), 'PLINKO', '#ff7ad9');
@@ -397,6 +434,7 @@ export function buildCasino(engine) {
 
   // ---------- Münzwurf-Podest ----------
   const pd = pedestal();
+  pd.userData.spin.userData.noBatch = true;
   const pdSt = addStation('coinflip', '🪙 Münzwurf', pd, { x: 0, z: -3, hit: [1.8, 2.6, 1.8], labelY: 2.9, seats: [[0, 1.4], [-1.2, 0.7], [1.2, 0.7]], sit: false });
   setMount(pdSt, { type: 'table', scale: 0.14, offset: [0, 0.93, 0], hide: [pd.userData.spin], pull: 0 });
   animated.push((dt, t) => { pd.userData.spin.rotation.y += dt * 2; pd.userData.spin.position.y = 1.5 + Math.sin(t * 2) * 0.1; });
@@ -406,6 +444,10 @@ export function buildCasino(engine) {
   const moduleDealers = [];
   const addModuleStation = (id, name, group, { x, z, rotY = 0 }) => {
     const u = group.userData;
+    // Bewegte oder im Spiel ausgeblendete Teile dürfen nicht statisch zusammengefasst werden; solange ein
+    // Modul seine Teile nicht selbst markiert, bleibt die ganze Station vom Batching ausgenommen.
+    if (u.noBatch === undefined) u.noBatch = true;
+    for (const o of (typeof u.mount?.hide === 'function' ? [] : (u.mount?.hide ?? []))) o.userData.noBatch = true;
     const st = addStation(id, name, group, { x, z, rotY, hit: u.hit, labelY: u.labelY ?? 2.9, seats: u.seats, face: u.face ?? [0, 0], sit: u.sit ?? true, chairs: !!u.chairs });
     if (u.mount) setMount(st, u.mount);
     if (u.update) animated.push((dt, t) => u.update(dt, t));
@@ -422,7 +464,7 @@ export function buildCasino(engine) {
   const ropeMat = new THREE.MeshStandardMaterial({ color: 0x8a1030, roughness: 0.85 });
   for (const side of [-1, 1]) {
     for (let i = 0; i < 4; i++) {
-      const p = ropePost(); p.position.set(side * 3.1, 0, 13.8 - i * 2.2); scene.add(p);
+      const p = ropePost(); p.position.set(side * 3.1 + (jitter() - 0.5) * 0.04, 0, 13.8 - i * 2.2); p.rotation.y = (jitter() - 0.5) * 0.15; scene.add(p);
       if (i < 3) {
         const rope = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.03, 8, 24, Math.PI * 0.55), ropeMat);
         rope.position.set(side * 3.1, 1.35, 12.7 - i * 2.2);
@@ -432,7 +474,7 @@ export function buildCasino(engine) {
     }
   }
   const plants = [];
-  const placePlant = (plant, x, z) => { plant.position.set(x, 0, z); scene.add(plant); plants.push(plant); const cs = contactShadow(1.4, 1.4, 0.5); cs.position.set(x, 0.02, z); scene.add(cs); };
+  const placePlant = (plant, x, z) => { plant.position.set(x, 0, z); plant.userData.noBatch = true; scene.add(plant); plants.push(plant); const cs = contactShadow(1.4, 1.4, 0.5); cs.position.set(x, 0.02, z); scene.add(cs); };
   let seed = 0.13;
   for (const [px, pz] of [[-18.5, 13], [18.5, 13], [-18.5, -13], [18.5, -13], [-6.2, 13.6], [6.2, 13.6]]) placePlant(createPalm({ height: 2.2 + (seed += 0.17) % 0.5, fronds: 11, seed }), px, pz);
   for (const [px, pz] of [[-12.9, -9.9], [16.5, -11.5], [-12.9, 9.9], [15.6, 12.5], [-3.1, -9.9], [3.1, -9.9]]) placePlant(createFicus({ height: 1.6 + (seed += 0.11) % 0.4, seed }), px, pz);
@@ -449,6 +491,7 @@ export function buildCasino(engine) {
     scene.add(hitbox);
     const label = textSprite('🎁 Coins verdienen', { size: 56, color: '#f5d97a', bg: 'rgba(0,0,0,0.6)', height: 0.42 });
     label.position.set(x, y + hit[1] / 2 + 0.35, z);
+    label.layers.set(1);
     scene.add(label);
     interactives.push({ id: `board-${interactives.length}`, action: 'rewards', name: '🎁 Coins verdienen', hitbox, position: new THREE.Vector3(x, y, z) });
   };
@@ -466,6 +509,8 @@ export function buildCasino(engine) {
     const av = createAvatar({ name, dealer: true });
     av.position.set(st.group.position.x + lx, 0, st.group.position.z + lz);
     av.rotation.y = Math.PI;
+    av.userData.noBatch = true;
+    av.userData.label?.layers.set(1);
     scene.add(av);
     animated.push((dt, t) => av.userData.dealerStep(dt, t));
   }
@@ -476,5 +521,5 @@ export function buildCasino(engine) {
     new THREE.Vector3(14, 2.2, 0), new THREE.Vector3(9, 2.5, 10),
   ], true, 'centripetal', 0.6);
 
-  return { stations, interactives, animated, path, center: new THREE.Vector3(0, 1.2, 0), machines };
+  return { stations, interactives, animated, path, center: new THREE.Vector3(0, 1.2, 0), machines, floor: marbleFloor };
 }
