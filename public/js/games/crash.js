@@ -4,7 +4,7 @@ import { api } from '../api.js';
 import { h, fmt, fmtMult } from '../ui.js';
 import { sound } from '../sound.js';
 import { betControl, section, bigButton, statBox, historyStrip } from '../widgets.js';
-import { burst, disposeObject } from '../three/assets.js';
+import { burst, disposeObject, makeCanvas, canvasTexture } from '../three/assets.js';
 
 const GROWTH = 0.1;
 const multAt = (ms) => Math.floor(Math.exp((GROWTH * ms) / 1000) * 100) / 100;
@@ -87,6 +87,40 @@ export default class Crash extends GameBase {
     this.statusEl = h('div.crash-status', {}, 'Bereit zum Start');
     this.addHud(this.multEl, this.statusEl);
     this.bannerEl.style.top = '48%'; // Banner nicht über dem Multiplikator-HUD
+    if (engine.embedded) {
+      // Das HUD ist ein DOM-Overlay und sitzt damit in der Mitte des Browserfensters, nicht auf dem
+      // Automaten – im Automaten stand der Multiplikator deshalb neben dem Gerät in der Luft.
+      this.multC = makeCanvas(1024, 512); // grob genug wäre 512er, aus 1.45 m sieht man die Kanten aber
+      this.multTex = canvasTexture(this.multC.canvas);
+      this.multSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.multTex, transparent: true, depthTest: false }));
+      this.multSprite.scale.set(7.2, 3.6, 1);
+      this.multSprite.position.set(0, 4.4, 0.6);
+      engine.scene.add(this.multSprite);
+      this.multEl.style.display = 'none';
+      this.statusEl.style.display = 'none';
+      this.paintScreen();
+    }
+  }
+
+  /** Multiplikator und Status auf den Automatenbildschirm zeichnen (nur eingebettet). */
+  paintScreen() {
+    if (!this.multC) return;
+    const text = this.multEl.textContent;
+    const status = this.statusEl.textContent;
+    const key = `${text}|${status}|${this.multEl.className}`;
+    if (key === this.multKey) return; // nur neu zeichnen, wenn sich etwas geändert hat
+    this.multKey = key;
+    const color = this.multEl.classList.contains('crashed') ? '#ff5a4d'
+      : this.multEl.classList.contains('cashed') ? '#34e39a' : '#ffffff';
+    const { ctx, canvas } = this.multC;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = color; ctx.shadowBlur = 34;
+    ctx.fillStyle = color; ctx.font = '900 240px Inter, Arial';
+    ctx.fillText(text, 512, 220);
+    ctx.shadowBlur = 10; ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.font = '600 76px Inter, Arial';
+    ctx.fillText(status, 512, 410);
+    this.multTex.needsUpdate = true;
   }
 
   resetRocket() {
@@ -148,6 +182,7 @@ export default class Crash extends GameBase {
     this.resetRocket();
     this.multEl.className = 'crash-mult';
     this.statusEl.textContent = round.autoCashout ? `Auto-Cashout bei ${fmtX(round.autoCashout)}` : 'Fliegt…';
+    this.paintScreen();
     this.startBtn.classList.add('hidden');
     this.cashBtn.classList.remove('hidden');
     this.hint('');
@@ -160,6 +195,7 @@ export default class Crash extends GameBase {
     const elapsed = performance.now() - this.t0;
     const m = multAt(elapsed);
     this.multEl.textContent = fmtX(m);
+    this.paintScreen();
     this.cashBtn.textContent = `💰 AUSZAHLEN 🪙 ${fmt(Math.floor(this.roundBet * m))}`;
     const { x, y, p } = this.rocketPose(m);
     this.rocket.position.set(x, y, 0);
@@ -203,6 +239,7 @@ export default class Crash extends GameBase {
       this.multEl.textContent = fmtX(m);
       this.multEl.className = 'crash-mult cashed';
       this.statusEl.textContent = `Ausgezahlt bei ${fmtX(m)} · Crash bei ${fmtX(st.crashPoint)}`;
+      this.paintScreen();
       sound.play(m >= 5 ? 'bigwin' : 'cashout');
       this.banner('AUSGEZAHLT', `🪙 ${fmt(st.payout)} (${fmtX(m)})`, 'win', 3000);
       this.lastBox.set(`${fmtX(m)} · +🪙 ${fmt(st.payout - this.roundBet)}`, 'win');
@@ -215,6 +252,7 @@ export default class Crash extends GameBase {
       this.multEl.textContent = fmtX(st.crashPoint);
       this.multEl.className = 'crash-mult crashed';
       this.statusEl.textContent = `Abgestürzt bei ${fmtX(st.crashPoint)}`;
+      this.paintScreen();
       sound.play('boom');
       this.engine.shake(0.5);
       burst(this.engine, this.rocket.position.clone(), { count: 120, colors: [0xff5722, 0xffc107, 0xff1744, 0xffffff], speed: 7, size: 0.12, gravity: 6 });

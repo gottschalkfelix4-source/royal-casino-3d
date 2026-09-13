@@ -23,7 +23,11 @@ export default class Plinko extends GameBase {
     const { engine } = this;
     engine.addLights({ key: [3, 8, 10], keyIntensity: 1.8, hemi: 0.5, fill: 0.6 });
     engine.addSpot({ position: [0, 6, 10], target: [0, -2, 0], intensity: 500, angle: 0.9, color: 0xe6d0ff });
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(15, 14), new THREE.MeshPhysicalMaterial({ color: 0x120e1f, roughness: 0.2, transparent: !engine.embedded, opacity: engine.embedded ? 1 : 0.55, clearcoat: 1 }));
+    // Im Automaten matt: eine glänzende Platte spiegelt dort über die Umgebungsmap die halbe Halle aufs Brett.
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(15, 14), new THREE.MeshPhysicalMaterial({
+      color: 0x120e1f, roughness: engine.embedded ? 0.85 : 0.2, clearcoat: engine.embedded ? 0 : 1,
+      envMapIntensity: engine.embedded ? 0.1 : 1, transparent: !engine.embedded, opacity: engine.embedded ? 1 : 0.55,
+    }));
     back.position.z = engine.embedded ? -0.6 : -1.2;
     engine.scene.add(back);
     engine.setFit(14, 13);
@@ -67,7 +71,9 @@ export default class Plinko extends GameBase {
     const s = BOARD_W / (rows + 2);
     const sv = s * 0.86;
     const top = (rows * sv) / 2 + 0.6;
-    return { rows, s, sv, top };
+    // Unterkante = Fächerreihe; das Brett hängt sonst mit großer Leerfläche oben im Bild
+    const bottom = top - rows * sv - 0.65 - 0.275;
+    return { rows, s, sv, top, mid: (top + bottom) / 2 };
   }
 
   pegPos(row, j) {
@@ -78,7 +84,9 @@ export default class Plinko extends GameBase {
   rebuild() {
     if (!this.multipliers) return;
     while (this.board.children.length) disposeObject(this.board.children[0]);
-    const { rows, s, sv, top } = this.layout();
+    const { rows, s, sv, top, mid } = this.layout();
+    // Brett mittig ins Bild rücken: Pyramide und Fächer sind um `mid` herum aufgebaut, nicht um 0
+    this.board.position.y = -mid;
     const risk = this.riskSel.value;
     const mults = this.multipliers[rows][risk];
     const max = Math.max(...mults);
@@ -95,7 +103,8 @@ export default class Plinko extends GameBase {
       const box = new THREE.Mesh(new THREE.BoxGeometry(s * 0.86, 0.55, 0.5), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.25, roughness: 0.4 }));
       box.position.set(x, top - rows * sv - 0.65, 0);
       this.board.add(box);
-      const label = textSprite(m < 10 ? `${m}×` : `${Math.round(m)}×`, { size: 56, color: '#0b0b0b', height: Math.min(0.42, s * 0.5) });
+      // Auf dem Automatenbildschirm ist ein Fach nur wenige Zentimeter breit – kleiner darf die Zahl nicht sein
+      const label = textSprite(m < 10 ? `${m}×` : `${Math.round(m)}×`, { size: 64, color: '#0b0b0b', height: Math.min(0.58, s * 0.62) });
       label.position.set(x, box.position.y, 0.32);
       this.board.add(label);
       return { box, color, mult: m };
@@ -133,7 +142,7 @@ export default class Plinko extends GameBase {
     const { s, sv, top } = this.layout();
     const ball = new THREE.Mesh(this.ballGeo, new THREE.MeshPhysicalMaterial({ color: 0xffd76a, metalness: 0.6, roughness: 0.2, clearcoat: 1 }));
     ball.position.set(0, top + 1.6, 0.15);
-    engine.scene.add(ball);
+    this.board.add(ball); // im Brett, damit sie dessen Zentrierung mitmacht
     // Startfall bis zur ersten Reihe
     let x = 0;
     let y = top + 1.6;
