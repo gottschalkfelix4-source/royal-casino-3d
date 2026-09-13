@@ -5,6 +5,10 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
  * Kleiner Abschluss-Pass nach dem Bloom: dezente Vignette, feines Filmkorn und optional eine sehr schwache
  * chromatische Aberration. Läuft in linearem HDR vor `OutputPass`, ist also günstig und für alle
  * Qualitätsstufen mit Nachbearbeitung geeignet.
+ *
+ * Maßstab von `aberration`: der Kanal-Versatz in der Bildecke beträgt rund `aberration * 0.35` in UV,
+ * bei 1920 px Breite also ~0.0015 ≙ 1 px. Werte ab etwa 0.01 trennen die Kanäle sichtbar und lassen das
+ * Bild wie ein Rot/Cyan-Anaglyph aussehen – hier gehören einstellige Promille hin, nichts darüber.
  */
 export const GradeShader = {
   uniforms: {

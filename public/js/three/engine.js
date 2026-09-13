@@ -24,7 +24,7 @@ export function setQuality(q) { localStorage.setItem('casino.quality', q); }
  * zusätzliche schattenwerfende Akzentlichter · anisotropy: Anisotropie der Texturen · grade: Vignette/Korn-Pass
  */
 export const QUALITY = {
-  high: { dpr: 2, shadows: true, shadowMap: 2048, msaa: 4, gtao: true, reflection: 0.5, reflectionEvery: 1, extraShadows: 4, anisotropy: 16, grade: { vignette: 0.45, grain: 0.01, aberration: 0.035 } },
+  high: { dpr: 2, shadows: true, shadowMap: 2048, msaa: 4, gtao: true, reflection: 0.5, reflectionEvery: 1, extraShadows: 4, anisotropy: 16, grade: { vignette: 0.45, grain: 0.01, aberration: 0.0015 } },
   medium: { dpr: 1.25, shadows: true, shadowMap: 2048, msaa: 4, gtao: false, reflection: 0.35, reflectionEvery: 2, extraShadows: 2, anisotropy: 8, grade: { vignette: 0.45, grain: 0.008, aberration: 0 } },
   low: { dpr: 1, shadows: false, shadowMap: 1024, msaa: 0, gtao: false, reflection: 0, reflectionEvery: 3, extraShadows: 0, anisotropy: 4, grade: null },
 };
