@@ -27,10 +27,12 @@ export default class Mines extends GameBase {
     }
     engine.setFit(8, 8.5);
 
-    this.tileMat = new THREE.MeshPhysicalMaterial({ color: 0x2b3a55, roughness: 0.35, metalness: 0.2, clearcoat: 0.6 });
+    // Wenig Glanz und keine Umgebungsspiegelung: im Automaten säße sonst die halbe Halle auf den Kacheln.
+    // Wenig Glanz, kaum Umgebungsspiegelung: im Automaten säße sonst die halbe Halle auf den Kacheln.
+    this.tileMat = new THREE.MeshPhysicalMaterial({ color: 0x2b3a55, roughness: 0.55, metalness: 0.1, clearcoat: 0.25, clearcoatRoughness: 0.35, envMapIntensity: 0.25 });
     this.hoverMat = this.tileMat.clone(); this.hoverMat.color.setHex(0x3f5680); this.hoverMat.emissive.setHex(0x1a2a44);
-    this.safeMat = new THREE.MeshPhysicalMaterial({ color: 0x0f5a3a, roughness: 0.4, emissive: 0x0b3d28, emissiveIntensity: 0.5 });
-    this.mineMat = new THREE.MeshPhysicalMaterial({ color: 0x5a1a1a, roughness: 0.5, emissive: 0x3d0b0b, emissiveIntensity: 0.6 });
+    this.safeMat = new THREE.MeshPhysicalMaterial({ color: 0x0f5a3a, roughness: 0.5, emissive: 0x0b3d28, emissiveIntensity: 0.5, envMapIntensity: 0.25 });
+    this.mineMat = new THREE.MeshPhysicalMaterial({ color: 0x5a1a1a, roughness: 0.5, emissive: 0x8b1414, emissiveIntensity: 0.9, envMapIntensity: 0.25 });
     this.dimMineMat = new THREE.MeshPhysicalMaterial({ color: 0x3a2a2a, roughness: 0.6 });
     this.tiles = [];
     const geo = new THREE.BoxGeometry(TILE, 0.35, TILE);
@@ -43,7 +45,7 @@ export default class Mines extends GameBase {
       this.tiles.push(tile);
     }
     this.gemGeo = new THREE.OctahedronGeometry(0.32, 0);
-    this.gemMat = new THREE.MeshPhysicalMaterial({ color: 0x34e39a, emissive: 0x1ec27a, emissiveIntensity: 0.9, roughness: 0.1, metalness: 0.2, clearcoat: 1 });
+    this.gemMat = new THREE.MeshPhysicalMaterial({ color: 0x34e39a, emissive: 0x1ec27a, emissiveIntensity: 0.35, roughness: 0.15, metalness: 0.2, clearcoat: 1, envMapIntensity: 0.4 });
     this.bombGeo = new THREE.SphereGeometry(0.3, 24, 24);
     this.bombMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4, metalness: 0.6 });
     this.decor = [];

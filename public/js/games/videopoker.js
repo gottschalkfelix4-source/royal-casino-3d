@@ -11,8 +11,12 @@ const RANK_LABEL = {
   royal_flush: 'Royal Flush', straight_flush: 'Straight Flush', four_of_a_kind: 'Vierling', full_house: 'Full House',
   flush: 'Flush', straight: 'Straße', three_of_a_kind: 'Drilling', two_pair: 'Zwei Paare', jacks_or_better: 'Buben oder besser', high_card: 'Nichts',
 };
+// Die Hand steht im Automaten auf einer 0.85-m-Bildschirmfläche (Montage-Maßstab 0.11 → 7.7 Einheiten
+// Breite). DX/CARD_S füllen sie aus, statt die Karten in der Mitte zusammenzudrängen.
 const Y = 1.05;
-const DX = 1.3;
+const DX = 1.45;
+const CARD_S = 1.35;
+const HOLD_DY = 1.25;
 
 export default class VideoPoker extends GameBase {
   engineOptions() { return { fov: 42, position: [0, 2.6, 6.8], target: [0, 0.9, 0], background: 0x06080f }; }
@@ -85,7 +89,8 @@ export default class VideoPoker extends GameBase {
   async showHand(hand, instant = false) {
     for (let i = 0; i < 5; i++) {
       if (this.holders[i]) continue;
-      const holder = await this.tableApi.deal(hand[i], { pos: this.cardPos(i), upright: true, duration: instant ? 1 : 380 });
+      // tilt 0: im Automaten liegt die Hand plan auf dem Bildschirm, eine zurückgelehnte Karte sähe schief aus
+      const holder = await this.tableApi.deal(hand[i], { pos: this.cardPos(i), upright: true, tilt: 0, scale: CARD_S, duration: instant ? 1 : 380 });
       this.holders[i] = holder;
       if (!instant) await this.engine.delay(90);
     }
@@ -109,8 +114,8 @@ export default class VideoPoker extends GameBase {
     const y1 = this.held[i] ? Y + 0.35 : Y;
     this.engine.tween(200, (k) => { holder.position.y = y0 + (y1 - y0) * k; });
     if (this.held[i]) {
-      const s = textSprite('HOLD', { size: 44, color: '#1a1305', bg: '#f5d97a', height: 0.32 });
-      s.position.set((i - 2) * DX, Y + 1.25, 0.2);
+      const s = textSprite('HALTEN', { size: 44, color: '#1a1305', bg: '#f5d97a', height: 0.42 });
+      s.position.set((i - 2) * DX, Y - HOLD_DY, 0.2);
       this.engine.scene.add(s);
       this.holdSprites[i] = s;
     } else if (this.holdSprites[i]) {
@@ -150,7 +155,7 @@ export default class VideoPoker extends GameBase {
       await Promise.all(replaced.map((i, n) => this.engine.delay(n * 60).then(() => this.tableApi.discard(this.holders[i], { to: [(i - 2) * DX, -1.5, 3] }))));
       for (const i of replaced) this.holders[i] = null;
       for (const i of replaced) {
-        this.holders[i] = await this.tableApi.deal(game.hand[i], { pos: this.cardPos(i), upright: true, duration: 380 });
+        this.holders[i] = await this.tableApi.deal(game.hand[i], { pos: this.cardPos(i), upright: true, tilt: 0, scale: CARD_S, duration: 380 });
       }
       this.clearHolds();
       this.game = null;

@@ -525,6 +525,21 @@ export function cabinet(screenTex, title, color) {
   const glass = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.92), m.glass);
   glass.position.set(0, 1.35, 0.49); glass.renderOrder = 2;
   g.add(glass);
+  // Bildschirmmulde: bleibt stehen, wenn Attrappe, Blende und Scheibe fürs Spiel ausgeblendet werden.
+  // Ohne sie läuft die Spielszene direkt vor dem Klavierlack des Gehäuses – und der spiegelt über
+  // die Umgebungsmap die komplette Halle mitten ins Spielfeld.
+  const well = new THREE.Mesh(new THREE.PlaneGeometry(0.98, 0.98), new THREE.MeshStandardMaterial({
+    color: 0x04050a, roughness: 1, metalness: 0, envMapIntensity: 0,
+  }));
+  well.position.set(0, 1.35, 0.452);
+  g.add(well);
+  // Die Halle leuchtet nicht in die Gehäuse hinein; ohne eigenes Licht bleibt jede Spielszene flau.
+  // Reichweite knapp über die Bildschirmtiefe hinaus, damit nichts in den Raum abstrahlt.
+  // decay 1 statt quadratisch: aus knapp einem Meter auf eine 0.85-m-Fläche würde quadratischer Abfall
+  // die Mitte ausbrennen und die Ecken absaufen lassen. distance begrenzt die Abstrahlung in den Raum.
+  const screenLight = new THREE.PointLight(0xcfe0ff, 0.85, 2.0, 1);
+  screenLight.position.set(0, 1.35, 0.92);
+  g.add(screenLight);
   g.add(merged([
     { geo: box(1.02, 0.03, 0.02), p: [0, 1.85, 0.46] }, { geo: box(1.02, 0.03, 0.02), p: [0, 0.85, 0.46] },
     { geo: box(0.03, 1.0, 0.02), p: [-0.5, 1.35, 0.46] }, { geo: box(0.03, 1.0, 0.02), p: [0.5, 1.35, 0.46] },
@@ -548,7 +563,7 @@ export function cabinet(screenTex, title, color) {
   const stripe = new THREE.Mesh(box(1.14, 0.04, 0.94), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.6 }));
   stripe.position.y = 0.3;
   g.add(stripe);
-  g.userData.screen = screen; g.userData.glass = glass; g.userData.bezel = bezel;
+  g.userData.screen = screen; g.userData.glass = glass; g.userData.bezel = bezel; g.userData.well = well;
   return g;
 }
 

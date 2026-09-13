@@ -30,7 +30,7 @@ export function buildScratchStation() {
     type: 'screen', scale: 0.11,
     object: () => cab.userData.bezel, offset: [0, -0.05, 0.04],
     hide: [cab.userData.screen, cab.userData.glass],
-    fov: 60,
+    cabinetCam: true,
   };
   return cab;
 }

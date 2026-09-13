@@ -426,15 +426,31 @@ export function buildCasino(engine) {
   // ---------- Arcade-Automaten ----------
   const cab = { hit: [1.6, 2.4, 1.6], labelY: 2.6, seats: [[0, 1.2], [-0.75, 1.25], [0.75, 1.25]], sit: false };
   const screenOf = (cg) => () => cg.userData.bezel;
+  /**
+   * Sitzkamera für Automaten: frontal vor dem Bildschirm, weiter weg und mit engem Blickwinkel.
+   * Ohne das steht die Kamera auf dem Stehplatz 0.75 m vor einer 0.85 m großen Fläche und rendert sie
+   * mit FOV 70 – die Ränder laufen dann sichtbar auseinander. 1.45 m mit FOV 40 zeigt denselben
+   * Ausschnitt nahezu verzerrungsfrei.
+   */
+  const SCREEN_FOV = 40;
+  const screenCam = (st, { dist = 1.45, y = 1.35 } = {}) => () => {
+    const fwd = new THREE.Vector3(0, 0, 1).applyAxisAngle(new THREE.Vector3(0, 1, 0), st.rotY);
+    const center = new THREE.Vector3(st.position.x, y, st.position.z).addScaledVector(fwd, 0.48);
+    return { pos: center.clone().addScaledVector(fwd, dist), look: center };
+  };
   const hideOf = (cg) => { for (const o of [cg.userData.screen, cg.userData.glass, cg.userData.bezel]) o.userData.noBatch = true; return [cg.userData.screen, cg.userData.glass]; };
   const crashCab = cabinet(SCREENS.crash(), 'CRASH', '#ff4d4d');
-  setMount(addStation('crash', '🚀 Crash', crashCab, { x: -5.5, z: -13.9, ...cab }), { type: 'screen', scale: 0.07, object: screenOf(crashCab), offset: [0, -0.05, 0.03], hide: hideOf(crashCab) });
+  const crashSt = addStation('crash', '🚀 Crash', crashCab, { x: -5.5, z: -13.9, ...cab });
+  setMount(crashSt, { type: 'screen', scale: 0.07, object: screenOf(crashCab), offset: [0, -0.05, 0.03], hide: hideOf(crashCab), fov: SCREEN_FOV, cam: screenCam(crashSt) });
   const plinkoCab = cabinet(SCREENS.plinko(), 'PLINKO', '#ff7ad9');
-  setMount(addStation('plinko', '🔮 Plinko', plinkoCab, { x: 5.5, z: -13.9, ...cab }), { type: 'screen', scale: 0.06, object: screenOf(plinkoCab), offset: [0, 0.03, 0.03], hide: hideOf(plinkoCab) });
+  const plinkoSt = addStation('plinko', '🔮 Plinko', plinkoCab, { x: 5.5, z: -13.9, ...cab });
+  setMount(plinkoSt, { type: 'screen', scale: 0.06, object: screenOf(plinkoCab), offset: [0, 0.03, 0.03], hide: hideOf(plinkoCab), fov: SCREEN_FOV, cam: screenCam(plinkoSt) });
   const vpCab = cabinet(SCREENS.videopoker(), 'POKER', '#4d9cff');
-  setMount(addStation('videopoker', '♠️ Video Poker', vpCab, { x: 19.3, z: 8, rotY: -Math.PI / 2, ...cab }), { type: 'screen', scale: 0.11, object: screenOf(vpCab), offset: [0, -0.12, 0.04], hide: hideOf(vpCab) });
+  const vpSt = addStation('videopoker', '♠️ Video Poker', vpCab, { x: 19.3, z: 8, rotY: -Math.PI / 2, ...cab });
+  setMount(vpSt, { type: 'screen', scale: 0.11, object: screenOf(vpCab), offset: [0, -0.12, 0.04], hide: hideOf(vpCab), fov: SCREEN_FOV, cam: screenCam(vpSt) });
   const minesCab = cabinet(SCREENS.mines(), 'MINES', '#34e39a');
-  setMount(addStation('mines', '💣 Mines', minesCab, { x: 19.3, z: 0, rotY: -Math.PI / 2, ...cab }), { type: 'screen', scale: 0.11, object: screenOf(minesCab), offset: [0, 0, 0.04], rotX: Math.PI / 2, hide: hideOf(minesCab) });
+  const minesSt = addStation('mines', '💣 Mines', minesCab, { x: 19.3, z: 0, rotY: -Math.PI / 2, ...cab });
+  setMount(minesSt, { type: 'screen', scale: 0.11, object: screenOf(minesCab), offset: [0, 0, 0.04], rotX: Math.PI / 2, hide: hideOf(minesCab), fov: SCREEN_FOV, cam: screenCam(minesSt) });
 
   // ---------- Münzwurf-Podest ----------
   const pd = pedestal();
@@ -453,6 +469,8 @@ export function buildCasino(engine) {
     if (u.noBatch === undefined) u.noBatch = true;
     for (const o of (typeof u.mount?.hide === 'function' ? [] : (u.mount?.hide ?? []))) o.userData.noBatch = true;
     const st = addStation(id, name, group, { x, z, rotY, hit: u.hit, labelY: u.labelY ?? 2.9, seats: u.seats, face: u.face ?? [0, 0], sit: u.sit ?? true, chairs: !!u.chairs });
+    // Modul-Stationen im Arcade-Gehäuse bekommen dieselbe frontale Bildschirmkamera wie die Automaten oben
+    if (u.mount?.cabinetCam && !u.mount.cam) { u.mount.cam = screenCam(st); u.mount.fov = SCREEN_FOV; }
     if (u.mount) setMount(st, u.mount);
     if (u.update) animated.push((dt, t) => u.update(dt, t));
     if (u.dealer) moduleDealers.push([id, u.dealer.name, u.dealer.lx, u.dealer.lz]);
