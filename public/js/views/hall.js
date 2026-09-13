@@ -12,6 +12,7 @@ import { voice } from '../voice.js';
 import { openRewards } from '../rewards.js';
 
 const EYE = 1.62;
+const LABEL_POS = new THREE.Vector3(); // Zwischenpuffer für die Entfernung der Croupier-Schilder
 const gameName = (id) => GAMES.find((g) => g.id === id)?.name ?? id;
 
 /**
@@ -582,6 +583,14 @@ class Hall {
       const want = this.mode !== 'walk' ? 0 : active ? 1 : Math.max(0, Math.min(1, (13 - dist) / 6)) * 0.85;
       const m = s.label.material;
       if (Math.abs(m.opacity - want) > 0.004) { m.opacity += (want - m.opacity) * Math.min(1, dt * 5); s.label.visible = m.opacity > 0.01; }
+    }
+    // Croupier-Namen genauso: sie blendeten bisher gar nicht aus und schwebten quer durch die Halle vor
+    // Wänden und Neonschriftzügen. Engerer Radius als bei den Stationen – der Name zählt erst am Tisch.
+    for (const label of this.casino.dealerLabels) {
+      const dist = label.getWorldPosition(LABEL_POS).distanceTo(engine.camera.position);
+      const want = Math.max(0, Math.min(1, (7 - dist) / 3)) * 0.9;
+      const m = label.material;
+      if (Math.abs(m.opacity - want) > 0.004) { m.opacity += (want - m.opacity) * Math.min(1, dt * 5); label.visible = m.opacity > 0.01; }
     }
     // Kollision mit den Info-Tafeln
     if (this.mode === 'walk') {

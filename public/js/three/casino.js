@@ -230,8 +230,10 @@ export function buildCasino(engine) {
   const barShadow = contactShadow(11, 5, 0.5); barShadow.position.set(-13, 0.02, -12.2); scene.add(barShadow);
 
   // Neon-Schriftzüge
-  const neon = emissivePlane(12, 3, neonTexture('ROYAL CASINO', '#ff2d6f', '★ 24 STUNDEN GEÖFFNET ★'), 2.2);
-  neon.position.set(0, 4.9, -d / 2 + 0.08);
+  // Breite/Höhe so gewählt, dass der Schriftzug vom Eingang aus frei steht: seitlich zwischen den Säulen
+  // bei x = ±4 (die verdecken ab x ≈ ±4.5 auf der Rückwand), unten über dem Glücksrad (Oberkante ≈ 3.3).
+  const neon = emissivePlane(9.2, 2.3, neonTexture('ROYAL CASINO', '#ff2d6f', '★ 24 STUNDEN GEÖFFNET ★'), 2.2);
+  neon.position.set(0, 5.25, -d / 2 + 0.08);
   scene.add(neon);
   animated.push((dt, t) => { neon.material.emissiveIntensity = 2.0 + Math.sin(t * 9) * 0.15 + (Math.random() < 0.01 ? -0.8 : 0); });
   const neon2 = emissivePlane(6, 1.5, neonTexture('BAR', '#35c7ff'), 2);
@@ -415,7 +417,9 @@ export function buildCasino(engine) {
   // ---------- Glücksrad ----------
   const fw = fortuneWheel();
   fw.userData.noBatch = true; // Rad dreht sich und wird im Spiel komplett ausgeblendet
-  const fwSt = addStation('wheel', '🎯 Glücksrad', fw, { x: 0, z: -13.6, hit: [4, 4.3, 1.6], labelY: 4.5, seats: [[0, 2.2], [-1.2, 2.4], [1.2, 2.4]], sit: false });
+  // 0.8: das Rad steht vor dem Neon-Schriftzug an der Rückwand und darf dessen Unterzeile nicht schneiden
+  fw.scale.setScalar(0.8);
+  const fwSt = addStation('wheel', '🎯 Glücksrad', fw, { x: 0, z: -13.6, hit: [3.4, 3.5, 1.4], labelY: 3.55, seats: [[0, 2.2], [-1.2, 2.4], [1.2, 2.4]], sit: false });
   setMount(fwSt, { type: 'screen', scale: 0.34, object: () => fw.userData.spin, hide: [fw] });
   animated.push((dt) => { fw.userData.spin.rotation.z -= dt * 0.35; });
 
@@ -502,6 +506,7 @@ export function buildCasino(engine) {
   scene.add(boardSpot, boardSpot.target);
 
   // ---------- Croupiers ----------
+  const dealerLabels = []; // Namensschilder: hall.js blendet sie mit der Entfernung aus
   const DEALERS = [['blackjack', 'Croupier Max', 0, -0.5], ['baccarat', 'Croupier Lea', 0, -1.6], ['roulette', 'Croupier Tom', -0.6, -1.6], ['dice', 'Croupier Ana', 0, -1.5], ...moduleDealers];
   for (const [id, name, lx, lz] of DEALERS) {
     const st = stations.find((s) => s.id === id);
@@ -510,7 +515,7 @@ export function buildCasino(engine) {
     av.position.set(st.group.position.x + lx, 0, st.group.position.z + lz);
     av.rotation.y = Math.PI;
     av.userData.noBatch = true;
-    av.userData.label?.layers.set(1);
+    if (av.userData.label) { av.userData.label.layers.set(1); dealerLabels.push(av.userData.label); }
     scene.add(av);
     animated.push((dt, t) => av.userData.dealerStep(dt, t));
   }
@@ -521,5 +526,5 @@ export function buildCasino(engine) {
     new THREE.Vector3(14, 2.2, 0), new THREE.Vector3(9, 2.5, 10),
   ], true, 'centripetal', 0.6);
 
-  return { stations, interactives, animated, path, center: new THREE.Vector3(0, 1.2, 0), machines, floor: marbleFloor };
+  return { stations, interactives, animated, path, center: new THREE.Vector3(0, 1.2, 0), machines, floor: marbleFloor, dealerLabels };
 }

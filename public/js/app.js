@@ -256,11 +256,16 @@ async function route() {
 window.addEventListener('hashchange', route);
 
 (async function init() {
+  // Alle Beschriftungen der 3D-Welt (Neon, Filz, Karten, Automaten) werden einmalig auf Canvas gebacken.
+  // Ohne dieses Warten entscheidet der Browser-Cache darüber, ob Cinzel oder die Ersatzschrift in den
+  // Texturen landet – die Halle sähe beim ersten Besuch anders aus als beim Neuladen.
+  const fonts = document.fonts?.ready ?? Promise.resolve();
   try {
-    const { user } = await api.get('/auth/me');
+    const [{ user }] = await Promise.all([api.get('/auth/me'), fonts]);
     setUser(user);
   } catch (e) {
     toast(e.message, 'error');
+    await fonts;
   }
   route();
 })();

@@ -442,12 +442,20 @@ function buildCeiling() {
 export function neonTexture(text, color, sub = null) {
   const { canvas, ctx } = makeCanvas(1024, 256);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.font = '900 130px Cinzel, Georgia, serif';
+  // Schriftgrad an die Canvasbreite anpassen: 'ROYAL CASINO' ist in Cinzel 130px rund 1070px breit und
+  // wurde sonst an beiden Rändern glatt abgeschnitten. MAX lässt links und rechts Platz für den Glow.
+  const MAX = 1024 - 2 * 40;
+  const setFont = (weight, px, family, str) => {
+    ctx.font = `${weight} ${px}px ${family}`;
+    const w = ctx.measureText(str).width;
+    if (w > MAX) ctx.font = `${weight} ${Math.floor(px * (MAX / w))}px ${family}`;
+  };
+  setFont(900, 130, 'Cinzel, Georgia, serif', text);
   ctx.shadowColor = color; ctx.shadowBlur = 40;
   ctx.fillStyle = color;
   ctx.fillText(text, 512, sub ? 100 : 128);
   ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.strokeText(text, 512, sub ? 100 : 128);
-  if (sub) { ctx.font = '700 56px Inter, Arial'; ctx.shadowBlur = 20; ctx.fillText(sub, 512, 200); }
+  if (sub) { setFont(700, 56, 'Inter, Arial', sub); ctx.shadowBlur = 20; ctx.fillText(sub, 512, 200); }
   return textureFromCanvas(canvas, { srgb: true });
 }
 
