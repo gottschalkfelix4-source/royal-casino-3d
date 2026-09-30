@@ -11,8 +11,10 @@ import { Tweener, Easing } from './tween.js';
 import { createGradePass, createOutputPass } from './post.js';
 import { setTextureAnisotropy } from './materialmaps.js';
 import { installLightingShader } from './lighting-shaders.js';
+import { installGraphicStyle } from './graphic-style.js';
 
 installLightingShader();
+installGraphicStyle();
 
 export { THREE, Easing };
 
@@ -184,7 +186,7 @@ export class Engine {
 
   /** Standardbeleuchtung: Hemisphäre + Key-Spot mit Schatten + Fill. */
   addLights({ key = [4, 10, 6], keyIntensity = 2.2, hemi = 0.55, fill = 0.8, shadowSize = 14 } = {}) {
-    const hemiLight = new THREE.HemisphereLight(0xdfe9ff, 0x1a1408, hemi);
+    const hemiLight = new THREE.HemisphereLight(0xe8edf5, 0x544537, hemi * 1.15);
     this.scene.add(hemiLight);
     const dir = new THREE.DirectionalLight(0xfff2dc, keyIntensity);
     dir.position.set(...key);
@@ -197,7 +199,7 @@ export class Engine {
     dir.shadow.normalBias = 0.02;
     dir.shadow.radius = 2;
     this.scene.add(dir);
-    const fillLight = new THREE.DirectionalLight(0x8fb3ff, fill);
+    const fillLight = new THREE.DirectionalLight(0xc5d3e3, fill);
     fillLight.position.set(-6, 5, -4);
     this.scene.add(fillLight);
     return { hemiLight, dir, fillLight };

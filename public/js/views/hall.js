@@ -51,7 +51,7 @@ class Hall {
     const engine = new Engine(this.layer, {
       fov: 70, position: [0, EYE, 12], target: [0, EYE, 0], background: 0x05040a,
       shadows: true, exposure: 1.02, envIntensity: 0.6,
-      post: { bloom: { strength: 0.12, radius: 0.4, threshold: 1.25 } },
+      post: { bloom: { strength: 0.08, radius: 0.4, threshold: 1.25 } },
     });
     this.engine = engine;
     this.inputAbort?.abort();
@@ -60,8 +60,8 @@ class Hall {
     this.reflection = null;
     engine.camera.layers.enable(1); // Ebene 1: Beschriftungen/Sprites (nicht in der Bodenspiegelung)
     engine.scene.fog = new THREE.FogExp2(0x20242b, 0.004);
-    engine.scene.add(new THREE.HemisphereLight(0xe8edf5, 0x544537, 0.8)); // warmes Raumlicht von der hellen Decke
-    const key = new THREE.SpotLight(0xffefd9, 460, 18, 0.85, 0.85, 2);
+    engine.scene.add(new THREE.HemisphereLight(0xe8edf5, 0x746252, 1.0)); // offeneres Raumlicht für weichere Schattenkontraste
+    const key = new THREE.SpotLight(0xffefd9, 400, 18, 0.85, 0.85, 2);
     key.position.set(0, 5.8, 7);
     key.target.position.set(0, 0.9, 4.8);
     key.castShadow = engine.quality.shadows;
@@ -110,7 +110,7 @@ class Hall {
       this.reflection = new PlanarReflection(engine.renderer, engine.scene, { y: 0, scale: engine.quality.reflection, layers: 1 });
       this.reflection.everyNth = engine.quality.reflectionEvery ?? 1;
       this.reflection.hidden.add(this.casino.floor);
-      applyFloorReflection(this.casino.floor.material, this.reflection, { strength: 0.9, blur: 5 });
+      applyFloorReflection(this.casino.floor.material, this.reflection, { strength: 0.45, blur: 6.5 });
       engine.onResize = (w, h) => this.reflection.setSize(w, h);
       engine.preRender = () => { if (this.mode !== 'idle' && this.spectateStation?.mount?.type !== 'screen') this.reflection.update(engine.camera); };
       this.reflection.setSize(engine.renderer.domElement.width, engine.renderer.domElement.height);

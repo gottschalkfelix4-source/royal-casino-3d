@@ -71,7 +71,7 @@ export class WorldAOPass extends GTAOPass {
       { radius: 0.28, distanceExponent: 1.5, thickness: 0.35, scale: 1, samples: 12, distanceFallOff: 1, screenSpaceRadius: false },
       { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 3, radiusExponent: 1, rings: 2, samples: 12 });
     this.resolutionScale = scale;
-    this.blendIntensity = 0.65;
+    this.blendIntensity = 0.45;
     this.staticSources = new Set();
     this.normalVariants = new Map();
     this.materialAssignments = [];

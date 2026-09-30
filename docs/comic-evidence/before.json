@@ -1,0 +1,150 @@
+{
+  "browser": "153.0.8010.53",
+  "errors": [],
+  "results": [
+    {
+      "scenario": "entrance",
+      "fps": 206.57441174816714,
+      "measurements": [
+        {
+          "fps": 203.34240963435138,
+          "samples": 814,
+          "calls": 552.8343558282209,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        {
+          "fps": 206.57441174816714,
+          "samples": 827,
+          "calls": 553.5386473429952,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        {
+          "fps": 215.34387568820074,
+          "samples": 862,
+          "calls": 550.3997682502896,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        }
+      ]
+    },
+    {
+      "scenario": "blackjack",
+      "fps": 219.5,
+      "measurements": [
+        {
+          "fps": 224.5194233086395,
+          "samples": 897,
+          "calls": 521.6603563474388,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        {
+          "fps": 219.5,
+          "samples": 878,
+          "calls": 521.9146757679181,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        {
+          "fps": 210.35800834499403,
+          "samples": 842,
+          "calls": 523.276393831554,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        }
+      ]
+    },
+    {
+      "scenario": "slots",
+      "fps": 422.1550151178241,
+      "measurements": [
+        {
+          "fps": 422.1550151178241,
+          "samples": 1689,
+          "calls": 217.592899408284,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        {
+          "fps": 426.2278708607361,
+          "samples": 1707,
+          "calls": 217.64285714285714,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        {
+          "fps": 413.49156777014366,
+          "samples": 1655,
+          "calls": 217.9993961352657,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        }
+      ]
+    },
+    {
+      "scenario": "baccarat",
+      "fps": 200.55946850432318,
+      "measurements": [
+        {
+          "fps": 200.55946850432318,
+          "samples": 803,
+          "calls": 575.863184079602,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        {
+          "fps": 196.1568255090524,
+          "samples": 785,
+          "calls": 578.6424936386768,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        {
+          "fps": 206.27578447305913,
+          "samples": 825,
+          "calls": 574.501210653753,
+          "buffer": [
+            2494,
+            1403
+          ],
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        }
+      ]
+    }
+  ]
+}
