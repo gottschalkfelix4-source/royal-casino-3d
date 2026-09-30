@@ -1,6 +1,9 @@
 import * as THREE from 'three';
-import { trackTexture, getTextureAnisotropy, surfaceMaps, fieldToGrayCanvas, textureFromCanvas } from './materialmaps.js';
+import { surfaceAsset } from './surface-assets.js';
+import { trackTexture, getTextureAnisotropy, surfaceMaps, getCachedSurface, fieldToGrayCanvas, textureFromCanvas } from './materialmaps.js';
 import { Simplex } from './noise.js';
+import { disposeObject } from './resources.js';
+export { disposeObject };
 
 // ---------- Canvas-Helfer ----------
 export function makeCanvas(w, h) {
@@ -124,6 +127,8 @@ function speckle(ctx, w, h, amount) {
 }
 
 function feltMaps(color) {
+  const cached = getCachedSurface(`felt-v2:${color}`);
+  if (cached) return cached;
   const N = 256;
   const field = fiberField(N, 61, { fx: 62, fy: 62, cx: 15, cy: 15, roughness: 0.38 });
   const S = 512;
@@ -138,7 +143,7 @@ function feltMaps(color) {
 export function feltTexture(color = '#0f5a3a') { return feltMaps(color).map; }
 
 /** Feine Gewebestruktur als Normal-Map für Filz */
-export function feltNormal() { return feltMaps('#0f5a3a').normalMap; }
+export function feltNormal() { return surfaceAsset('fabric', [6, 6]).normalMap; }
 
 /** Holzmaserung als Normal-Map */
 export function woodNormal() { return woodMaps().normalMap; }
@@ -146,35 +151,7 @@ export function woodNormal() { return woodMaps().normalMap; }
 export function woodTexture() { return woodMaps().map; }
 
 /** Ringförmige, domain-verwarpete Maserung mit Poren (fBm) – Farbe und Normal. */
-function woodMaps() {
-  const N = 256; const S = 512;
-  const sim = new Simplex(83);
-  const height = new Float32Array(N * N);
-  const { canvas, ctx } = makeCanvas(S, S);
-  const img = ctx.createImageData(S, S);
-  for (let y = 0; y < S; y++) {
-    for (let x = 0; x < S; x++) {
-      const u = x / S; const v = y / S;
-      const [wx, wy] = sim.warp(u * 2.2, v * 0.6, 0.5, { octaves: 3 });
-      const turb = sim.turbulence(wx * 1.8, wy * 1.8, { octaves: 4 });
-      const rings = 0.5 + 0.5 * Math.sin((wy * 9 + turb * 6) * Math.PI * 2);
-      const pores = sim.fbm(u * 150, v * 36, { octaves: 3 });
-      const t = Math.pow(rings, 1.6);
-      const p = 0.5 - Math.abs(pores);
-      const r = 60 + t * 95 + p * 18;
-      const g = 36 + t * 58 + p * 12;
-      const b = 18 + t * 30 + p * 8;
-      const o = (y * S + x) * 4;
-      img.data[o] = r < 0 ? 0 : r > 255 ? 255 : r;
-      img.data[o + 1] = g < 0 ? 0 : g > 255 ? 255 : g;
-      img.data[o + 2] = b < 0 ? 0 : b > 255 ? 255 : b;
-      img.data[o + 3] = 255;
-      if (x < N && y < N) height[y * N + x] = rings * 0.7 + Math.abs(pores) * 0.3;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return surfaceMaps({ key: 'wood-v2', color: canvas, height: { data: height, w: N, h: N }, repeat: [2, 2], normalStrength: 1.0, aoRadius: 2, aoStrength: 0.45 });
-}
+function woodMaps() { return surfaceAsset('wood', [2, 2]); }
 
 /** Tischplatte mit Filz und Holzrand. */
 export function buildTable(scene, { width = 14, depth = 9, felt = '#0f5a3a', y = 0, rim = 0.5 } = {}) {
@@ -206,6 +183,8 @@ export function buildTable(scene, { width = 14, depth = 9, felt = '#0f5a3a', y =
 // ---------- Text-Sprites ----------
 export function textSprite(text, { size = 56, color = '#ffffff', bg = null, font = `800 ${56}px Inter, Arial`, padding = 18, height = 0.6, stroke = null } = {}) {
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
+  sprite.layers.set(1);
+  sprite.userData.excludeAO = true;
   sprite.userData.setText = (t) => {
     const { canvas, ctx } = makeCanvas(2, 2);
     ctx.font = font.replace(/\d+px/, `${size}px`);
@@ -233,6 +212,7 @@ const SUIT_CHAR = { S: '♠', H: '♥', D: '♦', C: '♣' };
 const RANK_STR = (r) => ({ 1: 'A', 11: 'J', 12: 'Q', 13: 'K' }[r] ?? String(r));
 let cardGeo = null;
 const cardEdgeMat = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.8 });
+cardEdgeMat.userData.shared = true;
 
 export function cardFaceTexture(r, s) {
   return cached(`card:${r}${s}`, () => {
@@ -316,6 +296,7 @@ export function cardBackTexture() {
 /** Karten-Mesh; Vorderseite zeigt nach +Z. rotation.y = π für verdeckt. */
 export function createCard(card, { faceUp = true } = {}) {
   cardGeo ??= new THREE.BoxGeometry(CARD.w, CARD.h, CARD.d);
+  cardGeo.userData.shared = true;
   const back = new THREE.MeshStandardMaterial({ map: cardBackTexture(), roughness: 0.6 });
   const face = new THREE.MeshStandardMaterial({ map: card?.r ? cardFaceTexture(card.r, card.s) : cardBackTexture(), roughness: 0.55 });
   const mesh = new THREE.Mesh(cardGeo, [cardEdgeMat, cardEdgeMat, cardEdgeMat, cardEdgeMat, face, back]);
@@ -389,6 +370,7 @@ export function createChip(cents) {
   chipGeo ??= new THREE.CylinderGeometry(CHIP.r, CHIP.r, CHIP.h, 48);
   const style = chipStyle(cents);
   const { top, side } = chipTextures(style);
+  chipGeo.userData.shared = true;
   const mesh = new THREE.Mesh(chipGeo, [
     new THREE.MeshStandardMaterial({ map: side, roughnessMap: chipRoughness(), roughness: 0.55 }),
     new THREE.MeshStandardMaterial({ map: top, roughnessMap: chipRoughness(), roughness: 0.45 }),
@@ -470,15 +452,6 @@ export function emojiTexture(emoji, { size = 256, bg = null } = {}) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(emoji, size / 2, size / 2 + size * 0.04);
     return canvasTexture(canvas);
-  });
-}
-
-export function disposeObject(obj) {
-  obj.parent?.remove(obj);
-  obj.traverse((o) => {
-    o.geometry?.dispose?.();
-    const mats = Array.isArray(o.material) ? o.material : o.material ? [o.material] : [];
-    for (const m of mats) if (m !== cardEdgeMat) m.dispose?.();
   });
 }
 

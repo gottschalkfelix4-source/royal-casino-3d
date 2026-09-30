@@ -1,0 +1,44 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>Casino Grafikanalyse</title><link rel="stylesheet" href="/css/style.css"><script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script></head><body><aside style="position:fixed;z-index:999;right:10px;top:10px;width:360px;background:#101418ed;padding:16px;font:13px monospace;color:white"><div id="controls"></div><pre id="metrics" style="white-space:pre-wrap">Aufbau…</pre></aside><script type="module">
+import {preloadCharacters} from '/js/three/character-assets.js';
+import {preloadMaterials} from '/js/three/surface-assets.js';
+await Promise.all([preloadMaterials(),preloadCharacters()]);
+window.addEventListener('error',e=>{document.querySelector('#metrics').textContent=e.message;});
+import {hall} from '/js/views/hall.js';
+import {marbleTexture,carpetTexture,runnerTexture} from '/js/three/textures.js';
+const params = new URLSearchParams(location.search);
+const quality = params.get('quality') || 'high';
+localStorage.setItem('casino.quality',quality);
+const begin = performance.now();
+hall.setMode('walk');
+hall.me.pos.set(0,0,12.5);
+const e = hall.engine;
+if(params.has('retina')) { Object.defineProperty(window, 'devicePixelRatio', {value:2,configurable:true}); e.resize(); }
+e.adaptiveEnabled=params.has('adaptive');
+if(params.has('actor')) {
+ const {createAvatar}=await import('/js/three/avatars.js');
+ const avatar=createAvatar({name:'Croupier Max',dealer:true}); avatar.position.set(0,0,11); e.scene.add(avatar);
+ hall.mode='qa';e.onUpdate((dt,t)=>{e.camera.position.set(0.7,1.5,8.5);e.camera.lookAt(0,1.05,11);avatar.userData.dealerStep(dt,t);});
+}
+if(params.has('detail')) {
+ hall.mode='qa'; e.onUpdate(()=>{e.camera.position.set(2.5,1.85,9.2);e.camera.lookAt(0.2,1,6.6);});
+}
+const setupMs = performance.now()-begin;
+const cacheProbe={};
+if(params.has('cacheprobe')){for(const [name,fn] of [['marble',marbleTexture],['carpet',carpetTexture],['runner',()=>runnerTexture(5.2)]]){let first=fn(),times=[];for(let i=0;i<3;i++){const t=performance.now();const result=fn();times.push({ms:Math.round(performance.now()-t),sameObject:result===first});}cacheProbe[name]=times;}}
+const photo=document.createElement('button');photo.textContent='Messwerte ausblenden';photo.onclick=()=>document.querySelector('aside').style.display='none';document.querySelector('#controls').append(photo);
+if(params.has('photo'))document.querySelector('aside').style.display='none';
+if (params.has('normals') && e.gtaoPass) e.gtaoPass.output=3;
+if (params.has('hideproxies')) { e.scene.traverse(o=>{if(o.isMesh&&o.material?.transparent&&o.material.opacity===0)o.visible=false;}); }
+if (params.has('cleanao') && e.gtaoPass) { const pass=e.gtaoPass;const render=pass._renderOverride.bind(pass);pass._renderOverride=(...args)=>{const hidden=[];e.scene.traverse(o=>{if(o.visible&&(o.isSprite||(!params.has('onlysprites')&&o.material?.transparent))){hidden.push(o);o.visible=false;}});try{return render(...args);}finally{for(const o of hidden)o.visible=true;}}; }
+if (params.has('nosmaa') && e.smaaPass) e.smaaPass.enabled=false;
+if (params.has('noao') && e.gtaoPass) e.gtaoPass.enabled=false;
+if (params.has('noref') && hall.reflection) hall.reflection.enabled=false;
+if (params.has('dpr')) e.setPixelRatioCap(Number(params.get('dpr')));
+for(const [name,search] of [['Hoch','quality=high'],['Ohne SMAA','quality=high&nosmaa=1'],['Mittel','quality=medium'],['Niedrig','quality=low'],['Hoch ohne AO','quality=high&noao=1'],['Hoch ohne Reflexion','quality=high&noref=1'],['Hoch DPR 1','quality=high&dpr=1'],['AO Normalen','quality=high&normals=1'],['AO ohne Klickboxen','quality=high&normals=1&hideproxies=1'],['Hoch ohne Klickboxen','quality=high&hideproxies=1'],['AO ohne Transparenzen','quality=high&normals=1&cleanao=1'],['Bereinigtes AO','quality=high&cleanao=1']]){const a=document.createElement('a');a.href='?'+search;a.textContent=name+' · ';document.querySelector('#controls').append(a);}
+let frames=[], last=performance.now(), reads=[], post=[], sampleStart=performance.now();
+const original=e.step.bind(e); e.renderer.info.autoReset=false;
+e.step=function(render=true){ if(!render)return original(false);e.renderer.info.reset();const t=performance.now(); original(true);const end=performance.now(); if(t>begin+7000){ frames.push(t-last);reads.push({...e.renderer.info.render});post.push(end-t); }last=t; };
+const sceneInfo=()=>{let meshes=0,triangles=0,lights=0,shadows=0,transparent=0,materials=new Set(),geometries=new Set(),textures=new Set();e.scene.traverse(o=>{if(o.isLight){lights++;if(o.castShadow)shadows++;}if(o.isMesh){meshes++;triangles+=(o.geometry.index?.count??o.geometry.attributes.position?.count??0)/3*(o.isInstancedMesh?o.count:1);geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){materials.add(m);if(m.transparent)transparent++;for(const x of Object.values(m))if(x?.isTexture)textures.add(x);}}});return {meshes,triangles:Math.round(triangles),materials:materials.size,geometries:geometries.size,textures:textures.size,transparent,lights,shadows};};
+const average=a=>a.reduce((x,y)=>x+y,0)/Math.max(a.length,1);const percentile=(a,p)=>[...a].sort((x,y)=>x-y)[Math.floor(a.length*p)]??0;
+setInterval(()=>{let r={quality,smaa:!!e.smaaPass?.enabled,cacheProbe,viewport:[innerWidth,innerHeight],dpr:e.renderer.getPixelRatio(),buffer:[e.renderer.domElement.width,e.renderer.domElement.height],setupMs:Math.round(setupMs),samples:frames.length,frameMedianMs:+percentile(frames,.5).toFixed(2),frameP95Ms:+percentile(frames,.95).toFixed(2),fps:+(1000/average(frames)).toFixed(1),cpuSubmissionMedianMs:+percentile(post,.5).toFixed(2),calls:Math.round(average(reads.map(x=>x.calls))),trianglesPerFrame:Math.round(average(reads.map(x=>x.triangles))),gpuMemory:e.renderer.info.memory,scene:sceneInfo(),renderer:e.renderer.getContext().getParameter(e.renderer.getContext().RENDERER)};document.querySelector('#metrics').textContent=JSON.stringify(r,null,2);if(frames.length>500){frames=frames.slice(-300);reads=reads.slice(-300);post=post.slice(-300);}},1000);
+</script></body></html>

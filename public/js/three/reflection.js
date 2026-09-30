@@ -17,6 +17,9 @@ export class PlanarReflection {
     this.enabled = true;
     this.everyNth = 1;
     this.frame = 0;
+    this.lastCapture = 0;
+    this.lastPosition = new THREE.Vector3(Infinity, Infinity, Infinity);
+    this.lastRotation = new THREE.Quaternion();
     this.camera = new THREE.PerspectiveCamera();
     if (layers !== null) this.camera.layers.mask = layers;
     this.target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, depthBuffer: true });
@@ -36,7 +39,12 @@ export class PlanarReflection {
   /** Spiegelbild rendern (vor dem Hauptbild aufrufen) */
   update(camera) {
     if (!this.enabled) return;
-    if ((this.frame++ % this.everyNth) !== 0) return;
+    const now = performance.now();
+    const moved = camera.position.distanceToSquared(this.lastPosition) > 0.0001 || camera.quaternion.angleTo(this.lastRotation) > 0.001;
+    if (!moved && now - this.lastCapture < 100) return;
+    if (moved && (this.frame++ % this.everyNth) !== 0) return;
+    camera.updateMatrixWorld();
+    this.lastCapture = now; this.lastPosition.copy(camera.position); this.lastRotation.copy(camera.quaternion);
     const { renderer, scene } = this;
     const t = this._tmp;
     const normal = this._normal;
@@ -76,18 +84,25 @@ export class PlanarReflection {
 
     const prevTarget = renderer.getRenderTarget();
     const prevShadow = renderer.shadowMap.autoUpdate;
+    const pendingShadow = renderer.shadowMap.needsUpdate;
     const prevXr = renderer.xr.enabled;
-    renderer.xr.enabled = false;
-    renderer.shadowMap.autoUpdate = false;
-    for (const o of this.hidden) o.visible = false;
-    renderer.setRenderTarget(this.target);
-    renderer.state.buffers.depth.setMask(true);
-    if (renderer.autoClear === false) renderer.clear();
-    renderer.render(scene, vc);
-    for (const o of this.hidden) o.visible = true;
-    renderer.setRenderTarget(prevTarget);
-    renderer.shadowMap.autoUpdate = prevShadow;
-    renderer.xr.enabled = prevXr;
+    const visibility = [...this.hidden].map((o) => [o, o.visible]);
+    try {
+      renderer.xr.enabled = false;
+      renderer.shadowMap.autoUpdate = false;
+      renderer.shadowMap.needsUpdate = false;
+      for (const [o] of visibility) o.visible = false;
+      renderer.setRenderTarget(this.target);
+      renderer.state.buffers.depth.setMask(true);
+      if (renderer.autoClear === false) renderer.clear();
+      renderer.render(scene, vc);
+    } finally {
+      for (const [o, visible] of visibility) o.visible = visible;
+      renderer.setRenderTarget(prevTarget);
+      renderer.shadowMap.autoUpdate = prevShadow;
+      renderer.shadowMap.needsUpdate = pendingShadow;
+      renderer.xr.enabled = prevXr;
+    }
   }
 
   dispose() { this.target.dispose(); }
@@ -120,7 +135,7 @@ export function applyFloorReflection(material, reflection, { strength = 1.0, blu
         vec3 refl = textureLod( tReflection, uvR, lod ).rgb;
         // Rauere Stellen (Adern, Intarsien) spiegeln matter und schwächer
         float amount = reflectionStrength * fres * ( 1.0 - 0.75 * rough );
-        outgoingLight += refl * amount;
+        outgoingLight = mix( outgoingLight, refl, clamp( amount, 0.0, 0.8 ) );
       }
       #include <opaque_fragment>`);
     material.userData.shader = shader;

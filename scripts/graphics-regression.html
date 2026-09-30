@@ -1,0 +1,67 @@
+<!doctype html><html lang="de"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Graphics regression QA</title><link rel="stylesheet" href="/css/style.css"><script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script><body><div id="view"></div><div id="toasts"></div><div id="modal-root"></div><aside style="position:fixed;top:8px;left:8px;z-index:9999;background:#121923ed;max-height:90vh;overflow:auto;padding:12px;font:12px monospace;width:480px"><button id="run">17 Spiele · 4 Durchläufe prüfen</button><pre id="result">Bereit</pre></aside><script type="module">
+import {hall} from '/js/views/hall.js';
+import {GAMES} from '/js/games/registry.js';
+import {store} from '/js/state.js';
+import {instantiateCharacter,preloadCharacters} from '/js/three/character-assets.js';
+import {preloadMaterials} from '/js/three/surface-assets.js';
+import {setQuality} from '/js/three/engine.js';
+import {disposeObject} from '/js/three/resources.js';
+import {textureRegistrySize} from '/js/three/materialmaps.js';
+const output=document.querySelector('#result');const results=[];const errors=[];
+window.addEventListener('error',e=>errors.push(e.message));window.addEventListener('unhandledrejection',e=>errors.push(String(e.reason)));
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+const assert=(value,message)=>{if(!value)throw new Error(message);};
+function show(){output.textContent=JSON.stringify({results,errors},null,2);}
+document.querySelector('#run').onclick=async()=>{
+ document.querySelector('#run').disabled=true;
+ try {
+ await Promise.all([preloadMaterials(),preloadCharacters()]);
+ const a=instantiateCharacter('man'),b=instantiateCharacter('man');
+ const ma=a.getObjectByName('Skin'),mb=b.getObjectByName('Skin');
+ assert(ma.geometry===mb.geometry,'Character geometry must be shared');
+ assert(ma.material!==mb.material,'Character opacity must be independent');
+ assert(ma.material.map===mb.material.map,'Character textures must be shared');
+ assert(ma.skeleton!==mb.skeleton,'Characters must not share a skeleton');
+ a.traverse(o=>{if(o.isSkinnedMesh)assert(o.skeleton===ma.skeleton,'LOD skeleton duplication');});
+ const bone=a.getObjectByName('head'),other=b.getObjectByName('head');bone.rotation.y=0.7;
+ assert(other.rotation.y===0,'Character pose leaked into another instance');
+ const textureCount=textureRegistrySize();disposeObject(a);disposeObject(b);
+ assert(textureRegistrySize()===textureCount,'Character disposal damaged shared textures');
+ const response=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:`gfx${Date.now()}`,password:'local-qa-only-9437'})});
+ const data=await response.json();assert(data.user,'Temporary test account');store.user=data.user;
+ for(const quality of ['high','medium','low','high']) {
+   setQuality(quality); if(hall.engine)hall.rebuild();else hall.ensure();
+   const engine=hall.engine, smaa=engine.smaaPass;
+   assert(!!smaa === (quality!=='low'),'SMAA quality tier');
+   if(smaa) {
+     const passes=engine.composer.passes;
+     assert(passes.indexOf(smaa)<passes.findIndex(p=>p.constructor.name==='OutputPass'),'SMAA must run before tone mapping');
+     for(const cap of [0.8,engine.quality.dpr]) {
+       engine.setPixelRatioCap(cap);
+       assert(Math.abs(smaa._edgesRT.width-engine.renderer.domElement.width)<=1,'SMAA resize width');
+       assert(Math.abs(smaa._weightsRT.height-engine.renderer.domElement.height)<=1,'SMAA resize height');
+     }
+   }
+   for(const meta of GAMES) {
+     const {default:Game}=await meta.load(); hall.setMode('spectate',meta.id);
+     const game=new Game(meta);game.mount(document.querySelector('#view'));
+     for(let n=0;n<30&&game.busy;n++)await wait(50);
+     assert(!game.busy,`${meta.id}: ready timeout`);assert(game.engine.embedded,`${meta.id}: missing mount`);
+     const station=hall.stationById(meta.id);const hidden=typeof station.mount.hide==='function'?station.mount.hide(0):station.mount.hide;
+     for(const o of hidden)assert(o.visible===false,`${meta.id}: decoration visible`);
+     await wait(150);
+     const renderer=hall.engine.renderer;assert(renderer.info.render.calls>0,`${meta.id}: no frame`);
+     let vertices=0;game.engine.scene.traverse(o=>{if(o.geometry)vertices+=o.geometry.attributes.position.count;});
+     game.engine.tween(5000,()=>{});const tweener=game.engine.tweener;
+     game.destroy();assert(tweener.items.size===0,`${meta.id}: retained tween`);
+     for(const o of hidden)assert(o.visible===true,`${meta.id}: decoration not restored`);
+     assert(!hall.mounted,`${meta.id}: retained mount`);
+     results.push({quality,game:meta.id,vertices,registry:textureRegistrySize()});show();
+   }
+   hall.setMode('walk');await wait(600);
+   results.push({quality,afterCycle:{registry:textureRegistrySize(),memory:{...hall.engine.renderer.info.memory},updaters:hall.engine.updaters.size,canvasCount:document.querySelectorAll('.three-canvas').length}});show();
+ }
+ assert(errors.length===0,'Browser errors');results.push({PASS:true,mounts:68});show();
+ }catch(error){errors.push(error.stack);show();}
+};
+</script></body></html>

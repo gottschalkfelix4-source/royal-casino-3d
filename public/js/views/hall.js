@@ -3,13 +3,14 @@ import { buildCasino, HALL } from '../three/casino.js';
 import { batchStatic } from '../three/batch.js';
 import { PlanarReflection, applyFloorReflection } from '../three/reflection.js';
 import { createAvatar, floatText } from '../three/avatars.js';
-import { createChip, textSprite } from '../three/assets.js';
+import { createChip, textSprite, disposeObject } from '../three/assets.js';
 import { GAMES } from '../games/registry.js';
 import { fmt } from '../ui.js';
 import { sound } from '../sound.js';
 import { rt } from '../realtime.js';
 import { voice } from '../voice.js';
 import { openRewards } from '../rewards.js';
+import { PICK_LAYER } from '../three/occlusion.js';
 
 const EYE = 1.62;
 const LABEL_POS = new THREE.Vector3(); // Zwischenpuffer für die Entfernung der Croupier-Schilder
@@ -47,24 +48,32 @@ class Hall {
     document.body.prepend(this.layer);
     const engine = new Engine(this.layer, {
       fov: 70, position: [0, EYE, 12], target: [0, EYE, 0], background: 0x05040a,
-      shadows: true, exposure: 1.15, envIntensity: 0.45,
-      post: { bloom: { strength: 0.18, radius: 0.5, threshold: 1.0 } },
+      shadows: true, exposure: 1.02, envIntensity: 0.6,
+      post: { bloom: { strength: 0.12, radius: 0.4, threshold: 1.25 } },
     });
     this.engine = engine;
+    this.inputAbort?.abort();
+    this.inputAbort = new AbortController();
+    const inputOptions = { signal: this.inputAbort.signal };
+    this.reflection = null;
     engine.camera.layers.enable(1); // Ebene 1: Beschriftungen/Sprites (nicht in der Bodenspiegelung)
-    engine.scene.fog = new THREE.FogExp2(0x1e150e, 0.009);
-    engine.scene.add(new THREE.HemisphereLight(0xfff0dc, 0x5a3f26, 0.42)); // warmes Raumlicht von der hellen Decke
-    const key = new THREE.SpotLight(0xffe6c4, 650, 0, 0.9, 0.7, 2);
-    key.position.set(0, 6.2, 2);
-    key.target.position.set(0, 0, 0);
+    engine.scene.fog = new THREE.FogExp2(0x20242b, 0.004);
+    engine.scene.add(new THREE.HemisphereLight(0xe8edf5, 0x544537, 0.8)); // warmes Raumlicht von der hellen Decke
+    const key = new THREE.SpotLight(0xffefd9, 460, 18, 0.85, 0.85, 2);
+    key.position.set(0, 5.8, 7);
+    key.target.position.set(0, 0.9, 4.8);
     key.castShadow = engine.quality.shadows;
     key.shadow.mapSize.set(engine.quality.shadowMap, engine.quality.shadowMap);
     key.shadow.bias = -0.0004;
+    key.shadow.normalBias = 0.012;
+    key.shadow.radius = 4;
+    key.shadow.camera.near = 0.5;
+    key.shadow.camera.far = 18;
     engine.scene.add(key, key.target);
     // Wenige Akzentlichter: jedes Licht kostet in jedem Pixel Rechenzeit
     const accents = [];
-    for (const [x, z, c] of [[-14, 0, 0xffb070], [14, 0, 0xc59bff], [0, -11, 0xff2d6f]]) {
-      const s = new THREE.SpotLight(c, 380, 0, 1.0, 0.8, 2);
+    for (const [x, z, c] of [[-8, 3, 0xffeedb], [8, 3, 0xffeedb], [0, -10, 0xb3c7db]]) {
+      const s = new THREE.SpotLight(c, 220, 15, 0.8, 0.9, 2);
       s.position.set(x, 6.2, z);
       s.target.position.set(x, 0, z);
       engine.scene.add(s, s.target);
@@ -77,9 +86,11 @@ class Hall {
       s.castShadow = true;
       s.shadow.mapSize.set(1024, 1024);
       s.shadow.bias = -0.0006;
+      s.shadow.normalBias = 0.018;
+      s.shadow.radius = 2;
       s.shadow.camera.near = 1; s.shadow.camera.far = 16;
     });
-    // Schatten der Halle nur alle 3 Frames neu berechnen (Figuren bewegen sich langsam genug)
+    // Schatten mit maximal 24 Hz aktualisieren, unabhängig von der Bildschirmfrequenz.
     engine.renderer.shadowMap.autoUpdate = false;
     engine.renderer.shadowMap.needsUpdate = true;
     this.frame = 0;
@@ -96,11 +107,11 @@ class Hall {
       this.reflection.hidden.add(this.casino.floor);
       applyFloorReflection(this.casino.floor.material, this.reflection, { strength: 0.9, blur: 5 });
       engine.onResize = (w, h) => this.reflection.setSize(w, h);
-      engine.preRender = () => { if (this.mode !== 'idle') this.reflection.update(engine.camera); };
+      engine.preRender = () => { if (this.mode !== 'idle' && this.spectateStation?.mount?.type !== 'screen') this.reflection.update(engine.camera); };
       this.reflection.setSize(engine.renderer.domElement.width, engine.renderer.domElement.height);
     }
     // Echte Spiegelung: die fertige Halle einmal als Cubemap aufnehmen und als Umgebung für Marmor/Gold/Chrom nutzen
-    setTimeout(() => this.captureEnvironment(), 300);
+    this.captureTimer = setTimeout(() => this.captureEnvironment(), 300);
 
     // Eingaben (nur im Modus 'walk' wirksam)
     const canvas = engine.renderer.domElement;
@@ -162,9 +173,9 @@ class Hall {
       }
       this.keys.add(e.key.toLowerCase());
       if (['arrowup', 'arrowdown', ' '].includes(e.key.toLowerCase())) e.preventDefault();
-    });
-    window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
-    window.addEventListener('blur', () => this.keys.clear());
+    }, inputOptions);
+    window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()), inputOptions);
+    window.addEventListener('blur', () => this.keys.clear(), inputOptions);
 
     // Präsenz
     for (const p of rt.players.values()) this.ensureAvatar(p);
@@ -205,23 +216,22 @@ class Hall {
 
   captureEnvironment() {
     if (!this.engine || this.engine.disposed) return;
+    const { renderer, scene } = this.engine;
+    const rt = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const hidden = [...this.avatars.values()].map((a) => [a.av, a.av.visible]);
     try {
-      const { renderer, scene } = this.engine;
-      const rt = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
       const cam = new THREE.CubeCamera(0.2, 80, rt);
       cam.position.set(0, 2.2, 2);
-      const hidden = [...this.avatars.values()].map((a) => a.av);
-      hidden.forEach((o) => { o.visible = false; });
+      hidden.forEach(([o]) => { o.visible = false; });
       cam.update(renderer, scene);
-      hidden.forEach((o) => { o.visible = true; });
-      const pmrem = new THREE.PMREMGenerator(renderer);
-      const env = pmrem.fromCubemap(rt.texture).texture;
-      scene.environment?.dispose?.();
-      scene.environment = env;
-      scene.environmentIntensity = 0.7;
-      pmrem.dispose();
-      rt.dispose();
+      this.engine.setEnvironment(pmrem.fromCubemap(rt.texture));
+      scene.environmentIntensity = 0.6;
     } catch (e) { console.warn('Environment-Capture', e); }
+    finally {
+      hidden.forEach(([o, visible]) => { o.visible = visible; });
+      pmrem.dispose(); rt.dispose();
+    }
   }
 
   stationOf(hitbox) {
@@ -262,6 +272,7 @@ class Hall {
     this.lookOffset = { yaw: 0, pitch: 0 };
     // Hinter Profilseiten (idle) sparsamer rendern; beim Laufen und Spielen volle Qualität
     this.engine.setPixelRatioCap(mode === 'idle' ? 1 : this.engine.quality.dpr);
+    this.engine.renderInterval = mode === 'idle' ? 1000 / 24 : 0;
     this.updateSpectateCam();
   }
 
@@ -320,7 +331,20 @@ class Hall {
   clearFocus() { this.focus = null; }
 
   /** Mausrad-Zoom auf einen Basis-Blickwinkel anwenden, auf sinnvolle Grenzen begrenzt */
-  fovFor(base) { return Math.max(25, Math.min(105, base * this.zoom)); }
+  fovFor(base) {
+    // Preserve useful horizontal framing on portrait screens rather than cropping the table.
+    const aspect = this.engine?.camera.aspect ?? 1;
+    const vertical = THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(base * this.zoom) / 2) / Math.min(1, aspect)));
+    return Math.max(25, Math.min(105, vertical));
+  }
+  viewPitchBias() {
+    const stage = document.querySelector('.game-stage');
+    if (!stage || !this.canvas || this.engine.camera.aspect >= 1) return 0;
+    const rect = stage.getBoundingClientRect();
+    const center = rect.top + rect.height / 2;
+    const height = this.canvas.clientHeight;
+    return Math.atan((height / 2 - center) * 2 / height * Math.tan(THREE.MathUtils.degToRad(this.engine.camera.fov) / 2));
+  }
 
   /**
    * Spielszene direkt in die Halle einbauen (auf die Tischplatte bzw. in den Automaten).
@@ -396,6 +420,7 @@ class Hall {
     // Großzügige Klickfläche (anklicken sammelt ebenfalls ein)
     const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 2.4, 12), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
     hit.position.set(c.x, 1.2, c.z);
+    hit.layers.set(PICK_LAYER);
     hit.userData.coinId = c.id;
     this.engine.scene.add(mesh, beam, glow, halo, hit);
     this.coins.set(c.id, { ...c, mesh, beam, glow, halo, hit, phase: Math.random() * 6 });
@@ -408,11 +433,7 @@ class Hall {
     this.pendingPickup.delete(id);
     this.hitboxes = [...this.baseHitboxes, ...[...this.coins.values()].map((k) => k.hit)];
     const dispose = () => {
-      for (const o of [c.mesh, c.beam, c.glow, c.halo, c.hit]) {
-        this.engine.scene.remove(o);
-        if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); }
-        else if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); }
-      }
+      for (const o of [c.mesh, c.beam, c.glow, c.halo, c.hit]) disposeObject(o);
     };
     if (!fly) { dispose(); return; }
     // Chip fliegt zur Kamera und verschwindet
@@ -468,8 +489,7 @@ class Hall {
   removeAvatar(id) {
     const a = this.avatars.get(id);
     if (!a) return;
-    this.engine.scene.remove(a.av);
-    a.av.traverse((o) => { if (o.isSprite) { o.material.map?.dispose(); o.material.dispose(); } });
+    disposeObject(a.av);
     this.avatars.delete(id);
   }
   assignSeats() {
@@ -507,7 +527,11 @@ class Hall {
   update(dt, t) {
     const { engine, me, keys } = this;
     for (const fn of this.casino.animated) fn(dt, t);
-    if ((this.frame++ % 2) === 0) engine.renderer.shadowMap.needsUpdate = true;
+    this.frame++;
+    // A bounded shadow rate is independent of monitor refresh rate.
+    if (t - (this.lastShadowTime ?? -1) > 1 / 24 && this.mode !== 'idle') {
+      engine.renderer.shadowMap.needsUpdate = true; this.lastShadowTime = t;
+    }
 
     if (this.mode === 'walk') {
       const walkFov = this.fovFor(70);
@@ -562,7 +586,7 @@ class Hall {
       const d = baseLook.clone().sub(basePos);
       const baseYaw = Math.atan2(-d.x, -d.z);
       const basePitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
-      const yaw = baseYaw + this.lookOffset.yaw - this.viewBias(); const pitch = basePitch + this.lookOffset.pitch;
+      const yaw = baseYaw + this.lookOffset.yaw - this.viewBias(); const pitch = basePitch + this.lookOffset.pitch - this.viewPitchBias();
       engine.camera.lookAt(
         engine.camera.position.x - Math.sin(yaw) * Math.cos(pitch),
         engine.camera.position.y + Math.sin(pitch),
@@ -583,7 +607,7 @@ class Hall {
       s.ring.material.opacity += ((active ? 0.6 + Math.sin(this.hoverTime * 5) * 0.25 : 0) - s.ring.material.opacity) * 0.15;
       // Schwebende Beschriftungen nur in der Nähe bzw. bei Hover – aus der Ferne stört nichts den Raumeindruck
       const dist = s.label.position.distanceTo(engine.camera.position);
-      const want = this.mode !== 'walk' ? 0 : active ? 1 : Math.max(0, Math.min(1, (13 - dist) / 6)) * 0.85;
+      const want = this.mode === 'walk' && active && dist < 7 ? 0.95 : 0;
       const m = s.label.material;
       if (Math.abs(m.opacity - want) > 0.004) { m.opacity += (want - m.opacity) * Math.min(1, dt * 5); s.label.visible = m.opacity > 0.01; }
     }
@@ -627,7 +651,7 @@ class Hall {
       if (Math.abs(a.opacity - wantOpacity) > 0.005) {
         a.opacity += (wantOpacity - a.opacity) * Math.min(1, dt * 6);
         const tr = a.opacity < 0.995;
-        for (const [m, dw] of a.materials) { m.transparent = tr || m.isSpriteMaterial; m.opacity = a.opacity; m.depthWrite = tr ? false : dw; }
+        for (const [m, dw] of a.materials) { const transparent = tr || !!m.isSpriteMaterial; if(m.transparent !== transparent) { m.transparent = transparent; m.needsUpdate = true; } m.opacity = a.opacity; m.depthWrite = tr ? false : dw; }
       }
       // Namensschild: aus der Nähe kleiner, damit es nicht das halbe Bild füllt
       const label = a.av.userData.label;
@@ -642,11 +666,12 @@ class Hall {
         a.av.userData.setPose('idle');
         const before = a.av.position.clone();
         a.av.position.lerp(a.target, Math.min(1, dt * 8));
-        const moved = before.distanceTo(a.av.position) > 0.002;
+        const travelled = before.distanceTo(a.av.position);
+        const moved = travelled > 0.002;
         let dr = a.ry - a.av.rotation.y;
         dr = Math.atan2(Math.sin(dr), Math.cos(dr));
         a.av.rotation.y += dr * Math.min(1, dt * 10);
-        a.av.userData.step(dt, moved || a.anim === 'walk');
+        a.av.userData.step(dt, moved || a.anim === 'walk', travelled / Math.max(dt, 0.001));
       }
     }
   }
@@ -656,6 +681,10 @@ class Hall {
     if (!this.engine) return;
     const mode = this.mode; const st = this.spectateStation?.id ?? null;
     this.rtOffs?.forEach((f) => f());
+    clearTimeout(this.captureTimer);
+    this.inputAbort?.abort();
+    this.reflection?.dispose();
+    this.reflection = null;
     this.engine.dispose();
     this.layer.remove();
     this.engine = null;

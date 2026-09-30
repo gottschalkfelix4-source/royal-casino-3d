@@ -23,6 +23,12 @@ app.use('/api/rewards', rewardsRouter);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Nicht gefunden' }));
 
 app.use('/vendor/three', express.static(path.join(root, 'node_modules', 'three'), { maxAge: '1d' }));
+// Developer-only graphics harness; absent from the normal application routes.
+if (process.env.CASINO_GRAPHICS_QA === '1') {
+  app.get('/__review.html', (req, res) => res.sendFile(path.join(root, 'scripts/graphics-benchmark.html')));
+  app.get('/__characters.html', (req, res) => res.sendFile(path.join(root, 'scripts/characters-preview.html')));
+  app.get('/__qa.html', (req, res) => res.sendFile(path.join(root, 'scripts/graphics-regression.html')));
+}
 app.use(express.static(path.join(root, 'public')));
 
 // eslint-disable-next-line no-unused-vars

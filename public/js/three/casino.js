@@ -1,3 +1,5 @@
+import { bakeRoomLight } from './lighting-bake.js';
+import { budgetAnimation } from './animation-budget.js';
 import * as THREE from 'three';
 import { makeCanvas, canvasTexture, roundRect, goldMaterial, textSprite, createChip, createCard, createDie } from './assets.js';
 import { createAvatar } from './avatars.js';
@@ -13,6 +15,7 @@ import { buildWarStation } from './stations/war.js';
 import { buildScratchStation } from './stations/scratch.js';
 import { buildDerbyStation } from './stations/derby.js';
 import { rng } from './noise.js';
+import { PICK_LAYER } from './occlusion.js';
 
 /**
  * Prozedural gebaute Casino-Halle im Las-Vegas-Stil: Marmorboden mit Teppichinseln und roten Läufern
@@ -82,7 +85,7 @@ function carpetPiece(scene, { x0, z0, x1, z1, kind }) {
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setY(i, uv.getY(i) * (length / 2));
     const { map, normalMap, aoMap } = runnerTexture(width);
-    const n = normalMap.clone(); n.repeat.set(width / 1.2, length / 1.2); n.needsUpdate = true;
+    const n = normalMap.clone(); n.userData.keep = false; n.repeat.set(width / 1.2, 2 / 1.2); n.needsUpdate = true;
     material = new THREE.MeshStandardMaterial({ map, normalMap: n, normalScale: new THREE.Vector2(0.35, 0.35), aoMap, aoMapIntensity: 0.6, roughness: 1, metalness: 0 });
     rotY = along ? 0 : Math.PI / 2;
   } else {
@@ -90,7 +93,7 @@ function carpetPiece(scene, { x0, z0, x1, z1, kind }) {
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) { uv.setX(i, uv.getX(i) * (w / 2)); uv.setY(i, uv.getY(i) * (d / 2)); }
     const { map, normalMap, aoMap } = carpetTexture();
-    const n = normalMap.clone(); n.repeat.set(w / 1.2, d / 1.2); n.needsUpdate = true;
+    const n = normalMap.clone(); n.userData.keep = false; n.repeat.set(2 / 1.2, 2 / 1.2); n.needsUpdate = true;
     material = new THREE.MeshStandardMaterial({ map, normalMap: n, normalScale: new THREE.Vector2(0.4, 0.4), aoMap, aoMapIntensity: 0.6, roughness: 1, metalness: 0 });
   }
   const mesh = new THREE.Mesh(geo, material);
@@ -119,13 +122,13 @@ export function buildCasino(engine) {
   // ---------- Boden: polierter Marmor, darauf Teppichinseln und Läufer (überlappungsfrei) ----------
   const marble = marbleTexture();
   const marbleFloor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshPhysicalMaterial({
-    map: marble.map, roughnessMap: marble.roughnessMap, normalMap: marble.normalMap, aoMap: marble.aoMap,
-    normalScale: new THREE.Vector2(0.45, 0.45), aoMapIntensity: 0.8,
+    map: marble.map, roughnessMap: marble.roughnessMap, normalMap: marble.normalMap, aoMap: marble.aoMap ?? null,
+    normalScale: new THREE.Vector2(0.12, 0.12), aoMapIntensity: 0.8,
     roughness: 1, metalness: 0.04, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 0.35,
   }));
   marbleFloor.rotation.x = -Math.PI / 2; marbleFloor.receiveShadow = true;
   marbleFloor.userData.noBatch = true; // bekommt die planare Spiegelung (eigenes Shader-Programm)
-  scene.add(marbleFloor);
+  scene.add(marbleFloor); bakeRoomLight(marbleFloor, 'floor');
   const ZONES = [
     { x0: -2.6, z0: -10, x1: 2.6, z1: 14.6, kind: 'runner' },      // Hauptläufer vom Eingang bis zur Rückwand-Zone
     { x0: -14, z0: -1.5, x1: -3, z1: 1.5, kind: 'runner' },        // Querläufer West
@@ -152,7 +155,7 @@ export function buildCasino(engine) {
     normalScale: new THREE.Vector2(0.4, 0.4), aoMapIntensity: 0.7, roughness: 1,
   }));
   ceiling.rotation.x = Math.PI / 2; ceiling.position.y = h;
-  scene.add(ceiling);
+  scene.add(ceiling); bakeRoomLight(ceiling, 'ceiling');
   const ribMat = goldMaterial({ roughness: 0.3 });
   const coveMat = new THREE.MeshStandardMaterial({ color: 0xffe0b0, emissive: 0xffc070, emissiveIntensity: 0.7 });
   const R = 160; const arc = w / R;
@@ -178,12 +181,12 @@ export function buildCasino(engine) {
   const wallMaps = wallTex.userData.maps ?? {};
   const wallMat = new THREE.MeshStandardMaterial({
     map: wallTex, normalMap: wallMaps.normalMap, roughnessMap: wallMaps.roughnessMap, aoMap: wallMaps.aoMap,
-    normalScale: new THREE.Vector2(0.45, 0.45), aoMapIntensity: 0.7, roughness: 1,
+    normalScale: new THREE.Vector2(0.12, 0.12), aoMapIntensity: 0.7, roughness: 1,
   });
   const mkWall = (width, x, z, rotY) => {
-    const wm = new THREE.Mesh(new THREE.PlaneGeometry(width, h), wallMat);
+    const wm = new THREE.Mesh(new THREE.PlaneGeometry(width, h), wallMat.clone());
     wm.position.set(x, h / 2, z); wm.rotation.y = rotY; wm.receiveShadow = true;
-    scene.add(wm);
+    scene.add(wm); bakeRoomLight(wm, `wall:${x}:${z}`);
   };
   mkWall(w, 0, -d / 2, 0); mkWall(w, 0, d / 2, Math.PI); mkWall(d, -w / 2, 0, Math.PI / 2); mkWall(d, w / 2, 0, -Math.PI / 2);
   scene.add(merged([
@@ -219,7 +222,7 @@ export function buildCasino(engine) {
     animated.push((dt, t) => { c.userData.crystals.rotation.y = t * 0.15; });
   }
   for (const [x, z] of [[-8, 1], [8, 1], [0, -8]]) {
-    const light = new THREE.PointLight(0xffd9a0, 40, 20, 2);
+    const light = new THREE.PointLight(0xffebd2, 28, 20, 2);
     light.position.set(x, 5.0, z);
     scene.add(light);
   }
@@ -232,10 +235,10 @@ export function buildCasino(engine) {
   // Neon-Schriftzüge
   // Breite/Höhe so gewählt, dass der Schriftzug vom Eingang aus frei steht: seitlich zwischen den Säulen
   // bei x = ±4 (die verdecken ab x ≈ ±4.5 auf der Rückwand), unten über dem Glücksrad (Oberkante ≈ 3.3).
-  const neon = emissivePlane(9.2, 2.3, neonTexture('ROYAL CASINO', '#ff2d6f', '★ 24 STUNDEN GEÖFFNET ★'), 2.2);
+  const neon = emissivePlane(9.2, 2.3, neonTexture('ROYAL CASINO', '#e7c98b', '★ 24 STUNDEN GEÖFFNET ★'), 2.2);
   neon.position.set(0, 5.25, -d / 2 + 0.08);
   scene.add(neon);
-  animated.push((dt, t) => { neon.material.emissiveIntensity = 2.0 + Math.sin(t * 9) * 0.15 + (Math.random() < 0.01 ? -0.8 : 0); });
+  animated.push((dt, t) => { neon.material.emissiveIntensity = 1.1 + Math.sin(t * 1.5) * 0.035; });
   const neon2 = emissivePlane(6, 1.5, neonTexture('BAR', '#35c7ff'), 2);
   neon2.position.set(-13, 4.6, -d / 2 + 0.08);
   const neon3 = emissivePlane(8, 1.6, neonTexture('JACKPOT', '#ffd76a'), 2);
@@ -268,9 +271,11 @@ export function buildCasino(engine) {
     const hitbox = new THREE.Mesh(new THREE.BoxGeometry(...hit), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
     hitbox.position.set(x, hit[1] / 2, z); hitbox.rotation.y = rotY;
     hitbox.userData.gameId = id;
+    hitbox.layers.set(PICK_LAYER);
     scene.add(hitbox);
-    const label = textSprite(name, { size: 60, color: '#ffffff', bg: 'rgba(0,0,0,0.55)', height: 0.55 });
-    label.position.set(x, labelY, z);
+    const label = textSprite(name, { size: 44, color: '#f4e6c8', bg: 'rgba(12,16,21,0.8)', height: 0.23 });
+    label.material.opacity = 0; label.visible = false;
+    label.position.set(x, Math.min(labelY, 2.3), z);
     label.layers.set(1); // Beschriftungen: nicht in der Bodenspiegelung
     scene.add(label);
     const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(hit[0], hit[2]) * 0.55, Math.max(hit[0], hit[2]) * 0.55 + 0.12, 64), new THREE.MeshBasicMaterial({ color: 0xffd76a, transparent: true, opacity: 0, side: THREE.DoubleSide }));
@@ -299,7 +304,7 @@ export function buildCasino(engine) {
     // Vom Spiel genutzte Zusatzobjekte (Tisch, Kessel, Automat, Layout) ebenfalls vom Batching ausnehmen
     if (typeof extra === 'function') {
       try {
-        for (const v of Object.values(extra(0) ?? {})) if (v?.isObject3D) v.userData.noBatch = true;
+        for (const v of Object.values(extra(0) ?? {})) if (v?.isMesh) v.userData.noBatch = true;
       } catch { /* extra benötigt einen Index – dann markiert die Station selbst */ }
     }
     st.mount = { type, scale, object, offset: new THREE.Vector3(...offset), hide, rotX, pull, lookY, look, fov, extra, cam };
@@ -311,10 +316,10 @@ export function buildCasino(engine) {
   const machines = [];
   const NAMES = ['ROYAL 7s', 'DIAMOND RUSH', 'GOLDEN BELL', 'LUCKY FRUITS', 'ROYAL 7s', 'DIAMOND RUSH'];
   for (let i = 0; i < 6; i++) {
-    const mc = buildSlotMachine({ variant: i, name: NAMES[i] });
+    const mc = buildSlotMachine({ quality: engine.quality.gtao ? 'high' : engine.quality.shadows ? 'medium' : 'low', variant: i, name: NAMES[i] });
     mc.position.z = (i - 2.5) * SLOT_PITCH;
     mc.rotation.y = Math.PI / 2; // Front zeigt nach +x in die Halle
-    mc.userData.noBatch = true; // Hebel, Walzen, Lampen und Anzeige bewegen sich
+    // Moving children are marked inside buildSlotMachine; the housing can be batched.
     slotsGroup.add(mc);
     machines.push(mc);
   }
@@ -335,7 +340,7 @@ export function buildCasino(engine) {
     extra: (i) => ({ machine: machines[i] }),
     fov: 58,
   });
-  animated.push((dt, t) => { for (const mc of machines) mc.userData.update(dt, t); });
+  for (const mc of machines) animated.push(budgetAnimation(mc, engine.camera, (dt, t, distance) => mc.userData.update(dt, t, distance)));
 
   // ---------- Roulette: großer Kessel im Tisch, Tableau, Chip-Bank, Dolly ----------
   const rl = gameTable({ shape: 'rect', w: 4.6, d: 2.1, felt: '#0f5a3a', layoutTex: rouletteLayoutTexture(), layoutSize: [LAYOUT.w, LAYOUT.d], rack: false, sign: ['ROULETTE', 'Min 10 · Max 1.000'] });
@@ -466,13 +471,14 @@ export function buildCasino(engine) {
     const u = group.userData;
     // Bewegte oder im Spiel ausgeblendete Teile dürfen nicht statisch zusammengefasst werden; solange ein
     // Modul seine Teile nicht selbst markiert, bleibt die ganze Station vom Batching ausgenommen.
-    if (u.noBatch === undefined) u.noBatch = true;
+    if (u.noBatch === undefined) u.noBatch = false;
     for (const o of (typeof u.mount?.hide === 'function' ? [] : (u.mount?.hide ?? []))) o.userData.noBatch = true;
     const st = addStation(id, name, group, { x, z, rotY, hit: u.hit, labelY: u.labelY ?? 2.9, seats: u.seats, face: u.face ?? [0, 0], sit: u.sit ?? true, chairs: !!u.chairs });
     // Modul-Stationen im Arcade-Gehäuse bekommen dieselbe frontale Bildschirmkamera wie die Automaten oben
     if (u.mount?.cabinetCam && !u.mount.cam) { u.mount.cam = screenCam(st); u.mount.fov = SCREEN_FOV; }
+    if (u.bezel) u.bezel.userData.noBatch = true;
     if (u.mount) setMount(st, u.mount);
-    if (u.update) animated.push((dt, t) => u.update(dt, t));
+    if (u.update) animated.push(budgetAnimation(group, engine.camera, (dt, t) => u.update(dt, t)));
     if (u.dealer) moduleDealers.push([id, u.dealer.name, u.dealer.lx, u.dealer.lz]);
     return st;
   };
@@ -500,7 +506,7 @@ export function buildCasino(engine) {
   let seed = 0.13;
   for (const [px, pz] of [[-18.5, 13], [18.5, 13], [-18.5, -13], [18.5, -13], [-6.2, 13.6], [6.2, 13.6]]) placePlant(createPalm({ height: 2.2 + (seed += 0.17) % 0.5, fronds: 11, seed }), px, pz);
   for (const [px, pz] of [[-12.9, -9.9], [16.5, -11.5], [-12.9, 9.9], [15.6, 12.5], [-3.1, -9.9], [3.1, -9.9]]) placePlant(createFicus({ height: 1.6 + (seed += 0.11) % 0.4, seed }), px, pz);
-  animated.push((dt, t) => { for (const p of plants) p.userData.sway(t); });
+  for (const p of plants) animated.push(budgetAnimation(p, engine.camera, (dt, t) => p.userData.sway(t)));
 
   // ---------- Info-Tafeln ----------
   const interactives = [];
@@ -510,6 +516,7 @@ export function buildCasino(engine) {
     const hitbox = new THREE.Mesh(new THREE.BoxGeometry(...hit), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }));
     hitbox.position.set(x, y, z); hitbox.rotation.y = rotY;
     hitbox.userData.action = 'rewards';
+    hitbox.layers.set(PICK_LAYER);
     scene.add(hitbox);
     const label = textSprite('🎁 Coins verdienen', { size: 56, color: '#f5d97a', bg: 'rgba(0,0,0,0.6)', height: 0.42 });
     label.position.set(x, y + hit[1] / 2 + 0.35, z);
@@ -535,7 +542,7 @@ export function buildCasino(engine) {
     av.userData.noBatch = true;
     if (av.userData.label) { av.userData.label.layers.set(1); dealerLabels.push(av.userData.label); }
     scene.add(av);
-    animated.push((dt, t) => av.userData.dealerStep(dt, t));
+    animated.push(budgetAnimation(av, engine.camera, (dt, t) => av.userData.dealerStep(dt, t)));
   }
 
   const path = new THREE.CatmullRomCurve3([

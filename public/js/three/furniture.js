@@ -1,3 +1,5 @@
+import { chairBackGeometry, tableRailGeometry, halfTableGeometry } from './upholstery.js';
+import { surfaceAsset } from './surface-assets.js';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -15,20 +17,26 @@ export function mat() {
   if (M.brass) return M;
   M.brass = goldMaterial({ roughness: 0.3 });
   M.brassDull = goldMaterial({ roughness: 0.45, color: 0xb8952f });
-  M.chrome = new THREE.MeshPhysicalMaterial({ color: 0xe4e5ea, metalness: 1, roughness: 0.16, normalMap: brushedNormal(), normalScale: new THREE.Vector2(0.15, 0.15), anisotropy: 0.45, anisotropyRotation: Math.PI / 2, envMapIntensity: 1.1 });
-  M.darkWood = new THREE.MeshPhysicalMaterial({ map: woodTexture(), normalMap: woodNormal(), normalScale: new THREE.Vector2(0.45, 0.45), color: 0x8a6a4a, roughness: 0.32, clearcoat: 0.7, clearcoatRoughness: 0.2 });
-  M.mahogany = new THREE.MeshPhysicalMaterial({ map: woodTexture(), normalMap: woodNormal(), normalScale: new THREE.Vector2(0.4, 0.4), color: 0x9a5a3a, roughness: 0.28, clearcoat: 0.9, clearcoatRoughness: 0.15 });
+  M.chrome = new THREE.MeshPhysicalMaterial({ color: 0xaab0b7, metalness: 1, roughness: 0.36, normalMap: brushedNormal(), normalScale: new THREE.Vector2(0.08, 0.08), anisotropy: 0.45, anisotropyRotation: Math.PI / 2, envMapIntensity: 0.8 });
+  M.darkWood = new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughnessMap: surfaceAsset('wood', [2, 2]).roughnessMap, normalMap: woodNormal(), normalScale: new THREE.Vector2(0.45, 0.45), color: 0xc5b5a5, roughness: 0.7, clearcoat: 0.7, clearcoatRoughness: 0.2 });
+  M.mahogany = new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughnessMap: surfaceAsset('wood', [2, 2]).roughnessMap, normalMap: woodNormal(), normalScale: new THREE.Vector2(0.4, 0.4), color: 0xc6a18a, roughness: 0.65, clearcoat: 0.9, clearcoatRoughness: 0.15 });
   M.velvet = new THREE.MeshPhysicalMaterial({ color: 0x4a0d1a, roughness: 0.85, sheen: 0.9, sheenRoughness: 0.55, sheenColor: new THREE.Color(0xa0304d), normalMap: leatherNormal(), normalScale: new THREE.Vector2(0.3, 0.3) });
-  M.leather = new THREE.MeshPhysicalMaterial({ color: 0x2c0a12, roughness: 0.5, clearcoat: 0.5, clearcoatRoughness: 0.3, normalMap: leatherNormal(), normalScale: new THREE.Vector2(0.55, 0.55), sheen: 0.3, sheenColor: new THREE.Color(0x8a2a44) });
-  M.piano = new THREE.MeshPhysicalMaterial({ color: 0x0a0a0c, metalness: 0.3, roughness: 0.15, clearcoat: 1, clearcoatRoughness: 0.05 });
-  M.bodyRed = new THREE.MeshPhysicalMaterial({ color: 0x7a0f22, metalness: 0.5, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.08 });
+  M.leather = new THREE.MeshPhysicalMaterial({ ...surfaceAsset('leather', [3, 3]), color: 0x99747a, roughness: 0.85, clearcoat: 0.5, clearcoatRoughness: 0.3, normalMap: leatherNormal(), normalScale: new THREE.Vector2(0.55, 0.55), sheen: 0.3, sheenColor: new THREE.Color(0x8a2a44) });
+  M.piano = new THREE.MeshPhysicalMaterial({ color: 0x0a0a0c, metalness: 0.3, roughness: 0.24, clearcoat: 0.8, clearcoatRoughness: 0.18 });
+  M.bodyRed = new THREE.MeshPhysicalMaterial({ color: 0x7a0f22, metalness: 0.5, roughness: 0.32, clearcoat: 0.8, clearcoatRoughness: 0.18 });
   M.glass = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.03, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.02, transparent: true, opacity: 0.15, depthWrite: false, envMapIntensity: 2 });
   M.acrylic = new THREE.MeshPhysicalMaterial({ color: 0xdfe8ee, roughness: 0.05, metalness: 0, clearcoat: 1, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide });
   M.matteBlack = new THREE.MeshStandardMaterial({ color: 0x141416, roughness: 0.7, metalness: 0.2 });
+  for (const material of Object.values(M)) material.userData.shared = true;
   return M;
 }
-const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
-const rbox = (w, h, d, r = 0.01, seg = 3) => new RoundedBoxGeometry(w, h, d, seg, r);
+const shapeCache = new Map();
+const shape = (key, build) => {
+  if (!shapeCache.has(key)) { const g = build(); g.userData.shared = true; shapeCache.set(key, g); }
+  return shapeCache.get(key);
+};
+const box = (w, h, d) => shape(`b:${w}:${h}:${d}`, () => new THREE.BoxGeometry(w, h, d));
+const rbox = (w, h, d, r = 0.01, seg = 2) => shape(`r:${w}:${h}:${d}:${r}:${seg}`, () => new RoundedBoxGeometry(w, h, d, seg, r));
 /** Mehrere Geometrien mit einem Material zu einem Mesh zusammenfassen */
 export function merged(parts, material) {
   const geos = parts.map(({ geo, p = [0, 0, 0], r = [0, 0, 0], s = [1, 1, 1] }) => {
@@ -50,6 +58,7 @@ export function contactShadow(w, d, opacity = 0.55) {
     g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.6, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
     shadowTex = new THREE.CanvasTexture(canvas);
+    shadowTex.userData.keep = true;
   }
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, opacity, depthWrite: false }));
   m.rotation.x = -Math.PI / 2;
@@ -63,25 +72,23 @@ export function contactShadow(w, d, opacity = 0.55) {
 export function casinoChair({ seatY = 0.68, color = null } = {}) {
   const m = mat();
   let velvet = m.velvet;
-  if (color) { velvet = m.velvet.clone(); velvet.color = new THREE.Color(color); }
+  if (color) { velvet = m.velvet.clone(); velvet.userData.shared = false; velvet.color = new THREE.Color(color); }
   const g = new THREE.Group();
   const seat = new THREE.Mesh(rbox(0.46, 0.09, 0.44, 0.035), velvet);
   seat.position.y = seatY; seat.castShadow = true;
-  // Rückenlehne: gebogene Schale (Innenseite sichtbar), Chromrand
-  const backMat = velvet.clone(); backMat.side = THREE.DoubleSide;
-  const back = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.3, 24, 1, true, Math.PI * 0.6, Math.PI * 0.8), backMat);
-  back.position.set(0, seatY + 0.24, 0.02); back.rotation.y = Math.PI; back.castShadow = true;
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.016, 8, 32, Math.PI * 0.8), m.chrome);
-  rim.rotation.x = Math.PI / 2; rim.rotation.z = Math.PI * 0.6 - Math.PI; rim.position.set(0, seatY + 0.4, 0.02);
-  const rim2 = rim.clone(); rim2.position.y = seatY + 0.09;
+  // Closed upholstery shell; a recessed brass line replaces the exposed glowing chrome edges.
+  const back = new THREE.Mesh(shape('chair-back', chairBackGeometry), velvet);
+  back.position.set(0, seatY + 0.24, 0.02); back.castShadow = true; back.receiveShadow = true;
+  const rim = new THREE.Mesh(shape('chair-trim', () => new THREE.TorusGeometry(0.271, 0.005, 6, 40, Math.PI * 0.8)), m.brassDull);
+  rim.rotation.x = Math.PI / 2; rim.rotation.z = Math.PI * 0.1; rim.position.set(0, seatY + 0.36, 0.02);
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, seatY - 0.02, 12), m.chrome);
   pole.position.y = (seatY - 0.02) / 2;
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.012, 8, 32), m.chrome);
   ring.rotation.x = Math.PI / 2; ring.position.y = 0.2;
   const spokes = merged([0, 1, 2].map((i) => ({ geo: box(0.38, 0.012, 0.012), p: [0, 0.2, 0], r: [0, (i * Math.PI) / 3, 0] })), m.chrome);
-  const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.24, 0.025, 32), m.chrome);
+  const foot = new THREE.Mesh(shape('chair-foot', () => new THREE.LatheGeometry([[0,-0.0125],[0.232,-0.0125],[0.24,-0.006],[0.24,0],[0.23,0.009],[0.2,0.0125],[0,0.0125]].map(([x,y]) => new THREE.Vector2(x,y)), 64)), m.chrome);
   foot.position.y = 0.0125;
-  g.add(seat, back, rim, rim2, pole, ring, spokes, foot);
+  g.add(seat, back, rim, pole, ring, spokes, foot);
   return g;
 }
 
@@ -225,14 +232,13 @@ export function layoutTexture(kind, W = 1024, H = 512) {
 export function gameTable({ shape = 'rect', w = 3, d = 1.8, felt = '#0f5a3a', rail = true, layout = null, layoutTex = null, layoutSize = null, rack = true, shoe = false, sign = null } = {}) {
   const m = mat();
   const g = new THREE.Group();
-  const feltMat = new THREE.MeshStandardMaterial({ map: feltTexture(felt), normalMap: feltNormal(), normalScale: new THREE.Vector2(0.45, 0.45), roughness: 0.96 });
+  const feltMat = new THREE.MeshStandardMaterial({ map: feltTexture(felt), roughnessMap: surfaceAsset('fabric', [6, 6]).roughnessMap, normalMap: feltNormal(), normalScale: new THREE.Vector2(0.15, 0.15), roughness: 1 });
   let topGeo;
   if (shape === 'oval') topGeo = new THREE.CylinderGeometry(1, 1, 0.1, 72).scale(w / 2, 1, d / 2);
-  else if (shape === 'half') topGeo = new THREE.CylinderGeometry(1, 1, 0.1, 72, 1, false, 0, Math.PI).scale(w / 2, 1, d);
+  else if (shape === 'half') topGeo = halfTableGeometry(w, d, 0.1);
   else topGeo = rbox(w, 0.1, d, 0.03, 2);
   const top = new THREE.Mesh(topGeo, feltMat);
   top.position.y = 0.9; top.castShadow = true; top.receiveShadow = true;
-  if (shape === 'half') top.rotation.y = -Math.PI / 2; // runde Seite zu den Spielern (+z)
   g.add(top);
   // Holzzarge unter der Platte, Sockel und Messingfuß
   let apron; let base; let plinth;
@@ -242,8 +248,7 @@ export function gameTable({ shape = 'rect', w = 3, d = 1.8, felt = '#0f5a3a', ra
     plinth = new THREE.Mesh(box(w * 0.86, 0.06, d * 0.82), m.brass);
   } else {
     const sx = shape === 'half' ? w / 2 : w / 2; const sz = shape === 'half' ? d : d / 2;
-    apron = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.97, 0.16, 72, 1, false, 0, shape === 'half' ? Math.PI : Math.PI * 2).scale(sx - 0.03, 1, sz - 0.03), m.mahogany);
-    if (shape === 'half') apron.rotation.y = -Math.PI / 2;
+    apron = new THREE.Mesh(shape === 'half' ? halfTableGeometry(w - 0.06, d - 0.03, 0.16, 0.97) : new THREE.CylinderGeometry(1, 0.97, 0.16, 72).scale(sx - 0.03, 1, sz - 0.03), m.mahogany);
     base = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(w, d) * 0.3, Math.min(w, d) * 0.38, 0.68, 40), m.darkWood);
     plinth = new THREE.Mesh(new THREE.CylinderGeometry(Math.min(w, d) * 0.42, Math.min(w, d) * 0.44, 0.06, 40), m.brass);
     if (shape === 'half') { base.position.z = d * 0.35; plinth.position.z = d * 0.35; }
@@ -259,11 +264,19 @@ export function gameTable({ shape = 'rect', w = 3, d = 1.8, felt = '#0f5a3a', ra
     const holders = merged([-1, 1].map((s) => ({ geo: box(0.03, 0.03, 0.2), p: [s * w * 0.38, 0.24, d / 2 + 0.06] })), m.brass);
     g.add(bar, holders);
   } else {
-    const rTor = shape === 'half' ? 1 : 1;
-    const bar = new THREE.Mesh(new THREE.TorusGeometry(rTor, 0.02, 8, 64, Math.PI).scale(w / 2 + 0.14, shape === 'half' ? d + 0.14 : d / 2 + 0.14, 1), m.brass);
-    bar.rotation.x = Math.PI / 2; bar.rotation.z = Math.PI; bar.position.y = 0.24;
-    if (shape === 'half') bar.position.z = 0; else bar.position.z = 0;
-    g.add(bar);
+    const bar = new THREE.Mesh(tableRailGeometry(shape, w + 0.28, d + (shape === 'half' ? 0.14 : 0.28), 0.02), m.brass);
+    bar.position.y = 0.24;
+    const supports = merged([0.22, 0.5, 0.78].map(fraction => {
+      const angle = Math.PI * fraction;
+      const z = shape === 'half' ? d : d / 2;
+      const from = new THREE.Vector3(Math.cos(angle) * (w / 2 - 0.06), 0.78, Math.sin(angle) * (z - 0.06));
+      const to = new THREE.Vector3(Math.cos(angle) * (w / 2 + 0.14), 0.24, Math.sin(angle) * (z + 0.14));
+      const delta = to.clone().sub(from);
+      return { geo: new THREE.CylinderGeometry(0.018, 0.018, delta.length(), 8),
+        p: from.add(to).multiplyScalar(0.5).toArray(),
+        r: new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize())).toArray().slice(0, 3) };
+    }), m.brass);
+    g.add(bar, supports);
   }
   // Goldene Zierlinie am Filzrand
   if (shape !== 'rect') {
@@ -283,26 +296,15 @@ export function gameTable({ shape = 'rect', w = 3, d = 1.8, felt = '#0f5a3a', ra
     decal.rotation.x = -Math.PI / 2; decal.position.set(0, 0.956, shape === 'half' ? d * 0.42 : 0);
     g.add(decal);
   }
-  // Gepolsterte Lederarmauflage
+  // One continuous cushion with uniform thickness and rounded joins at every corner.
   if (rail) {
-    let railMesh;
-    if (shape === 'rect') {
-      railMesh = new THREE.Group();
-      const mk = (len, x, z, rot) => { const mm = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, len, 6, 16), m.leather); mm.rotation.z = Math.PI / 2; mm.rotation.y = rot; mm.position.set(x, 0.99, z); mm.castShadow = true; railMesh.add(mm); };
-      mk(w, 0, d / 2, 0); mk(w, 0, -d / 2, 0); mk(d, w / 2, 0, Math.PI / 2); mk(d, -w / 2, 0, Math.PI / 2);
-    } else if (shape === 'oval') {
-      railMesh = new THREE.Mesh(new THREE.TorusGeometry(1, 0.09, 14, 96).scale(w / 2, d / 2, 1), m.leather);
-      railMesh.rotation.x = Math.PI / 2; railMesh.position.y = 0.99;
-    } else {
-      railMesh = new THREE.Mesh(new THREE.TorusGeometry(1, 0.09, 14, 72, Math.PI).scale(w / 2, d, 1), m.leather);
-      railMesh.rotation.x = Math.PI / 2; railMesh.position.y = 0.99;
-      // gerade Rückkante (Dealer-Seite)
-      const backRail = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, w, 6, 16), m.leather);
-      backRail.rotation.z = Math.PI / 2; backRail.position.set(0, 0.98, 0.02);
-      railMesh = new THREE.Group().add(railMesh, backRail);
+    const key = `rail:${shape}:${w}:${d}`;
+    if (!shapeCache.has(key)) {
+      const geo = tableRailGeometry(shape, w, d); geo.userData.shared = true; shapeCache.set(key, geo);
     }
-    railMesh.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-    g.add(railMesh);
+    const padding = new THREE.Mesh(shapeCache.get(key), m.leather);
+    padding.position.y = 0.99; padding.castShadow = true; padding.receiveShadow = true;
+    g.add(padding);
   }
   if (rack && layout && layout !== 'roulette') {
     const r = chipRack();
@@ -328,7 +330,7 @@ export function gameTable({ shape = 'rect', w = 3, d = 1.8, felt = '#0f5a3a', ra
 export function column(x, z, height) {
   const m = mat();
   const g = new THREE.Group();
-  const marble = marbleTexture().map.clone(); marble.repeat.set(0.6, 1.2); marble.needsUpdate = true;
+  const marble = marbleTexture().map.clone(); marble.userData.keep = false; marble.repeat.set(0.6, 1.2); marble.needsUpdate = true;
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.46, height - 0.6, 40), new THREE.MeshPhysicalMaterial({ map: marble, roughness: 0.14, clearcoat: 1, clearcoatRoughness: 0.08 }));
   shaft.position.y = height / 2; shaft.castShadow = true; shaft.receiveShadow = true;
   // Kanneluren als schmale Messingstäbe
@@ -410,7 +412,7 @@ export function chandelier(x, z, y = 5.4) {
   const arms = merged(Array.from({ length: 6 }, (_, i) => ({ geo: box(0.9, 0.025, 0.025), p: [Math.cos((i / 6) * Math.PI * 2) * 0.45, 0.06, Math.sin((i / 6) * Math.PI * 2) * 0.45], r: [0, -(i / 6) * Math.PI * 2, 0] })), m.brass);
   g.add(arms);
   // Kristalle als Instanz-Wolke, kein transmission (zu teuer)
-  const crystalMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0.1, clearcoat: 1, emissive: 0xfff2cc, emissiveIntensity: 0.4, transparent: true, opacity: 0.85, envMapIntensity: 2 });
+  const crystalMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0.1, clearcoat: 1, emissive: 0xfff2cc, emissiveIntensity: 0.035, transparent: true, opacity: 0.4, depthWrite: false, envMapIntensity: 0.85 });
   const crystalGeo = new THREE.OctahedronGeometry(0.07, 0);
   const crystals = new THREE.Group();
   const inst = new THREE.InstancedMesh(crystalGeo, crystalMat, 72);
@@ -430,7 +432,7 @@ export function chandelier(x, z, y = 5.4) {
   crystals.add(drops);
   g.add(crystals);
   const bulbs = new THREE.Group();
-  const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff4d6, emissive: 0xffe0a0, emissiveIntensity: 3 });
+  const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff4d6, emissive: 0xffe0a0, emissiveIntensity: 1.7 });
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
     const b = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 10), bulbMat);
@@ -683,7 +685,7 @@ export function sconce() {
   const shadeMat = new THREE.MeshStandardMaterial({ color: 0xffe3b8, emissive: 0xffc070, emissiveIntensity: 1.6, side: THREE.DoubleSide });
   const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.16, 0.18, 16, 1, true), shadeMat);
   shade.position.set(0, 0.16, 0.16);
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfff4d6, emissive: 0xffe0a0, emissiveIntensity: 3 }));
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfff4d6, emissive: 0xffe0a0, emissiveIntensity: 1.7 }));
   bulb.position.set(0, 0.12, 0.16);
   g.add(plate, arm, shade, bulb);
   return g;

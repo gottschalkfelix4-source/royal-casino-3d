@@ -1,0 +1,79 @@
+{
+  "quality": "high",
+  "cacheProbe": {
+    "marble": [
+      {
+        "ms": 0,
+        "sameObject": true
+      },
+      {
+        "ms": 0,
+        "sameObject": true
+      },
+      {
+        "ms": 0,
+        "sameObject": true
+      }
+    ],
+    "carpet": [
+      {
+        "ms": 0,
+        "sameObject": true
+      },
+      {
+        "ms": 0,
+        "sameObject": true
+      },
+      {
+        "ms": 0,
+        "sameObject": true
+      }
+    ],
+    "runner": [
+      {
+        "ms": 0,
+        "sameObject": true
+      },
+      {
+        "ms": 0,
+        "sameObject": true
+      },
+      {
+        "ms": 0,
+        "sameObject": true
+      }
+    ]
+  },
+  "viewport": [
+    2004,
+    1236
+  ],
+  "dpr": 1,
+  "buffer": [
+    2004,
+    1236
+  ],
+  "setupMs": 816,
+  "samples": 565,
+  "frameMedianMs": 14.6,
+  "frameP95Ms": 18.7,
+  "fps": 66.1,
+  "cpuSubmissionMedianMs": 3.8,
+  "calls": 1430,
+  "trianglesPerFrame": 674802,
+  "gpuMemory": {
+    "geometries": 803,
+    "textures": 173
+  },
+  "scene": {
+    "meshes": 996,
+    "triangles": 478458,
+    "materials": 675,
+    "geometries": 851,
+    "textures": 188,
+    "transparent": 197,
+    "lights": 14,
+    "shadows": 2
+  },
+  "renderer": "WebKit WebGL"
+}

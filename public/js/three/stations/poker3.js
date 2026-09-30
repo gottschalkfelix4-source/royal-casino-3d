@@ -25,7 +25,7 @@ export function buildPoker3Station() {
   g.userData = {
     hit: [4.3, 2.4, 3.2], labelY: 2.75,
     seats: [[-1.05, 1.75], [0, 1.8], [1.05, 1.75]], face: [0, 0], sit: true, chairs: true,
-    mount: { type: 'table', scale: 0.16, offset: [0, 0.95, 0], pull: 0.35, lookY: 0.9 },
+    mount: { hide: deco, type: 'table', scale: 0.16, offset: [0, 0.95, 0], pull: 0.35, lookY: 0.9 },
   };
   return g;
 }

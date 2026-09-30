@@ -10,7 +10,15 @@ import * as THREE from 'three';
 const registry = new Set();
 let currentAnisotropy = 8;
 /** Textur registrieren, damit `setTextureAnisotropy` sie später findet. */
-export function trackTexture(tex) { registry.add(tex); return tex; }
+export function trackTexture(tex) {
+  if (!registry.has(tex)) {
+    registry.add(tex);
+    const release = () => { registry.delete(tex); tex.removeEventListener('dispose', release); };
+    tex.addEventListener('dispose', release);
+  }
+  return tex;
+}
+export function textureRegistrySize() { return registry.size; }
 /** Anisotropie aller erzeugten Texturen setzen (Qualitätswechsel); gilt auch für neu erzeugte. */
 export function setTextureAnisotropy(anisotropy) {
   currentAnisotropy = anisotropy;
@@ -199,11 +207,13 @@ export function upscaleCanvas(src, size) {
  * Normal/AO ab, wenn diese nicht direkt übergeben wurden. Ergebnis wird per `key` gecacht.
  */
 const surfaceCache = new Map();
-export function surfaceMaps({
+export function getCachedSurface(key) { return surfaceCache.get(key); }
+export function surfaceMaps(options = {}) {
+  if (surfaceCache.has(options.key)) return surfaceCache.get(options.key);
+  const {
   key, color = null, roughness = null, normal = null, ao = null, height = null,
   repeat = [1, 1], anisotropy = currentAnisotropy, normalStrength = 1, aoRadius = 6, aoStrength = 1, aoLevels = 2,
-} = {}) {
-  if (surfaceCache.has(key)) return surfaceCache.get(key);
+} = { ...options, ...options.build?.() };
   const maps = {};
   if (color) maps.map = textureFromCanvas(color, { repeat, anisotropy, srgb: true });
   if (roughness) maps.roughnessMap = textureFromCanvas(roughness, { repeat, anisotropy });

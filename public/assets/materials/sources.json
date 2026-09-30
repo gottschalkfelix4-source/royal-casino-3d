@@ -1,0 +1,96 @@
+{
+  "license": "CC0-1.0",
+  "licenseUrl": "https://polyhaven.com/license",
+  "source": "Poly Haven",
+  "resolution": "1k",
+  "files": [
+    {
+      "asset": "marble_01",
+      "map": "Diffuse",
+      "file": "marble_01_Diffuse.jpg",
+      "size": 305029,
+      "md5": "04325ced5018eb8a2e598a4ef69cb176",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/marble_01/marble_01_diff_1k.jpg"
+    },
+    {
+      "asset": "marble_01",
+      "map": "Rough",
+      "file": "marble_01_Rough.jpg",
+      "size": 91848,
+      "md5": "59cef1be1b7376c9d0dcc7a64adf7882",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/marble_01/marble_01_rough_1k.jpg"
+    },
+    {
+      "asset": "marble_01",
+      "map": "nor_gl",
+      "file": "marble_01_nor_gl.jpg",
+      "size": 110230,
+      "md5": "fa073d722cde733c1bd6cc6e8897c8e3",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/marble_01/marble_01_nor_gl_1k.jpg"
+    },
+    {
+      "asset": "wood_table_001",
+      "map": "Diffuse",
+      "file": "wood_table_001_Diffuse.jpg",
+      "size": 215573,
+      "md5": "56652a7339b16a76afad20d3585f66ea",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_diff_1k.jpg"
+    },
+    {
+      "asset": "wood_table_001",
+      "map": "Rough",
+      "file": "wood_table_001_Rough.jpg",
+      "size": 237261,
+      "md5": "05b60bd20a1cc4355c5d73a99b245d44",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_rough_1k.jpg"
+    },
+    {
+      "asset": "wood_table_001",
+      "map": "nor_gl",
+      "file": "wood_table_001_nor_gl.jpg",
+      "size": 51927,
+      "md5": "6360e09967add8baecaa5ecc55fb5e03",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_nor_gl_1k.jpg"
+    },
+    {
+      "asset": "leather_red_02",
+      "map": "coll1",
+      "file": "leather_red_02_coll1.jpg",
+      "size": 1002834,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leather_red_02/leather_red_02_coll1_1k.jpg",
+      "md5": "a91110dd3cea1bfb5d8f34b5c3c6536d"
+    },
+    {
+      "asset": "leather_red_02",
+      "map": "Rough",
+      "file": "leather_red_02_Rough.jpg",
+      "size": 879217,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leather_red_02/leather_red_02_rough_1k.jpg",
+      "md5": "7c65693a61e330144bd9b5949e64a4a6"
+    },
+    {
+      "asset": "leather_red_02",
+      "map": "nor_gl",
+      "file": "leather_red_02_nor_gl.jpg",
+      "size": 1033319,
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/leather_red_02/leather_red_02_nor_gl_1k.jpg",
+      "md5": "6edef21f3d06f4acff1f567d9908f42d"
+    },
+    {
+      "asset": "fabric_pattern_07",
+      "map": "Rough",
+      "file": "fabric_pattern_07_Rough.jpg",
+      "size": 488744,
+      "md5": "28f47eb9de3e4ebe1dc519f601335fc4",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/fabric_pattern_07/fabric_pattern_07_rough_1k.jpg"
+    },
+    {
+      "asset": "fabric_pattern_07",
+      "map": "nor_gl",
+      "file": "fabric_pattern_07_nor_gl.jpg",
+      "size": 828071,
+      "md5": "cdbbc2ebe5d75f6edd66ba090f3be49f",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/fabric_pattern_07/fabric_pattern_07_nor_gl_1k.jpg"
+    }
+  ]
+}

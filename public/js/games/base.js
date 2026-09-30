@@ -1,3 +1,4 @@
+import { Tweener } from '../three/tween.js';
 import { Engine } from '../three/engine.js';
 import { h, toast } from '../ui.js';
 import { store, setBalance } from '../state.js';
@@ -17,7 +18,8 @@ class EmbeddedEngine {
     const onDispose = mounted.dispose;
     this.camera = host.camera;
     this.cameraTarget = host.cameraTarget;
-    this.tweener = host.tweener;
+    this.tweener = new Tweener();
+    this.offTweens = host.onUpdate(() => this.tweener.update(performance.now()));
     this.quality = host.quality;
     this.embedded = true;
     this.canvas = canvas;
@@ -48,14 +50,15 @@ class EmbeddedEngine {
   /** Ziehen mit der Maus für das Spiel beanspruchen, statt damit den Blick zu drehen */
   lockLook(v) { hall.lookLocked = v; }
   onUpdate(fn) { const off = this.host.onUpdate(fn); this.updaters.push(off); return off; }
-  tween(...args) { return this.host.tween(...args); }
-  delay(ms) { return this.host.delay(ms); }
+  tween(...args) { return this.tweener.add(...args); }
+  delay(ms) { return this.tweener.add(ms, () => {}); }
   shake(a) { this.host.shake(a * 0.4); }
   pick(event, objects, recursive = true) {
     if (hall.dragMoved >= 6) return []; // Klick nach Maus-Drag zählt nicht
     return this.host.pick(event, objects, recursive);
   }
   dispose() {
+    this.offTweens(); this.tweener.clear();
     hall.lookLocked = false;
     this.updaters.forEach((f) => f());
     this.listeners.forEach(([t, f, o]) => this.canvas.removeEventListener(t, f, o));

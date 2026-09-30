@@ -1,0 +1,32 @@
+[
+  {
+    "name": "man",
+    "height": 1.8,
+    "bones": 103,
+    "vertices": 20596,
+    "triangles": 35734,
+    "bytes": 1580172,
+    "sha256": "0b728c66fe4ab0ba005e5cb5da57e204f256bee58703b7b5943f5ee0a899f083",
+    "lodTriangles": 11229
+  },
+  {
+    "name": "man-dark",
+    "height": 1.83,
+    "bones": 103,
+    "vertices": 22782,
+    "triangles": 38362,
+    "bytes": 1721736,
+    "sha256": "09916d537ff4cd41bae47c6c1e50ea952fc3110c0967b8c7aa14f3b3d71a135b",
+    "lodTriangles": 11816
+  },
+  {
+    "name": "woman",
+    "height": 1.7,
+    "bones": 103,
+    "vertices": 23654,
+    "triangles": 40036,
+    "bytes": 1782420,
+    "sha256": "d551a42e07cbec32e924b9d420fc12112da5206cc5f6ca5269b834fd273ef793",
+    "lodTriangles": 12107
+  }
+]

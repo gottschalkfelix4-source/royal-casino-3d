@@ -72,7 +72,7 @@ export function stripTexture(strip) {
 let reelGeo = null;
 /** Walzen-Zylinder (Achse entlang X, Vorderseite +Z), in Spieleinheiten */
 export function reelGeometry() {
-  if (!reelGeo) { reelGeo = new THREE.CylinderGeometry(R, R, REEL_W, 96, 1, true); reelGeo.rotateZ(Math.PI / 2); }
+  if (!reelGeo) { reelGeo = new THREE.CylinderGeometry(R, R, REEL_W, 96, 1, true); reelGeo.rotateZ(Math.PI / 2); reelGeo.userData.shared = true; }
   return reelGeo;
 }
 export function reelMaterial(tex) {
@@ -110,6 +110,7 @@ function materials() {
     green: new THREE.MeshPhysicalMaterial({ color: 0x27ae60, emissive: 0x2ecc71, emissiveIntensity: 0.35, roughness: 0.3, clearcoat: 1 }),
     blue: new THREE.MeshPhysicalMaterial({ color: 0x2f7be0, emissive: 0x3b82f6, emissiveIntensity: 0.35, roughness: 0.3, clearcoat: 1 }),
   };
+  for (const material of [...Object.values(mats), ...Object.values(mats.buttons)]) if(material.isMaterial) material.userData.shared = true;
   return mats;
 }
 
@@ -124,8 +125,10 @@ function merged(parts, material) {
   geos.forEach((g) => g.dispose());
   return m;
 }
-const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
-const rbox = (w, h, d, r = 0.01, seg = 3) => new RoundedBoxGeometry(w, h, d, seg, r);
+const shapes = new Map();
+function cachedShape(key, build) { if(!shapes.has(key)) { const g=build(); g.userData.shared=true; shapes.set(key,g); } return shapes.get(key); }
+const box = (w,h,d) => cachedShape(`box:${w}:${h}:${d}`,()=>new THREE.BoxGeometry(w,h,d));
+const rounded = (w,h,d,r=0.01,seg=2) => cachedShape(`rounded:${w}:${h}:${d}:${r}:${seg}`,()=>new RoundedBoxGeometry(w,h,d,seg,r));
 
 // ---------- Texturen des Automaten ----------
 const texCache = {};
@@ -175,7 +178,7 @@ function topGlassTexture(variant) {
   });
   ctx.textAlign = 'center';
   ctx.strokeStyle = 'rgba(245,217,122,0.7)'; ctx.lineWidth = 6; roundRect(ctx, 10, 10, W - 20, H - 20, 22); ctx.stroke();
-  texCache[key] = canvasTexture(canvas, { anisotropy: 8 });
+  texCache[key] = canvasTexture(canvas, { anisotropy: 8 }); texCache[key].userData.keep = true;
   return texCache[key];
 }
 
@@ -188,7 +191,7 @@ function glassSheenTexture() {
   g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.42, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0.16)');
   g.addColorStop(0.56, 'rgba(255,255,255,0.05)'); g.addColorStop(0.62, 'rgba(255,255,255,0.12)'); g.addColorStop(0.7, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
-  texCache.sheen = canvasTexture(canvas);
+  texCache.sheen = canvasTexture(canvas); texCache.sheen.userData.keep = true;
   return texCache.sheen;
 }
 
@@ -205,7 +208,7 @@ function marqueeTexture(text) {
   g.addColorStop(0, '#fff2b0'); g.addColorStop(0.5, '#ffd76a'); g.addColorStop(1, '#c9932a');
   ctx.fillStyle = g; ctx.fillText(text, 384, 100);
   ctx.shadowBlur = 0; ctx.strokeStyle = '#3a2a05'; ctx.lineWidth = 3; ctx.strokeText(text, 384, 100);
-  texCache[key] = canvasTexture(canvas);
+  texCache[key] = canvasTexture(canvas); texCache[key].userData.keep = true;
   return texCache[key];
 }
 
@@ -220,7 +223,7 @@ function deckLabelTexture() {
   roundRect(ctx, 40, 40, 944, 304, 40); ctx.stroke();
   ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.font = '600 26px Inter, Arial';
   ctx.fillText('ROYAL CASINO · 5 REELS · 9 LINES', 512, 70);
-  texCache.deck = canvasTexture(canvas);
+  texCache.deck = canvasTexture(canvas); texCache.deck.userData.keep = true;
   return texCache.deck;
 }
 
@@ -251,7 +254,8 @@ function makeDisplay() {
  * userData: reels (Anzeige-Walzen), reelAnchor (Walzenachse, +z zum Spieler), lookTarget (Fenstermitte),
  * pullLever() -> Promise, spinDemo(), setDisplay(credits, win, msg), setExcite(bool), update(dt, t), occupied.
  */
-export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
+export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS', quality = 'high' } = {}) {
+  const rbox = (w,h,d,r) => rounded(w,h,d,r,quality === 'low' ? 1 : 2);
   const m = materials();
   const g = new THREE.Group();
   const S = REEL_SCALE;
@@ -351,13 +355,22 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
   reelGroup.scale.setScalar(S);
   reelAnchor.add(reelGroup);
   const reels = [];
+  const nearReels = new THREE.Group();
+  const reelLOD = new THREE.LOD(); reelGroup.add(reelLOD); reelLOD.addLevel(nearReels,0);
+  const {canvas: farCanvas, ctx: farCtx} = makeCanvas(320,192);
+  farCtx.fillStyle='#e6decb';farCtx.fillRect(0,0,320,192);
+  farCtx.textAlign='center';farCtx.textBaseline='middle';farCtx.font='bold 44px Georgia';
+  for(let x=0;x<5;x++) for(let y=0;y<3;y++) {farCtx.fillStyle=y===1?'#9b2333':'#857652';farCtx.fillText(y===1?'7':'♠',32+x*64,32+y*64);}
+  const farMap=canvasTexture(farCanvas);
+  const farReels=new THREE.Mesh(new THREE.PlaneGeometry(WIN_W/S,WIN_H/S),new THREE.MeshStandardMaterial({map:farMap,roughness:0.65,emissive:0xffffff,emissiveMap:farMap,emissiveIntensity:0.12}));
+  farReels.position.z=R-0.05;reelLOD.addLevel(farReels,quality==='low'?9:15,0.15);
   let seed = variant * 7919 + 17;
   const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
   for (let i = 0; i < REEL_COUNT; i++) {
     const strip = Array.from({ length: CELLS }, () => SYMBOLS[Math.floor(rnd() * SYMBOLS.length)]);
     const reel = buildReel(i, stripTexture(strip));
     reel.rotation.x = stopAngle(Math.floor(rnd() * CELLS));
-    reelGroup.add(reel);
+    nearReels.add(reel);
     reels.push(reel);
   }
   const lookTarget = new THREE.Object3D();
@@ -387,7 +400,8 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
   btn(m.buttons.green, -0.2, 0.026);
   btn(m.buttons.yellow, -0.095, 0.026);
   btn(m.buttons.blue, 0.01, 0.026);
-  const spinBtn = btn(m.buttons.spin, 0.2, 0.042, 0.024);
+  const spinMaterial=m.buttons.spin.clone(); spinMaterial.userData.shared=false;
+  const spinBtn = btn(spinMaterial, 0.2, 0.042, 0.024);
   g.add(deck);
   // Geldeinwurf/Bill-Acceptor rechts unter dem Deck
   g.add(merged([
@@ -472,6 +486,11 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
   chair.position.set(0, 0, 0.92);
   g.add(chair);
 
+  // Only these components change after the hall is batched.
+  for (const object of [reelGroup, armPivot, lamps, leds, lcd, spinBtn]) object.userData.noBatch = true;
+  ledMat.userData.noBatch = true;
+  spinBtn.material.userData.noBatch = true;
+
   // ---------- Verhalten ----------
   const state = { pull: null, spin: null, excite: 0, demoTimer: 6 + Math.random() * 8, occupied: false, phase: Math.random() * 10 };
   const pullResolvers = [];
@@ -490,7 +509,10 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
     state.spin = reels.map((reel, i) => ({ t: -i * 0.12, a0: reel.rotation.x, dur: 1.0 + i * 0.32, target: null, stop: targets[i] }));
     g.userData.pullLever();
   };
-  g.userData.update = (dt, t) => {
+  g.userData.update = (dt, t, distance = 0) => {
+    const near = distance < (quality === 'low' ? 9 : 15);
+    armPivot.visible = near; lamps.visible = near;
+    if (state.exciteUntil && t > state.exciteUntil) { state.excite = 0; state.exciteUntil = 0; }
     // Hebel
     if (state.pull) {
       state.pull.t += dt;
@@ -519,14 +541,14 @@ export function buildSlotMachine({ variant = 0, name = 'ROYAL SLOTS' } = {}) {
           if (k < 1) done = false; else reel.rotation.x = s.target % (Math.PI * 2);
         }
       });
-      if (done) { state.spin = null; state.excite = Math.random() < 0.3 ? 1 : 0; state.demoTimer = 5 + Math.random() * 9; if (state.excite) setTimeout(() => { state.excite = 0; }, 2500); }
+      if (done) { state.spin = null; state.excite = Math.random() < 0.3 ? 1 : 0; state.demoTimer = 5 + Math.random() * 9; if (state.excite) state.exciteUntil = t + 2.5; }
     } else if (state.occupied || g.userData.occupied) {
       state.demoTimer -= dt;
       if (state.demoTimer <= 0) g.userData.spinDemo();
     } else {
       // Attract-Modus: freie Automaten blinken alle 25–45 s kurz auf
       state.attract = (state.attract ?? 12 + Math.random() * 30) - dt;
-      if (state.attract <= 0) { state.excite = 1; state.attract = 25 + Math.random() * 20; setTimeout(() => { if (!state.spin) state.excite = 0; }, 1800); }
+      if (state.attract <= 0) { state.excite = 1; state.attract = 25 + Math.random() * 20; state.exciteUntil = t + 1.8; }
     }
     // Lauflicht am Marquee
     const speed = state.excite ? 14 : 4;

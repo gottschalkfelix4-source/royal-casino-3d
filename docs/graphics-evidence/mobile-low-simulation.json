@@ -1,0 +1,36 @@
+{
+  "quality": "low",
+  "cacheProbe": {},
+  "viewport": [
+    390,
+    844
+  ],
+  "dpr": 1,
+  "buffer": [
+    390,
+    844
+  ],
+  "setupMs": 750,
+  "samples": 540,
+  "frameMedianMs": 8.3,
+  "frameP95Ms": 9.8,
+  "fps": 120,
+  "cpuSubmissionMedianMs": 2.4,
+  "calls": 450,
+  "trianglesPerFrame": 207900,
+  "gpuMemory": {
+    "geometries": 800,
+    "textures": 148
+  },
+  "scene": {
+    "meshes": 996,
+    "triangles": 470394,
+    "materials": 675,
+    "geometries": 851,
+    "textures": 188,
+    "transparent": 197,
+    "lights": 14,
+    "shadows": 0
+  },
+  "renderer": "WebKit WebGL"
+}

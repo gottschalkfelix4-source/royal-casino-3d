@@ -48,7 +48,7 @@ function frondTexture() {
   ctx.beginPath(); ctx.moveTo(W / 2, 20); ctx.lineTo(W / 2, H - 10); ctx.stroke();
   const tex = canvasTexture(canvas);
   tex.anisotropy = 8;
-  cache.frond = tex;
+  tex.userData.keep = true; cache.frond = tex;
   return tex;
 }
 
@@ -79,7 +79,7 @@ function leafTexture() {
   ctx.beginPath(); ctx.ellipse(S * 0.38, S * 0.35, 30, 60, -0.6, 0, Math.PI * 2); ctx.fill();
   const tex = canvasTexture(canvas);
   tex.anisotropy = 8;
-  cache.leaf = tex;
+  tex.userData.keep = true; cache.leaf = tex;
   return tex;
 }
 
@@ -93,6 +93,7 @@ function barkTexture() {
   }
   for (let i = 0; i < 300; i++) { ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.25})`; ctx.fillRect(Math.random() * 256, Math.random() * 512, 2, 6); }
   const tex = canvasTexture(canvas, { repeat: [1, 2] });
+  tex.userData.keep = true;
   cache.bark = { map: tex, normal: normalMapFromCanvas(canvas, { strength: 2.5, repeat: [1, 2] }) };
   return cache.bark;
 }
@@ -124,7 +125,7 @@ export function createPalm({ height = 2.4, fronds = 13, seed = Math.random() } =
   const topY = 0.6 + height;
   const topX = Math.sin(1.6) * 0.12;
   const frondTex = frondTexture();
-  const frondMat = new THREE.MeshStandardMaterial({ map: frondTex, alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.65, metalness: 0 });
+  const frondMat = new THREE.MeshStandardMaterial({ map: frondTex, alphaTest: 0.45, alphaToCoverage: true, side: THREE.DoubleSide, roughness: 0.65, metalness: 0 });
   const list = [];
   for (let i = 0; i < fronds; i++) {
     const len = 1.9 + ((i * 5) % 4) * 0.12;
@@ -178,7 +179,7 @@ export function createFicus({ height = 1.7, leaves = 160, seed = Math.random() }
   const crown = new THREE.Group();
   crown.position.y = 0.6 + height * 0.72;
   const leafGeo = new THREE.PlaneGeometry(0.2, 0.3);
-  const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture(), alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.6 });
+  const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture(), alphaTest: 0.5, alphaToCoverage: true, side: THREE.DoubleSide, roughness: 0.6 });
   const inst = new THREE.InstancedMesh(leafGeo, leafMat, leaves);
   const m = new THREE.Matrix4(); const q = new THREE.Quaternion(); const p = new THREE.Vector3(); const s = new THREE.Vector3();
   let rs = seed * 1000;

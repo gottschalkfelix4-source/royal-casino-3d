@@ -1,0 +1,32 @@
+
+> royal-casino-3d@1.0.0 test
+> node --test tests/*.test.js
+
+✔ man: glTF integrity, complete skinning, bounded LOD and local textures (30.128542ms)
+✔ man: every motion pose keeps the real skeleton finite and separate instances independent (20.260416ms)
+✔ man-dark: glTF integrity, complete skinning, bounded LOD and local textures (18.649417ms)
+✔ man-dark: every motion pose keeps the real skeleton finite and separate instances independent (13.51675ms)
+✔ woman: glTF integrity, complete skinning, bounded LOD and local textures (10.647416ms)
+✔ woman: every motion pose keeps the real skeleton finite and separate instances independent (11.918583ms)
+✔ IK reaches moving targets under a transformed parent and handles a parallel bend pole (0.261292ms)
+✔ cache hit never calls a material builder (0.664417ms)
+✔ disposed transient textures leave registry, shared resources survive entity disposal (1.1795ms)
+✔ AO hides only incompatible surfaces and restores preexisting visibility (5.5225ms)
+✔ spatial batching preserves transforms and dynamic children, instances repeated shapes (1.806291ms)
+✔ batching keeps picking layers and distant cells separate (0.756792ms)
+✔ adaptive resolution uses hysteresis, bounded scale and ignores tab pauses (0.344875ms)
+✔ adaptive resolution responds to sustained 19 ms frames without pumping at 60 Hz (0.163291ms)
+✔ distant animation accumulates delta rather than slowing simulation (0.624791ms)
+✔ reflection restores hidden objects, pending shadows and render target on errors (4.561042ms)
+✔ picking proxies remain raycastable while excluded from the camera world layer (1.199584ms)
+✔ non-square half table keeps requested width, height and player-facing depth (2.567583ms)
+✔ every rail cross-section keeps its radius and closes without a seam (7.123375ms)
+✔ padded chair back has visible inner, outer and top surfaces with outward normals (9.044834ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 205.481916

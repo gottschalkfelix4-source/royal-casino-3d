@@ -1,0 +1,465 @@
+{
+  "results": [
+    {
+      "quality": "high",
+      "game": "slots",
+      "vertices": 970,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "roulette",
+      "vertices": 319,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "blackjack",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "videopoker",
+      "vertices": 0,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "baccarat",
+      "vertices": 20,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "dice",
+      "vertices": 1431,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "plinko",
+      "vertices": 23318,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "crash",
+      "vertices": 1983,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "mines",
+      "vertices": 624,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "coinflip",
+      "vertices": 388,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "wheel",
+      "vertices": 9394,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "hilo",
+      "vertices": 0,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "keno",
+      "vertices": 4,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "poker3",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "war",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "scratch",
+      "vertices": 4,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "derby",
+      "vertices": 4188,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "afterCycle": {
+        "registry": 213,
+        "memory": {
+          "geometries": 834,
+          "textures": 197
+        },
+        "updaters": 1,
+        "canvasCount": 1
+      }
+    },
+    {
+      "quality": "medium",
+      "game": "slots",
+      "vertices": 970,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "roulette",
+      "vertices": 319,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "blackjack",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "videopoker",
+      "vertices": 0,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "baccarat",
+      "vertices": 20,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "dice",
+      "vertices": 1431,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "plinko",
+      "vertices": 23318,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "crash",
+      "vertices": 1983,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "mines",
+      "vertices": 624,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "coinflip",
+      "vertices": 388,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "wheel",
+      "vertices": 9394,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "hilo",
+      "vertices": 0,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "keno",
+      "vertices": 4,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "poker3",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "war",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "scratch",
+      "vertices": 4,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "game": "derby",
+      "vertices": 4188,
+      "registry": 213
+    },
+    {
+      "quality": "medium",
+      "afterCycle": {
+        "registry": 213,
+        "memory": {
+          "geometries": 834,
+          "textures": 187
+        },
+        "updaters": 1,
+        "canvasCount": 1
+      }
+    },
+    {
+      "quality": "low",
+      "game": "slots",
+      "vertices": 970,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "roulette",
+      "vertices": 319,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "blackjack",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "videopoker",
+      "vertices": 0,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "baccarat",
+      "vertices": 20,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "dice",
+      "vertices": 1431,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "plinko",
+      "vertices": 23318,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "crash",
+      "vertices": 1983,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "mines",
+      "vertices": 624,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "coinflip",
+      "vertices": 388,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "wheel",
+      "vertices": 9394,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "hilo",
+      "vertices": 0,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "keno",
+      "vertices": 4,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "poker3",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "war",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "scratch",
+      "vertices": 4,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "game": "derby",
+      "vertices": 4188,
+      "registry": 213
+    },
+    {
+      "quality": "low",
+      "afterCycle": {
+        "registry": 213,
+        "memory": {
+          "geometries": 815,
+          "textures": 152
+        },
+        "updaters": 1,
+        "canvasCount": 1
+      }
+    },
+    {
+      "quality": "high",
+      "game": "slots",
+      "vertices": 970,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "roulette",
+      "vertices": 319,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "blackjack",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "videopoker",
+      "vertices": 0,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "baccarat",
+      "vertices": 20,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "dice",
+      "vertices": 1431,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "plinko",
+      "vertices": 23318,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "crash",
+      "vertices": 1983,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "mines",
+      "vertices": 624,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "coinflip",
+      "vertices": 388,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "wheel",
+      "vertices": 9394,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "hilo",
+      "vertices": 0,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "keno",
+      "vertices": 4,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "poker3",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "war",
+      "vertices": 8,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "scratch",
+      "vertices": 4,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "game": "derby",
+      "vertices": 4188,
+      "registry": 213
+    },
+    {
+      "quality": "high",
+      "afterCycle": {
+        "registry": 213,
+        "memory": {
+          "geometries": 834,
+          "textures": 194
+        },
+        "updaters": 1,
+        "canvasCount": 1
+      }
+    },
+    {
+      "PASS": true,
+      "mounts": 68
+    }
+  ],
+  "errors": []
+}

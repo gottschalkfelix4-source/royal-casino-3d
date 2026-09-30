@@ -1,3 +1,5 @@
+import { preloadCharacters } from './three/character-assets.js';
+import { preloadMaterials } from './three/surface-assets.js';
 import { api } from './api.js';
 import { store, subscribe, setUser, setActiveGames, setBalance } from './state.js';
 import { h, fmt, toast, openModal, countTo } from './ui.js';
@@ -110,6 +112,8 @@ function cycleQuality() {
   const next = order[(order.indexOf(getQuality()) + 1) % order.length];
   setQuality(next);
   toast(`Grafikqualität: ${QUALITY_LABEL[next]}`, 'info');
+  current?.destroy?.();
+  current = null;
   hall.rebuild();
   route(); // Ansicht mit neuer Qualität neu aufbauen
 }
@@ -259,7 +263,7 @@ window.addEventListener('hashchange', route);
   // Alle Beschriftungen der 3D-Welt (Neon, Filz, Karten, Automaten) werden einmalig auf Canvas gebacken.
   // Ohne dieses Warten entscheidet der Browser-Cache darüber, ob Cinzel oder die Ersatzschrift in den
   // Texturen landet – die Halle sähe beim ersten Besuch anders aus als beim Neuladen.
-  const fonts = document.fonts?.ready ?? Promise.resolve();
+  const fonts = Promise.all([document.fonts?.ready ?? Promise.resolve(), preloadMaterials(), preloadCharacters().then(result => { if (!result.available) toast('Figuren konnten nicht geladen werden. Bitte lade die Seite neu.', 'error'); })]);
   try {
     const [{ user }] = await Promise.all([api.get('/auth/me'), fonts]);
     setUser(user);

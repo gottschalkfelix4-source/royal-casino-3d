@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { surfaceAsset } from './surface-assets.js';
 import { Simplex } from './noise.js';
 import { makeCanvas, roundRect } from './assets.js';
 import {
@@ -14,8 +15,6 @@ import {
  * Auflösung gezeichnet. Alle Ergebniskarten werden gecacht und über Spiel-/Qualitätswechsel behalten.
  */
 
-const c255 = (v) => (v < 0 ? 0 : v > 255 ? 255 : v | 0);
-const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 /** Per-Pixel-Rauschen auf den ganzen Canvas (Luminanz ±amount) – feiner „Schmutz"/Körnung. */
 function grain(ctx, w, h, amount) {
@@ -52,105 +51,14 @@ function lumField(canvas, n) {
   return f;
 }
 
-/** Deterministische Prozedur je Pixel: fn(u, v, x, y) -> [r,g,b] (0..255). */
-function paint(w, h, fn) {
-  const { canvas, ctx } = makeCanvas(w, h);
-  const img = ctx.createImageData(w, h);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const col = fn(x / w, y / h, x, y);
-      const o = (y * w + x) * 4;
-      img.data[o] = col[0]; img.data[o + 1] = col[1]; img.data[o + 2] = col[2]; img.data[o + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
-  return canvas;
-}
-
 /** Normal-Karten-Textur aus einem Feld. */
 function normalTexture(field, w, h, { strength = 1, repeat = [1, 1] } = {}) {
   return textureFromCanvas(fieldNormalCanvas(field, w, h, { strength }), { repeat });
 }
 
 // ---------- Marmor ----------
-/**
- * Cremefarbener Marmor: domain-verwarpete Turbulenz-Adern in mehreren Maßstäben, Kalzit-Wolken, feine
- * Mikrorisse. Farbkarte bei 2048² (Muster), Struktur bei 512² (Normal/AO). Fugen und Emperador-Rauten
- * wie gehabt, aber mit Mikrodetail und unregelmäßigem Glanz. repeat [8,6] => eine Kachel = 5 m.
- */
-export function marbleTexture() {
-  return surfaceMaps({
-    key: 'marble-v2', repeat: [8, 6], normalStrength: 0.7, aoRadius: 4, aoStrength: 0.55,
-    ...buildMarble(),
-  });
-}
-
-function buildMarble() {
-  const S = 2048; const T = S / 4; const N = 512;
-  const sim = new Simplex(11);
-  const h = new Float32Array(N * N);
-  const base = paint(N, N, (u, v, x, y) => {
-    const [wx, wy] = sim.warp(u * 3.0, v * 3.0, 0.9, { octaves: 4 });
-    const cloud = sim.fbm(wx * 1.6 + 3, wy * 1.6 + 5, { octaves: 5 });
-    const t = sim.turbulence(wx * 2.6 + 11, wy * 2.6 + 7, { octaves: 5 });
-    const vein = Math.pow(1 - Math.abs(2 * t - 1), 7);
-    const ridge = 1 - Math.abs(sim.fbm(wx * 5 + 31, wy * 5 + 17, { octaves: 4 }));
-    const vein2 = Math.pow(ridge, 12);
-    const crack = 1 - Math.abs(sim.fbm(u * 26 + 60, v * 26 + 90, { octaves: 3 }));
-    const micro = Math.pow(crack, 16);
-    const warm = 0.98 + cloud * 0.04;
-    let r = 236 * warm; let g = 227 * warm; let b = 210 * warm;
-    const lighten = cloud * 0.5 + 0.5;
-    [r, g, b] = lerp3([r, g, b], [246, 240, 226], lighten * 0.35);
-    const vc = Math.min(0.85, 0.8 * vein + 0.5 * vein2);
-    [r, g, b] = lerp3([r, g, b], [116, 96, 74], vc);
-    [r, g, b] = lerp3([r, g, b], [255, 252, 244], vein2 * 0.35);
-    [r, g, b] = lerp3([r, g, b], [118, 100, 80], Math.min(0.4, micro));
-    h[y * N + x] = Math.min(1, vein * 0.55 + vein2 * 0.35 + lighten * 0.12 + micro * 0.5);
-    return [c255(r), c255(g), c255(b)];
-  });
-
-  const { canvas, ctx } = makeCanvas(S, S);
-  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(base, 0, 0, S, S);
-  // Plattenkanten/Abdunklung an den Rändern
-  for (let ty = 0; ty < 4; ty++) {
-    for (let tx = 0; tx < 4; tx++) {
-      const x0 = tx * T; const y0 = ty * T;
-      const eg = ctx.createLinearGradient(x0, y0, x0, y0 + 12);
-      eg.addColorStop(0, 'rgba(60,45,30,0.20)'); eg.addColorStop(1, 'rgba(60,45,30,0)');
-      ctx.fillStyle = eg; ctx.fillRect(x0, y0, T, 12);
-      const eg2 = ctx.createLinearGradient(x0, y0, x0 + 12, y0);
-      eg2.addColorStop(0, 'rgba(60,45,30,0.20)'); eg2.addColorStop(1, 'rgba(60,45,30,0)');
-      ctx.fillStyle = eg2; ctx.fillRect(x0, y0, 12, T);
-    }
-  }
-  // Fugen
-  ctx.strokeStyle = 'rgba(120,105,80,0.55)'; ctx.lineWidth = 3;
-  for (let i = 0; i <= 4; i++) {
-    ctx.beginPath(); ctx.moveTo(i * T, 0); ctx.lineTo(i * T, S); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, i * T); ctx.lineTo(S, i * T); ctx.stroke();
-  }
-  // Dunkle Rauten-Intarsien an den Kreuzungen
-  for (let ty = 0; ty <= 4; ty++) {
-    for (let tx = 0; tx <= 4; tx++) {
-      const cx = tx * T; const cy = ty * T; const r = 30;
-      const g = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
-      g.addColorStop(0, '#4a3226'); g.addColorStop(0.5, '#2e1d15'); g.addColorStop(1, '#4a3226');
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy); ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = 'rgba(201,162,74,0.7)'; ctx.lineWidth = 2.5; ctx.stroke();
-    }
-  }
-  grain(ctx, S, S, 5);
-
-  // Struktur = Adern + (gedownsampled) Ornamente, damit Fugen als flache Rillen wirken
-  const lum = lumField(canvas, N);
-  const combined = new Float32Array(N * N);
-  for (let i = 0; i < N * N; i++) combined[i] = h[i] * 0.6 + lum[i] * 0.5;
-  const roughness = roughnessFromAlbedo(canvas, { min: 0.07, max: 0.5, gamma: 0.8 });
-  return { color: canvas, roughness, height: { data: combined, w: N, h: N } };
-}
+/** Local seamless CC0 marble maps. Eight repeats across 40 m: a 5 m texture tile. */
+export function marbleTexture() { return surfaceAsset('marble', [8, 6]); }
 
 // ---------- Teppich ----------
 const GOLD = '#c9a24a'; const GOLD_LIGHT = '#e6c86e'; const NAVY = '#1c2b52'; const TEAL = '#2f6b66';
@@ -227,7 +135,7 @@ function woolField(N, seed, { freq = 46, wear = 0 } = {}) {
 export function carpetTexture() {
   return surfaceMaps({
     key: 'carpet-v2', repeat: [1, 1], normalStrength: 1.15, aoRadius: 3, aoStrength: 0.7,
-    ...buildCarpet(),
+    build: buildCarpet,
   });
 }
 
@@ -270,7 +178,7 @@ function buildCarpet() {
 export function runnerTexture(widthMeters) {
   const maps = surfaceMaps({
     key: `runner-v2:${widthMeters}`, repeat: [1, 1], normalStrength: 1.1, aoRadius: 3, aoStrength: 0.65,
-    ...buildRunner(widthMeters),
+    build: () => buildRunner(widthMeters),
   });
   // Läufer läuft nur in x einmal (Clamp), damit die Bordüre an den Längsseiten sauber bleibt
   maps.map.wrapS = THREE.ClampToEdgeWrapping;
@@ -281,8 +189,8 @@ function buildRunner(widthMeters) {
   const S = 1024;
   const { canvas, ctx } = makeCanvas(S, S);
   const px = (m) => (m / widthMeters) * S;
-  ctx.fillStyle = '#8e1a27'; ctx.fillRect(0, 0, S, S);
-  mottle(ctx, S, S, { count: 80, radius: 150, alpha: 0.11, colors: ['#b3273a', '#5a0e18', '#a01f30'] });
+  ctx.fillStyle = '#541b29'; ctx.fillRect(0, 0, S, S);
+  mottle(ctx, S, S, { count: 80, radius: 150, alpha: 0.11, colors: ['#702637', '#30101c', '#612334'] });
   ctx.fillStyle = 'rgba(230,200,110,0.18)';
   for (let y = 0; y < S; y += 28) for (let x = (y / 28) % 2 ? 14 : 0; x < S; x += 28) { ctx.beginPath(); ctx.arc(x, y, 1.5, 0, Math.PI * 2); ctx.fill(); }
   const rosette = (x, y, r) => {
@@ -334,7 +242,7 @@ function buildRunner(widthMeters) {
 export function wallTexture() {
   const maps = surfaceMaps({
     key: 'wall-v2', repeat: [10, 1], normalStrength: 0.6, aoRadius: 4, aoStrength: 0.6,
-    ...buildWall(),
+    build: buildWall,
   });
   maps.map.userData.maps = maps;
   return maps.map;
@@ -355,7 +263,7 @@ function buildWall() {
     const u = x / N; const v = y / N;
     plaster[y * N + x] = 0.5 + 0.5 * sim.fbm(u * 22, v * 22, { octaves: 4 }) + 0.25 * sim.fbm(u * 60 + 3, v * 60 + 1, { octaves: 3 });
   }
-  ctx.globalAlpha = 0.10;
+  ctx.globalAlpha = 0.025;
   ctx.drawImage(fieldToGrayCanvas(plaster, N, N, { lo: 0.2, hi: 1.0 }), 0, 0, S, S);
   ctx.globalAlpha = 1;
   // Damast (sehr dezent)
@@ -393,7 +301,7 @@ function buildWall() {
 export function ceilingTexture() {
   const maps = surfaceMaps({
     key: 'ceiling-v2', repeat: [10, 7.5], normalStrength: 0.55, aoRadius: 4, aoStrength: 0.6,
-    ...buildCeiling(),
+    build: buildCeiling,
   });
   maps.map.userData.maps = maps;
   return maps.map;
@@ -460,7 +368,9 @@ export function neonTexture(text, color, sub = null) {
 }
 
 /** Gebürstetes Metall (Chrom/Edelstahl) als Rauheits- und Normal-Struktur (fBm-Fasern) */
+let brushedCache;
 export function brushedNormal() {
+  if (brushedCache) return brushedCache;
   const N = 256;
   const sim = new Simplex(41);
   const height = new Float32Array(N * N);
@@ -473,24 +383,11 @@ export function brushedNormal() {
   }
   const tex = normalTexture(height, N, N, { strength: 0.45, repeat: [4, 4] });
   tex.userData.keep = true;
+  brushedCache = tex;
   return tex;
 }
 
 /** Leder mit Narbung (Normal-Map) aus Zellklumpen und Falten (fBm) */
-export function leatherNormal() {
-  const N = 256;
-  const sim = new Simplex(53);
-  const height = new Float32Array(N * N);
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const u = x / N; const v = y / N;
-    const grain = sim.fbm(u * 90, v * 90, { octaves: 4 });
-    const cells = sim.fbm(u * 26 + 4, v * 26 + 8, { octaves: 3 });
-    const folds = sim.fbm(u * 9 + 1, v * 9 + 6, { octaves: 3 });
-    height[y * N + x] = 0.5 + grain * 0.22 + Math.abs(cells) * 0.35 + folds * 0.15;
-  }
-  const tex = normalTexture(height, N, N, { strength: 1.4, repeat: [6, 6] });
-  tex.userData.keep = true;
-  return tex;
-}
+export function leatherNormal() { return surfaceAsset('leather', [3, 3]).normalMap; }
 
 export { roundRect };

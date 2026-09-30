@@ -13,6 +13,8 @@ npm start
 Dann im Browser öffnen: http://localhost:3000
 
 - `npm run dev` startet den Server mit automatischem Neustart bei Änderungen.
+- `npm test` prüft Grafikressourcen, Figuren, Animationen und Geometrien.
+- `npm run test:graphics` startet die lokale Grafikprüfung mit temporärer Datenbank: `/__review.html` (Halle), `/__characters.html` (Figuren) und `/__qa.html` (Spielwechsel).
 - `node scripts/smoke.js` führt einen End-to-End-Test aller API-Endpunkte gegen eine temporäre Datenbank aus.
 - `node scripts/mp-test.js` testet den Multiplayer-Server mit echten WebSocket-Clients (`walk 3000` lässt zwei Testspieler live herumlaufen).
 - `scripts/qa-browser.js` in die Browser-Konsole einfügen: spielt alle Spiele in der Halle automatisch durch und meldet Fehler.
@@ -71,7 +73,9 @@ Umgebungsspiegelung für Marmor, Gold und Chrom.
 - **Bots**: Damit die Halle nicht leer ist, laufen standardmäßig 3 als 🤖 markierte Bots herum.
   Abschalten mit `CASINO_BOTS=0`, mehr mit z. B. `CASINO_BOTS=6`.
 - **Grafikqualität**: Der ⚙-Schalter in der Kopfzeile wechselt zwischen Hoch / Mittel / Niedrig
-  (Pixeldichte, Schatten). Rendering läuft über WebGL auf der GPU – bei ruckelnder Darstellung im Browser die
+  (Pixeldichte, Schatten, Kantenglättung). Die Auflösung passt sich bei anhaltend niedriger Bildrate an.
+  Die Figuren verwenden texturierte Menschenmodelle mit Skelettanimation und einer vereinfachten Detailstufe
+  für größere Entfernungen. Rendering läuft über WebGL auf der GPU – bei ruckelnder Darstellung im Browser die
   Hardwarebeschleunigung aktivieren (Chrome: `chrome://settings/system`).
 
 ## Docker & Unraid
@@ -111,8 +115,10 @@ docker compose up -d          # nutzt ghcr.io/gottschalkfelix4-source/royal-casi
   serverseitig (`crypto.randomInt`); der Browser bekommt nur Ergebnisse. Jede Buchung ist eine SQLite-Transaktion.
   Mehrstufige Spiele (Blackjack, Video Poker, Mines, Crash, Hi-Lo) speichern ihren Zustand in der Tabelle `games`
   und werden nach einem Reload wiederhergestellt.
-- **Client** (`public/`): Vanilla JS (ES-Module) + Three.js. Alle Texturen (Karten, Chips, Würfel, Walzen, Filz,
-  Marmor, Teppich) werden prozedural per Canvas erzeugt – keine Asset-Dateien nötig. `public/js/three/engine.js`
+- **Client** (`public/`): Vanilla JS (ES-Module) + Three.js. Karten, Chips, Würfel und Walzen verwenden
+  prozedurale Canvas-Texturen. Materialien und Menschenmodelle liegen lokal unter `public/assets/`;
+  Quellen und CC0-Lizenzen sind dort dokumentiert. Die Figuren basieren auf angepassten MakeHuman-Modellen.
+  `public/js/three/engine.js`
   kapselt Renderer, Kamera, Tweens und Picking; `public/js/games/base.js` ist die Basisklasse aller Spiele.
 - **Halle** (`public/js/three/`): `casino.js` baut den Raum (Boden aus Marmor mit überlappungsfreien, 12 mm dicken
   Teppichinseln und Läufern mit Messingbordüre, Decke, Wände, Stationen und Montagepunkte), `textures.js` die

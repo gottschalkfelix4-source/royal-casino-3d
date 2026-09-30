@@ -3,7 +3,10 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { WorldAOPass, PICK_LAYER } from './occlusion.js';
+import { AdaptiveResolution } from './adaptive.js';
+import { disposeObject } from './resources.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Tweener, Easing } from './tween.js';
 import { createGradePass } from './post.js';
@@ -19,19 +22,19 @@ export function getQuality() {
 export function setQuality(q) { localStorage.setItem('casino.quality', q); }
 /**
  * dpr: max. Pixeldichte · shadows/shadowMap: Schatten und Auflösung des Hauptlichts · msaa: Multisampling des
- * Nachbearbeitungs-Puffers · gtao: Umgebungsverdeckung (Ground-Truth Ambient Occlusion) · reflection: Auflösung
+ * Nachbearbeitungs-Puffers (zusätzlich SMAA für Hoch/Mittel) · gtao: Umgebungsverdeckung (Ground-Truth Ambient Occlusion) · reflection: Auflösung
  * der Bodenspiegelung relativ zum Bild (0 = aus) · reflectionEvery: nur jeder n-te Frame spiegeln · extraShadows:
  * zusätzliche schattenwerfende Akzentlichter · anisotropy: Anisotropie der Texturen · grade: Vignette/Korn-Pass
  */
 export const QUALITY = {
-  high: { dpr: 2, shadows: true, shadowMap: 2048, msaa: 4, gtao: true, reflection: 0.5, reflectionEvery: 1, extraShadows: 4, anisotropy: 16, grade: { vignette: 0.45, grain: 0.01, aberration: 0.0015 } },
-  medium: { dpr: 1.25, shadows: true, shadowMap: 2048, msaa: 4, gtao: false, reflection: 0.35, reflectionEvery: 2, extraShadows: 2, anisotropy: 8, grade: { vignette: 0.45, grain: 0.008, aberration: 0 } },
-  low: { dpr: 1, shadows: false, shadowMap: 1024, msaa: 0, gtao: false, reflection: 0, reflectionEvery: 3, extraShadows: 0, anisotropy: 4, grade: null },
+  high: { dpr: 1.75, aoScale: 0.5, pixels: 3500000, shadows: true, shadowMap: 2048, msaa: 4, gtao: true, reflection: 0.5, reflectionEvery: 2, extraShadows: 1, anisotropy: 16, grade: { vignette: 0.2, grain: 0, aberration: 0 } },
+  medium: { dpr: 1.25, aoScale: 0.5, pixels: 2200000, shadows: true, shadowMap: 2048, msaa: 4, gtao: false, reflection: 0.35, reflectionEvery: 2, extraShadows: 0, anisotropy: 8, grade: { vignette: 0.2, grain: 0, aberration: 0 } },
+  low: { dpr: 1, aoScale: 0.5, pixels: 1500000, shadows: false, shadowMap: 1024, msaa: 0, gtao: false, reflection: 0, reflectionEvery: 3, extraShadows: 0, anisotropy: 4, grade: null },
 };
 
 /**
  * Kapselt Renderer, Szene, Kamera, Render-Loop, Nachbearbeitung, Tweens und Picking.
- * Farbpipeline: lineares HDR-Rendering (HalfFloat) → GTAO → Bloom → AgX-Tonemapping + sRGB (OutputPass).
+ * Farbpipeline: lineares HDR-Rendering (HalfFloat) → GTAO → Bloom → SMAA → AgX-Tonemapping + sRGB (OutputPass).
  */
 export class Engine {
   constructor(container, opts = {}) {
@@ -43,6 +46,10 @@ export class Engine {
     this.container = container;
     this.disposed = false;
     this.quality = QUALITY[getQuality()];
+    this.adaptive = new AdaptiveResolution();
+    this.pixelRatioCap = this.quality.dpr;
+    this.adaptiveEnabled = !alpha;
+    this.renderInterval = 0;
     setTextureAnisotropy(this.quality.anisotropy);
 
     // Nachbearbeitung nur, wenn gewünscht (Halle); transparente Einzelszenen rendern direkt
@@ -54,7 +61,7 @@ export class Engine {
     this.renderer.toneMapping = toneMapping;
     this.renderer.toneMappingExposure = exposure;
     this.renderer.shadowMap.enabled = shadows && this.quality.shadows;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.domElement.classList.add('three-canvas');
     container.prepend(this.renderer.domElement);
 
@@ -63,16 +70,20 @@ export class Engine {
     if (fog) this.scene.fog = new THREE.Fog(background, fog[0], fog[1]);
 
     this.camera = new THREE.PerspectiveCamera(fov, 1, 0.08, 400);
+    this.camera.layers.enable(1);
     this.camera.position.set(...position);
     this.cameraTarget = new THREE.Vector3(...target);
     this.camera.lookAt(this.cameraTarget);
 
     const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    const room = new RoomEnvironment();
+    this.environmentTarget = pmrem.fromScene(room, 0.04);
+    this.scene.environment = this.environmentTarget.texture;
+    room.dispose();
     this.scene.environmentIntensity = envIntensity;
     pmrem.dispose();
 
-    // Nachbearbeitung: MSAA-HDR-Puffer → Szene → GTAO → Bloom → Tonemapping/sRGB
+    // Nachbearbeitung: MSAA-HDR-Puffer → Szene → GTAO → Bloom → SMAA → Tonemapping/sRGB
     if (usePost) {
       const p = { bloom, gtao: this.quality.gtao, ...(post ?? {}) };
       const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: this.quality.msaa });
@@ -81,11 +92,7 @@ export class Engine {
       this.renderPass = new RenderPass(this.scene, this.camera);
       this.composer.addPass(this.renderPass);
       if (p.gtao) {
-        this.gtaoPass = new GTAOPass(this.scene, this.camera, 1, 1, undefined,
-          { radius: 0.35, distanceExponent: 1.5, thickness: 0.6, scale: 1.1, samples: 16, distanceFallOff: 1.0, screenSpaceRadius: false },
-          { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 1, rings: 2, samples: 16 });
-        this.gtaoPass.output = GTAOPass.OUTPUT.Default;
-        this.gtaoPass.blendIntensity = 0.9;
+        this.gtaoPass = new WorldAOPass(this.scene, this.camera, this.quality.aoScale);
         this.composer.addPass(this.gtaoPass);
       }
       if (p.bloom) {
@@ -98,6 +105,10 @@ export class Engine {
         this.gradePass = createGradePass(grade);
         this.composer.addPass(this.gradePass);
       }
+      // MSAA handles geometry coverage; SMAA also catches edges from AO, highlights and textures.
+      // Three r180 SMAA operates in linear-sRGB, before OutputPass. UI stays in the sharp DOM layer.
+      this.smaaPass = new SMAAPass();
+      this.composer.addPass(this.smaaPass);
       this.composer.addPass(new OutputPass());
     }
 
@@ -105,6 +116,7 @@ export class Engine {
     this.tweener = new Tweener();
     this.updaters = new Set();
     this.raycaster = new THREE.Raycaster();
+    this.raycaster.layers.enable(PICK_LAYER);
     this.pointer = new THREE.Vector2();
     this.shakeAmount = 0;
     this.running = false;
@@ -117,16 +129,26 @@ export class Engine {
 
   /** Pixeldichte zur Laufzeit begrenzen (z. B. Hintergrund-Rendering sparsamer) */
   setPixelRatioCap(cap) {
-    const r = Math.min(window.devicePixelRatio || 1, this.quality.dpr, cap);
-    if (Math.abs(this.renderer.getPixelRatio() - r) < 1e-3) return;
-    this.renderer.setPixelRatio(r);
-    this.composer?.setPixelRatio(r);
+    this.pixelRatioCap = cap;
+    this.adaptive.reset();
     this.resize();
+  }
+
+  setEnvironment(target) {
+    this.environmentTarget?.dispose();
+    this.environmentTarget = target;
+    this.scene.environment = target.texture;
   }
 
   resize() {
     const w = this.container.clientWidth || 1;
     const hgt = this.container.clientHeight || 1;
+    const budget = Math.sqrt(this.quality.pixels / (w * hgt));
+    const ratio = Math.min(window.devicePixelRatio || 1, this.quality.dpr, this.pixelRatioCap, budget) * this.adaptive.scale;
+    if (Math.abs(this.renderer.getPixelRatio() - ratio) > 0.001) {
+      this.renderer.setPixelRatio(ratio);
+      this.composer?.setPixelRatio(ratio);
+    }
     this.renderer.setSize(w, hgt, false);
     this.composer?.setSize(w, hgt);
     this.camera.aspect = w / hgt;
@@ -165,6 +187,7 @@ export class Engine {
     dir.shadow.camera.near = 0.5; dir.shadow.camera.far = 60;
     dir.shadow.bias = -0.0005;
     dir.shadow.normalBias = 0.02;
+    dir.shadow.radius = 2;
     this.scene.add(dir);
     const fillLight = new THREE.DirectionalLight(0x8fb3ff, fill);
     fillLight.position.set(-6, 5, -4);
@@ -184,7 +207,8 @@ export class Engine {
 
   /** Ein Simulationsschritt (Tweens, Updater, optional Rendern) */
   step(render = true) {
-    const dt = Math.min(this.clock.getDelta(), 0.1);
+    const elapsed = this.clock.getDelta();
+    const dt = Math.min(elapsed, 0.1);
     const now = performance.now();
     this.lastFrame = now;
     this.tweener.update(now);
@@ -196,6 +220,10 @@ export class Engine {
       this.shakeAmount *= 0.88;
     }
     if (!render) return;
+    if (this.renderInterval && now - (this.lastRendered ?? 0) < this.renderInterval) return;
+    this.lastRendered = now;
+    if (this.adaptiveEnabled && !document.hidden && !this.renderInterval && this.adaptive.sample(elapsed * 1000)) this.resize();
+    this.camera.updateMatrixWorld();
     this.preRender?.();
     if (this.gradePass) this.gradePass.uniforms.time.value = now / 1000;
     if (this.composer) this.composer.render();
@@ -264,18 +292,10 @@ export class Engine {
     this.resizeObserver.disconnect();
     this.tweener.clear();
     this.updaters.clear();
-    this.scene.traverse((obj) => {
-      obj.geometry?.dispose?.();
-      const mats = Array.isArray(obj.material) ? obj.material : obj.material ? [obj.material] : [];
-      for (const m of mats) {
-        for (const v of Object.values(m)) if (v && v.isTexture && !v.userData.keep) v.dispose();
-        m.dispose?.();
-      }
-    });
-    this.scene.environment?.dispose?.();
-    this.gtaoPass?.dispose?.();
-    this.bloomPass?.dispose?.();
-    this.gradePass?.dispose?.();
+    disposeObject(this.scene);
+    this.environmentTarget?.dispose();
+    this.environmentTarget = null;
+    for (const pass of this.composer?.passes ?? []) pass.dispose?.();
     this.composer?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
