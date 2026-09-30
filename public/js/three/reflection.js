@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 /**
- * Planare Spiegelung für den Hallenboden: die Szene wird einmal je Frame aus einer an der Bodenebene
+ * Planare Spiegelung für den Hallenboden: die Szene wird mit begrenzter Aktualisierungsrate aus einer an der Bodenebene
  * gespiegelten Kamera in ein (kleineres) Render-Target gezeichnet. Das Marmor-Material blendet dieses Bild
  * per Fresnel und Rauheit als Reflexion ein (siehe applyFloorReflection) – so spiegeln sich Kronleuchter,
  * Decke, Tische und Figuren physikalisch korrekt im polierten Stein, ohne Screen-Space-Artefakte.
@@ -16,10 +16,13 @@ export class PlanarReflection {
     this.scale = scale;
     this.enabled = true;
     this.everyNth = 1;
+    this.movingInterval = 1000 / 30;
+    this.idleInterval = 1000 / 10;
     this.frame = 0;
     this.lastCapture = 0;
     this.lastPosition = new THREE.Vector3(Infinity, Infinity, Infinity);
     this.lastRotation = new THREE.Quaternion();
+    this.lastProjection = new THREE.Matrix4();
     this.camera = new THREE.PerspectiveCamera();
     if (layers !== null) this.camera.layers.mask = layers;
     this.target = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, depthBuffer: true });
@@ -33,18 +36,20 @@ export class PlanarReflection {
 
   setSize(w, h) {
     const rw = Math.max(4, Math.round(w * this.scale)); const rh = Math.max(4, Math.round(h * this.scale));
-    if (this.target.width !== rw || this.target.height !== rh) this.target.setSize(rw, rh);
+    if (this.target.width !== rw || this.target.height !== rh) {
+      this.target.setSize(rw, rh);
+      this.lastCapture = 0;
+    }
   }
 
   /** Spiegelbild rendern (vor dem Hauptbild aufrufen) */
   update(camera) {
     if (!this.enabled) return;
     const now = performance.now();
-    const moved = camera.position.distanceToSquared(this.lastPosition) > 0.0001 || camera.quaternion.angleTo(this.lastRotation) > 0.001;
-    if (!moved && now - this.lastCapture < 100) return;
+    const moved = camera.position.distanceToSquared(this.lastPosition) > 0.0001 || camera.quaternion.angleTo(this.lastRotation) > 0.001 || !camera.projectionMatrix.equals(this.lastProjection);
+    if (this.lastCapture && now - this.lastCapture < (moved ? this.movingInterval : this.idleInterval)) return;
     if (moved && (this.frame++ % this.everyNth) !== 0) return;
     camera.updateMatrixWorld();
-    this.lastCapture = now; this.lastPosition.copy(camera.position); this.lastRotation.copy(camera.quaternion);
     const { renderer, scene } = this;
     const t = this._tmp;
     const normal = this._normal;
@@ -96,6 +101,9 @@ export class PlanarReflection {
       renderer.state.buffers.depth.setMask(true);
       if (renderer.autoClear === false) renderer.clear();
       renderer.render(scene, vc);
+      this.lastCapture = now;
+      this.lastPosition.copy(camera.position); this.lastRotation.copy(camera.quaternion);
+      this.lastProjection.copy(camera.projectionMatrix);
     } finally {
       for (const [o, visible] of visibility) o.visible = visible;
       renderer.setRenderTarget(prevTarget);

@@ -74,6 +74,9 @@ Umgebungsspiegelung für Marmor, Gold und Chrom.
   Abschalten mit `CASINO_BOTS=0`, mehr mit z. B. `CASINO_BOTS=6`.
 - **Grafikqualität**: Der ⚙-Schalter in der Kopfzeile wechselt zwischen Hoch / Mittel / Niedrig
   (Pixeldichte, Schatten, Kantenglättung). Die Auflösung passt sich bei anhaltend niedriger Bildrate an.
+  Hoch und Mittel kombinieren 2× MSAA mit SMAA. Statische Möbel und Chip-Racks werden gebündelt;
+  die AO-Geometrie wird separat ohne die vielen Möbelmaterialien gerendert. Die Bodenspiegelung
+  aktualisiert sich beim Bewegen mit höchstens 30 Hz, im Stand mit 10 Hz.
   Die Figuren verwenden texturierte Menschenmodelle mit Skelettanimation und einer vereinfachten Detailstufe
   für größere Entfernungen. Rendering läuft über WebGL auf der GPU – bei ruckelnder Darstellung im Browser die
   Hardwarebeschleunigung aktivieren (Chrome: `chrome://settings/system`).

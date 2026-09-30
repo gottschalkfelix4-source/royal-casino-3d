@@ -295,7 +295,14 @@ export function cardBackTexture() {
 
 /** Karten-Mesh; Vorderseite zeigt nach +Z. rotation.y = π für verdeckt. */
 export function createCard(card, { faceUp = true } = {}) {
-  cardGeo ??= new THREE.BoxGeometry(CARD.w, CARD.h, CARD.d);
+  if (!cardGeo) {
+    cardGeo = new THREE.BoxGeometry(CARD.w, CARD.h, CARD.d);
+    // Four identical edge materials need one draw, while face/back keep their public indices.
+    cardGeo.clearGroups();
+    cardGeo.addGroup(0, 24, 0);
+    cardGeo.addGroup(24, 6, 4);
+    cardGeo.addGroup(30, 6, 5);
+  }
   cardGeo.userData.shared = true;
   const back = new THREE.MeshStandardMaterial({ map: cardBackTexture(), roughness: 0.6 });
   const face = new THREE.MeshStandardMaterial({ map: card?.r ? cardFaceTexture(card.r, card.s) : cardBackTexture(), roughness: 0.55 });
@@ -367,7 +374,14 @@ function chipTextures(style) {
 }
 
 export function createChip(cents) {
-  chipGeo ??= new THREE.CylinderGeometry(CHIP.r, CHIP.r, CHIP.h, 48);
+  if (!chipGeo) {
+    chipGeo = new THREE.CylinderGeometry(CHIP.r, CHIP.r, CHIP.h, 48);
+    // Both caps use the same texture and shading; retain their triangles in a single group.
+    const [side, top, bottom] = chipGeo.groups;
+    chipGeo.clearGroups();
+    chipGeo.addGroup(side.start, side.count, 0);
+    chipGeo.addGroup(top.start, top.count + bottom.count, 1);
+  }
   const style = chipStyle(cents);
   const { top, side } = chipTextures(style);
   chipGeo.userData.shared = true;

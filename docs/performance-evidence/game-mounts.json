@@ -1,0 +1,12 @@
+{
+  "harness": "/__qa.html",
+  "PASS": true,
+  "mounts": 68,
+  "errors": [],
+  "cycles": [
+    { "quality": "high", "games": 17, "registry": 223, "geometries": 880, "textures": 219, "updaters": 1, "canvasCount": 1 },
+    { "quality": "medium", "games": 17, "registry": 223, "geometries": 843, "textures": 212, "updaters": 1, "canvasCount": 1 },
+    { "quality": "low", "games": 17, "registry": 223, "geometries": 822, "textures": 167, "updaters": 1, "canvasCount": 1 },
+    { "quality": "high", "games": 17, "registry": 223, "geometries": 880, "textures": 219, "updaters": 1, "canvasCount": 1 }
+  ]
+}

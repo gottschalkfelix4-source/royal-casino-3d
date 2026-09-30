@@ -27,8 +27,8 @@ export function setQuality(q) { localStorage.setItem('casino.quality', q); }
  * zusätzliche schattenwerfende Akzentlichter · anisotropy: Anisotropie der Texturen · grade: Vignette/Korn-Pass
  */
 export const QUALITY = {
-  high: { dpr: 1.75, aoScale: 0.5, pixels: 3500000, shadows: true, shadowMap: 2048, msaa: 4, gtao: true, reflection: 0.5, reflectionEvery: 2, extraShadows: 1, anisotropy: 16, grade: { vignette: 0.2, grain: 0, aberration: 0 } },
-  medium: { dpr: 1.25, aoScale: 0.5, pixels: 2200000, shadows: true, shadowMap: 2048, msaa: 4, gtao: false, reflection: 0.35, reflectionEvery: 2, extraShadows: 0, anisotropy: 8, grade: { vignette: 0.2, grain: 0, aberration: 0 } },
+  high: { dpr: 1.75, aoScale: 0.5, pixels: 3500000, shadows: true, shadowMap: 2048, msaa: 2, gtao: true, reflection: 0.5, reflectionEvery: 1, extraShadows: 1, anisotropy: 16, grade: { vignette: 0.2, grain: 0, aberration: 0 } },
+  medium: { dpr: 1.25, aoScale: 0.5, pixels: 2200000, shadows: true, shadowMap: 2048, msaa: 2, gtao: false, reflection: 0.35, reflectionEvery: 1, extraShadows: 0, anisotropy: 8, grade: { vignette: 0.2, grain: 0, aberration: 0 } },
   low: { dpr: 1, aoScale: 0.5, pixels: 1500000, shadows: false, shadowMap: 1024, msaa: 0, gtao: false, reflection: 0, reflectionEvery: 3, extraShadows: 0, anisotropy: 4, grade: null },
 };
 
@@ -105,7 +105,7 @@ export class Engine {
         this.gradePass = createGradePass(grade);
         this.composer.addPass(this.gradePass);
       }
-      // MSAA handles geometry coverage; SMAA also catches edges from AO, highlights and textures.
+      // 2× MSAA handles geometry coverage; SMAA also catches edges from AO, highlights and textures.
       // Three r180 SMAA operates in linear-sRGB, before OutputPass. UI stays in the sharp DOM layer.
       this.smaaPass = new SMAAPass();
       this.composer.addPass(this.smaaPass);

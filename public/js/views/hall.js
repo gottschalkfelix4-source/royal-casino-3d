@@ -1,6 +1,6 @@
 import { Engine, THREE } from '../three/engine.js';
 import { buildCasino, HALL } from '../three/casino.js';
-import { batchStatic } from '../three/batch.js';
+import { batchStatic, freezeStaticTransforms } from '../three/batch.js';
 import { PlanarReflection, applyFloorReflection } from '../three/reflection.js';
 import { createAvatar, floatText } from '../three/avatars.js';
 import { createChip, textSprite, disposeObject } from '../three/assets.js';
@@ -10,7 +10,7 @@ import { sound } from '../sound.js';
 import { rt } from '../realtime.js';
 import { voice } from '../voice.js';
 import { openRewards } from '../rewards.js';
-import { PICK_LAYER } from '../three/occlusion.js';
+import { PICK_LAYER, buildStaticAO } from '../three/occlusion.js';
 
 const EYE = 1.62;
 const LABEL_POS = new THREE.Vector3(); // Zwischenpuffer für die Entfernung der Croupier-Schilder
@@ -99,6 +99,12 @@ class Hall {
     this.hitboxes = this.baseHitboxes;
     // Statische Einrichtung zu wenigen Draw-Calls zusammenfassen (Voraussetzung für Spiegelung + GTAO)
     const batched = batchStatic(engine.scene);
+    if (engine.gtaoPass) {
+      const ao = buildStaticAO(batched.group);
+      engine.scene.add(ao.group);
+      engine.gtaoPass.staticSources = ao.sources;
+    }
+    freezeStaticTransforms(engine.scene);
     console.debug(`Halle: ${batched.removed} statische Meshes in ${batched.meshes} Batches zusammengefasst`);
     // Planare Spiegelung im Marmorboden
     if (engine.quality.reflection > 0 && this.casino.floor) {

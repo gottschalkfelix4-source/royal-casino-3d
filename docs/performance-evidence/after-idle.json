@@ -1,0 +1,45 @@
+{
+  "scenario": "idle",
+  "quality": "high",
+  "smaa": true,
+  "cacheProbe": {},
+  "viewport": [
+    1920,
+    1080
+  ],
+  "dpr": 1.2991865926298407,
+  "buffer": [
+    2494,
+    1403
+  ],
+  "setupMs": 2139,
+  "samples": 493,
+  "frameMedianMs": 7.7,
+  "frameP95Ms": 12.3,
+  "fps": 123,
+  "cpuSubmissionMedianMs": 7.4,
+  "calls": 1246,
+  "trianglesPerFrame": 886906,
+  "gpuMemory": {
+    "geometries": 846,
+    "textures": 192
+  },
+  "scene": {
+    "meshes": 1080,
+    "triangles": 936889,
+    "materials": 678,
+    "geometries": 899,
+    "textures": 198,
+    "transparent": 197,
+    "lights": 14,
+    "shadows": 2
+  },
+  "renderer": "WebKit WebGL",
+  "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 SUPER (0x00002783) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+  "msaa": 2,
+  "nodes": 1794,
+  "aoProxyMeshes": 37,
+  "aoProxyTriangles": 252028,
+  "adaptive": false,
+  "errors": []
+}

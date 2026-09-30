@@ -7,7 +7,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  * die Voraussetzung dafür, dass Spiegelung, Umgebungsverdeckung (GTAO) und mehrere Schattenpässe je Frame
  * bezahlbar bleiben.
  *
- * Ausgenommen werden automatisch: transparente Materialien, Sprites, Instanzen, Multi-Material-Meshes,
+ * Ausgenommen werden automatisch: transparente Materialien, Sprites,
  * Objekte mit userData.noBatch (auch geerbt von einem Elternobjekt), Objekte in `exclude`.
  * Der Aufrufer markiert alles, was sich bewegt oder später ein-/ausgeblendet wird, mit userData.noBatch = true.
  */
@@ -38,14 +38,16 @@ export function batchStatic(root, { exclude = new Set(), minGroup = 2, cellSize 
   const origin = new THREE.Vector3();
   const rootInverse = root.matrixWorld.clone().invert();
   root.traverse((o) => {
-    if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.isSprite || o.isBatchedMesh) return;
+    if (!o.isMesh || o.isSkinnedMesh || o.isSprite || o.isBatchedMesh) return;
     if (!o.visible) return;
     const mat = o.material;
-    if (!mat || Array.isArray(mat) || mat.transparent || mat.isShaderMaterial || mat.isRawShaderMaterial) return;
+    const materials = Array.isArray(mat) ? mat : [mat];
+    if (materials.some((m) => !m || m.transparent || m.isShaderMaterial || m.isRawShaderMaterial)) return;
     // Materialien mit eigenem Shader-Programm (onBeforeCompile) oder ausdrücklichem Opt-out nicht bündeln
-    if (mat.userData?.noBatch) return;
-    if (mat.onBeforeCompile && mat.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) return;
-    if (mat.customProgramCacheKey && mat.customProgramCacheKey !== THREE.Material.prototype.customProgramCacheKey) return;
+    if (materials.some((m) => m.userData?.noBatch ||
+      m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile ||
+      m.customProgramCacheKey !== THREE.Material.prototype.customProgramCacheKey)) return;
+    if (o.isInstancedMesh && (o.instanceColor || o.morphTexture)) return;
     const geo = o.geometry;
     if (!geo?.attributes?.position || geo.morphAttributes?.position?.length) return;
     if (isExcluded(o)) return;
@@ -56,7 +58,8 @@ export function batchStatic(root, { exclude = new Set(), minGroup = 2, cellSize 
     const attrs = Object.keys(geo.attributes).sort().map((k) => `${k}:${geo.attributes[k].itemSize}`).join(',');
     origin.setFromMatrixPosition(o.matrixWorld);
     const cell = `${Math.floor(origin.x / cellSize)},${Math.floor(origin.z / cellSize)}`;
-    const key = `${cell}|${materialKey(o.material)}|${attrs}|${geo.index ? 'i' : 'n'}|${o.castShadow ? 1 : 0}${o.receiveShadow ? 1 : 0}|${o.renderOrder}|${o.layers.mask}`;
+    const materials = Array.isArray(o.material) ? o.material : [o.material];
+    const key = `${cell}|${materials.map(materialKey).join(';')}|${attrs}|${geo.index ? 'i' : 'n'}|${o.castShadow ? 1 : 0}${o.receiveShadow ? 1 : 0}|${o.renderOrder}|${o.layers.mask}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(o);
   }
@@ -73,19 +76,33 @@ export function batchStatic(root, { exclude = new Set(), minGroup = 2, cellSize 
     }
     const remaining = [];
     for (const [geometry, objects] of byGeometry) {
-      if (objects.length < 3) { remaining.push(...objects); continue; }
+      if (objects.length < 3 && !objects.some((o) => o.isInstancedMesh)) { remaining.push(...objects); continue; }
+      if (objects.length < 2) continue;
       const first = objects[0];
-      const inst = new THREE.InstancedMesh(geometry, first.material, objects.length);
+      const count = objects.reduce((sum, o) => sum + (o.isInstancedMesh ? o.count : 1), 0);
+      const inst = new THREE.InstancedMesh(geometry, first.material, count);
       inst.castShadow = first.castShadow; inst.receiveShadow = first.receiveShadow;
       inst.layers.mask = first.layers.mask; inst.renderOrder = first.renderOrder;
-      objects.forEach((o, i) => inst.setMatrixAt(i, rootInverse.clone().multiply(o.matrixWorld)));
+      const local = new THREE.Matrix4();
+      const world = new THREE.Matrix4();
+      let index = 0;
+      for (const o of objects) {
+        world.multiplyMatrices(rootInverse, o.matrixWorld);
+        if (o.isInstancedMesh) {
+          for (let i = 0; i < o.count; i++) {
+            o.getMatrixAt(i, local);
+            inst.setMatrixAt(index++, local.premultiply(world));
+          }
+        } else inst.setMatrixAt(index++, world);
+      }
       inst.computeBoundingBox(); inst.computeBoundingSphere();
       inst.userData.batched = objects.length;
       result.add(inst);
-      objects.forEach((o) => { o.parent?.remove(o); removed++; });
+      objects.forEach((o) => { o.parent?.remove(o); if (o.isInstancedMesh) o.dispose(); removed++; });
       merged++;
     }
-    if (remaining.length < minGroup) continue;
+    // Geometry groups on cards/chips must survive; only identical shapes may be instanced.
+    if (remaining.length < minGroup || Array.isArray(remaining[0].material)) continue;
     const geos = [];
     for (const o of remaining) {
       const g = o.geometry.clone();
@@ -108,4 +125,21 @@ export function batchStatic(root, { exclude = new Set(), minGroup = 2, cellSize 
   }
   root.add(result);
   return { group: result, meshes: merged, removed };
+}
+
+/** Cache transforms of fixed furniture; animated branches and their descendants remain writable. */
+export function freezeStaticTransforms(root) {
+  root.updateMatrixWorld(true);
+  let frozen = 0;
+  const visit = (object, dynamic) => {
+    dynamic ||= !!object.userData.noBatch || object.isBone || object.isSkinnedMesh || object.isLOD;
+    if (object !== root && !dynamic) {
+      object.matrixAutoUpdate = false;
+      object.matrixWorldAutoUpdate = false;
+      frozen++;
+    }
+    for (const child of object.children) visit(child, dynamic);
+  };
+  visit(root, false);
+  return frozen;
 }

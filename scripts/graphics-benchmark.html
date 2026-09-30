@@ -12,6 +12,12 @@ const begin = performance.now();
 hall.setMode('walk');
 hall.me.pos.set(0,0,12.5);
 const e = hall.engine;
+const scenario = params.get('scenario') || 'idle';
+if (scenario === 'tour') {
+ hall.mode='qa';
+ const start=performance.now()/1000;
+ e.onUpdate((dt,t)=>{const phase=(t-start)*0.28;e.camera.position.set(Math.sin(phase)*4,1.62,8.5+Math.cos(phase)*4);e.camera.lookAt(0,1.3,0);});
+}
 if(params.has('retina')) { Object.defineProperty(window, 'devicePixelRatio', {value:2,configurable:true}); e.resize(); }
 e.adaptiveEnabled=params.has('adaptive');
 if(params.has('actor')) {
@@ -37,7 +43,7 @@ if (params.has('dpr')) e.setPixelRatioCap(Number(params.get('dpr')));
 for(const [name,search] of [['Hoch','quality=high'],['Ohne SMAA','quality=high&nosmaa=1'],['Mittel','quality=medium'],['Niedrig','quality=low'],['Hoch ohne AO','quality=high&noao=1'],['Hoch ohne Reflexion','quality=high&noref=1'],['Hoch DPR 1','quality=high&dpr=1'],['AO Normalen','quality=high&normals=1'],['AO ohne Klickboxen','quality=high&normals=1&hideproxies=1'],['Hoch ohne Klickboxen','quality=high&hideproxies=1'],['AO ohne Transparenzen','quality=high&normals=1&cleanao=1'],['Bereinigtes AO','quality=high&cleanao=1']]){const a=document.createElement('a');a.href='?'+search;a.textContent=name+' · ';document.querySelector('#controls').append(a);}
 let frames=[], last=performance.now(), reads=[], post=[], sampleStart=performance.now();
 const original=e.step.bind(e); e.renderer.info.autoReset=false;
-e.step=function(render=true){ if(!render)return original(false);e.renderer.info.reset();const t=performance.now(); original(true);const end=performance.now(); if(t>begin+7000){ frames.push(t-last);reads.push({...e.renderer.info.render});post.push(end-t); }last=t; };
+e.step=function(render=true){ if(!render)return original(false);e.renderer.info.reset();const t=performance.now(); original(true);const end=performance.now(); if(t>sampleStart+7000){ frames.push(t-last);reads.push({...e.renderer.info.render});post.push(end-t); }last=t; };
 const sceneInfo=()=>{let meshes=0,triangles=0,lights=0,shadows=0,transparent=0,materials=new Set(),geometries=new Set(),textures=new Set();e.scene.traverse(o=>{if(o.isLight){lights++;if(o.castShadow)shadows++;}if(o.isMesh){meshes++;triangles+=(o.geometry.index?.count??o.geometry.attributes.position?.count??0)/3*(o.isInstancedMesh?o.count:1);geometries.add(o.geometry);for(const m of Array.isArray(o.material)?o.material:[o.material]){materials.add(m);if(m.transparent)transparent++;for(const x of Object.values(m))if(x?.isTexture)textures.add(x);}}});return {meshes,triangles:Math.round(triangles),materials:materials.size,geometries:geometries.size,textures:textures.size,transparent,lights,shadows};};
 const average=a=>a.reduce((x,y)=>x+y,0)/Math.max(a.length,1);const percentile=(a,p)=>[...a].sort((x,y)=>x-y)[Math.floor(a.length*p)]??0;
 setInterval(()=>{let r={quality,smaa:!!e.smaaPass?.enabled,cacheProbe,viewport:[innerWidth,innerHeight],dpr:e.renderer.getPixelRatio(),buffer:[e.renderer.domElement.width,e.renderer.domElement.height],setupMs:Math.round(setupMs),samples:frames.length,frameMedianMs:+percentile(frames,.5).toFixed(2),frameP95Ms:+percentile(frames,.95).toFixed(2),fps:+(1000/average(frames)).toFixed(1),cpuSubmissionMedianMs:+percentile(post,.5).toFixed(2),calls:Math.round(average(reads.map(x=>x.calls))),trianglesPerFrame:Math.round(average(reads.map(x=>x.triangles))),gpuMemory:e.renderer.info.memory,scene:sceneInfo(),renderer:e.renderer.getContext().getParameter(e.renderer.getContext().RENDERER)};document.querySelector('#metrics').textContent=JSON.stringify(r,null,2);if(frames.length>500){frames=frames.slice(-300);reads=reads.slice(-300);post=post.slice(-300);}},1000);

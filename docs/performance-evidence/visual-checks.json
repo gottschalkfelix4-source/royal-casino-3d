@@ -1,0 +1,33 @@
+{
+  "errors": [],
+  "cardGroups": [
+    {
+      "start": 0,
+      "count": 24,
+      "materialIndex": 0
+    },
+    {
+      "start": 24,
+      "count": 6,
+      "materialIndex": 4
+    },
+    {
+      "start": 30,
+      "count": 6,
+      "materialIndex": 5
+    }
+  ],
+  "chipGroups": [
+    {
+      "start": 0,
+      "count": 288,
+      "materialIndex": 0
+    },
+    {
+      "start": 288,
+      "count": 288,
+      "materialIndex": 1
+    }
+  ],
+  "faceReplaced": true
+}
