@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { surfaceMaterial } from './surface-material.js';
 import { surfaceAsset } from './surface-assets.js';
 import { trackTexture, getTextureAnisotropy, surfaceMaps, getCachedSurface, fieldToGrayCanvas, textureFromCanvas } from './materialmaps.js';
 import { Simplex } from './noise.js';
@@ -297,16 +298,18 @@ export function cardBackTexture() {
 export function createCard(card, { faceUp = true } = {}) {
   if (!cardGeo) {
     cardGeo = new THREE.BoxGeometry(CARD.w, CARD.h, CARD.d);
-    // Four identical edge materials need one draw, while face/back keep their public indices.
+    const surfaces = new Float32Array(cardGeo.attributes.position.count);
+    surfaces.fill(1, 16, 20); surfaces.fill(2, 20);
+    cardGeo.setAttribute('surfaceIndex', new THREE.BufferAttribute(surfaces, 1));
     cardGeo.clearGroups();
-    cardGeo.addGroup(0, 24, 0);
-    cardGeo.addGroup(24, 6, 4);
-    cardGeo.addGroup(30, 6, 5);
+    cardGeo.addGroup(0, 36, 0);
   }
   cardGeo.userData.shared = true;
   const back = new THREE.MeshStandardMaterial({ map: cardBackTexture(), roughness: 0.6 });
-  const face = new THREE.MeshStandardMaterial({ map: card?.r ? cardFaceTexture(card.r, card.s) : cardBackTexture(), roughness: 0.55 });
-  const mesh = new THREE.Mesh(cardGeo, [cardEdgeMat, cardEdgeMat, cardEdgeMat, cardEdgeMat, face, back]);
+  const front = card?.r ? cardFaceTexture(card.r, card.s) : cardBackTexture();
+  const face = surfaceMaterial([front, front, back.map], [0.8, 0.55, 0.6], { edgeColor: 0xf2f2f2 });
+  // Keep index 4 for setCardFace and index 5 for existing owners/disposal.
+  const mesh = new THREE.Mesh(cardGeo, [face, cardEdgeMat, cardEdgeMat, cardEdgeMat, face, back]);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.rotation.y = faceUp ? 0 : Math.PI;
@@ -378,15 +381,18 @@ export function createChip(cents) {
     chipGeo = new THREE.CylinderGeometry(CHIP.r, CHIP.r, CHIP.h, 48);
     // Both caps use the same texture and shading; retain their triangles in a single group.
     const [side, top, bottom] = chipGeo.groups;
+    const surfaces = new Float32Array(chipGeo.attributes.position.count);
+    const normals = chipGeo.attributes.normal;
+    for (let i = 0; i < surfaces.length; i++) surfaces[i] = Math.abs(normals.getY(i)) > 0.5 ? 1 : 0;
+    chipGeo.setAttribute('surfaceIndex', new THREE.BufferAttribute(surfaces, 1));
     chipGeo.clearGroups();
-    chipGeo.addGroup(side.start, side.count, 0);
-    chipGeo.addGroup(top.start, top.count + bottom.count, 1);
+    chipGeo.addGroup(side.start, side.count + top.count + bottom.count, 0);
   }
   const style = chipStyle(cents);
   const { top, side } = chipTextures(style);
   chipGeo.userData.shared = true;
   const mesh = new THREE.Mesh(chipGeo, [
-    new THREE.MeshStandardMaterial({ map: side, roughnessMap: chipRoughness(), roughness: 0.55 }),
+    surfaceMaterial([side, top], [0.55, 0.45, 0.45], { roughnessMap: chipRoughness() }),
     new THREE.MeshStandardMaterial({ map: top, roughnessMap: chipRoughness(), roughness: 0.45 }),
     new THREE.MeshStandardMaterial({ map: top, roughnessMap: chipRoughness(), roughness: 0.45 }),
   ]);

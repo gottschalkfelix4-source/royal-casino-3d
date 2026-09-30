@@ -1,16 +1,18 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { ScenePass } from './scene-pass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { WorldAOPass, PICK_LAYER } from './occlusion.js';
 import { AdaptiveResolution } from './adaptive.js';
 import { disposeObject } from './resources.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { Tweener, Easing } from './tween.js';
-import { createGradePass } from './post.js';
+import { createGradePass, createOutputPass } from './post.js';
 import { setTextureAnisotropy } from './materialmaps.js';
+import { installLightingShader } from './lighting-shaders.js';
+
+installLightingShader();
 
 export { THREE, Easing };
 
@@ -22,7 +24,7 @@ export function getQuality() {
 export function setQuality(q) { localStorage.setItem('casino.quality', q); }
 /**
  * dpr: max. Pixeldichte · shadows/shadowMap: Schatten und Auflösung des Hauptlichts · msaa: Multisampling des
- * Nachbearbeitungs-Puffers (zusätzlich SMAA für Hoch/Mittel) · gtao: Umgebungsverdeckung (Ground-Truth Ambient Occlusion) · reflection: Auflösung
+ * Szenen-Puffers (zusätzlich SMAA für Hoch/Mittel) · gtao: Umgebungsverdeckung (Ground-Truth Ambient Occlusion) · reflection: Auflösung
  * der Bodenspiegelung relativ zum Bild (0 = aus) · reflectionEvery: nur jeder n-te Frame spiegeln · extraShadows:
  * zusätzliche schattenwerfende Akzentlichter · anisotropy: Anisotropie der Texturen · grade: Vignette/Korn-Pass
  */
@@ -66,6 +68,8 @@ export class Engine {
     container.prepend(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
+    // Update once after simulation, then reuse the matrices for reflection, beauty and AO.
+    this.scene.matrixWorldAutoUpdate = false;
     if (!alpha) this.scene.background = new THREE.Color(background);
     if (fog) this.scene.fog = new THREE.Fog(background, fog[0], fog[1]);
 
@@ -83,16 +87,19 @@ export class Engine {
     this.scene.environmentIntensity = envIntensity;
     pmrem.dispose();
 
-    // Nachbearbeitung: MSAA-HDR-Puffer → Szene → GTAO → Bloom → SMAA → Tonemapping/sRGB
+    // MSAA für die Szene; aufgelöste HDR-Puffer für GTAO → Bloom → SMAA → Tonemapping/sRGB.
     if (usePost) {
       const p = { bloom, gtao: this.quality.gtao, ...(post ?? {}) };
-      const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: this.quality.msaa });
+      const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false });
       this.composer = new EffectComposer(this.renderer, rt);
       this.composer.setPixelRatio(this.renderer.getPixelRatio());
-      this.renderPass = new RenderPass(this.scene, this.camera);
+      this.renderPass = new ScenePass(this.scene, this.camera, this.quality.msaa, p.gtao);
       this.composer.addPass(this.renderPass);
       if (p.gtao) {
+        // AO reconstructs geometric normals from the beauty depth buffer.
         this.gtaoPass = new WorldAOPass(this.scene, this.camera, this.quality.aoScale);
+        this.gtaoPass.sceneBuffer = this.renderPass.target;
+        this.renderPass.consumer = this.gtaoPass;
         this.composer.addPass(this.gtaoPass);
       }
       if (p.bloom) {
@@ -101,7 +108,8 @@ export class Engine {
       }
       // Vignette + Filmkorn (Qualitätsstufe), abschaltbar über post.grade === false
       const grade = p.grade === false ? null : (p.grade ?? this.quality.grade);
-      if (grade) {
+      const separateGrade = grade && ((grade.grain ?? 0.022) > 0 || (grade.aberration ?? 0) > 0);
+      if (separateGrade) {
         this.gradePass = createGradePass(grade);
         this.composer.addPass(this.gradePass);
       }
@@ -109,7 +117,7 @@ export class Engine {
       // Three r180 SMAA operates in linear-sRGB, before OutputPass. UI stays in the sharp DOM layer.
       this.smaaPass = new SMAAPass();
       this.composer.addPass(this.smaaPass);
-      this.composer.addPass(new OutputPass());
+      this.composer.addPass(createOutputPass(grade && !separateGrade ? (grade.vignette ?? 0.55) : 0));
     }
 
     this.clock = new THREE.Clock();
@@ -224,6 +232,7 @@ export class Engine {
     this.lastRendered = now;
     if (this.adaptiveEnabled && !document.hidden && !this.renderInterval && this.adaptive.sample(elapsed * 1000)) this.resize();
     this.camera.updateMatrixWorld();
+    this.scene.updateMatrixWorld();
     this.preRender?.();
     if (this.gradePass) this.gradePass.uniforms.time.value = now / 1000;
     if (this.composer) this.composer.render();

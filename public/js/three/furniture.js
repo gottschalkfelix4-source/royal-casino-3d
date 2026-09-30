@@ -1,4 +1,5 @@
 import { chairBackGeometry, tableRailGeometry, halfTableGeometry } from './upholstery.js';
+import { batchStatic } from './batch.js';
 import { surfaceAsset } from './surface-assets.js';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -375,6 +376,7 @@ export function bar(x, z) {
   const shelves = merged([1.25, 1.95, 2.65].map((y) => ({ geo: box(7.6, 0.03, 0.3), p: [0, y, -1.28] })), m.acrylic);
   g.add(shelves);
   const colors = [0x35c7ff, 0xff4d6d, 0x7cf0ae, 0xffd76a, 0xc59bff, 0xff8c42, 0x8fd3ff, 0xd4af37];
+  const bottleParts = [];
   for (let i = 0; i < 24; i++) {
     const c = colors[i % colors.length];
     const hgt = 0.3 + (i % 3) * 0.08;
@@ -383,8 +385,27 @@ export function bar(x, z) {
     bottle.position.set(-3.5 + (i % 8) * 1.0 + row * 0.12, 1.265 + row * 0.7 + hgt / 2, -1.3);
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.02, 0.1, 8), bottle.material);
     neck.position.set(bottle.position.x, bottle.position.y + hgt / 2 + 0.05, -1.3);
-    g.add(bottle, neck);
+    for (const mesh of [bottle, neck]) {
+      mesh.updateMatrix();
+      const geometry = mesh.geometry;
+      geometry.applyMatrix4(mesh.matrix);
+      const color = new THREE.Color(c);
+      const values = new Float32Array(geometry.attributes.position.count * 3);
+      for (let n = 0; n < values.length; n += 3) color.toArray(values, n);
+      geometry.setAttribute('color', new THREE.BufferAttribute(values, 3));
+      bottleParts.push(geometry);
+    }
+    bottle.material.dispose();
   }
+  const bottleMaterial = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true,
+    emissive: 0xffffff, emissiveIntensity: 0.35, roughness: 0.08, clearcoat: 1, transparent: true, opacity: 0.8 });
+  bottleMaterial.onBeforeCompile = shader => {
+    shader.fragmentShader = shader.fragmentShader.replace('#include <emissivemap_fragment>',
+      '#include <emissivemap_fragment>\ntotalEmissiveRadiance *= vColor.rgb;');
+  };
+  bottleMaterial.customProgramCacheKey = () => 'bottle-vertex-emission';
+  g.add(new THREE.Mesh(mergeGeometries(bottleParts, false), bottleMaterial));
+  bottleParts.forEach(geometry => geometry.dispose());
   const ledStrips = merged([1.2, 1.9, 2.6].map((y) => ({ geo: box(7.6, 0.02, 0.04), p: [0, y, -1.15] })), new THREE.MeshStandardMaterial({ color: 0xffd9a0, emissive: 0xffc070, emissiveIntensity: 2.2 }));
   g.add(ledStrips);
   const ledStrip = new THREE.Mesh(box(7.8, 0.03, 0.05), new THREE.MeshStandardMaterial({ color: 0x35c7ff, emissive: 0x35c7ff, emissiveIntensity: 2.5 }));
@@ -505,6 +526,9 @@ export function fortuneWheel() {
   pointer.rotation.x = Math.PI; pointer.position.set(0, 3.95, 0.12);
   g.add(wheelGroup, backplate, stand, post, pointer);
   g.userData.spin = wheelGroup;
+  batchStatic(wheelGroup, { local: true, cellSize: 100 });
+  wheelGroup.userData.noBatch = true;
+  batchStatic(g, { local: true, cellSize: 100 });
   return g;
 }
 

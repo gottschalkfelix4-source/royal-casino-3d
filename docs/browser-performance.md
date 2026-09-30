@@ -1,4 +1,7 @@
-# Browser-Performance, 30. September 2026
+# Erster Optimierungsstand, 30. September 2026
+
+Dieser Bericht dokumentiert den bereits veröffentlichten Stand `377d0bb`. Die weitergehende
+Optimierung und der neue Vergleich gegen diesen Stand stehen in [performance50.md](performance50.md).
 
 Die Optimierung reduziert die Zahl der Zeichenaufrufe und wiederholten Berechnungen, ohne Möbel,
 Figuren, Texturen oder Beleuchtung zu vereinfachen. Die Renderauflösung und die Auflösungen von

@@ -1,6 +1,7 @@
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { materialVariantKey } from './material-variants.js';
 
 export const WORLD_LAYER = 0;
 export const LABEL_LAYER = 1;
@@ -72,6 +73,8 @@ export class WorldAOPass extends GTAOPass {
     this.resolutionScale = scale;
     this.blendIntensity = 0.65;
     this.staticSources = new Set();
+    this.normalVariants = new Map();
+    this.materialAssignments = [];
   }
 
   setSize(width, height) {
@@ -84,11 +87,49 @@ export class WorldAOPass extends GTAOPass {
       if (object.visible && (this.staticSources.has(object) || !contributesToAO(object))) {
         object.visible = false;
         this._visibilityCache.push(object);
+      } else if (object.visible && object.isMesh) {
+        const key = materialVariantKey(object, this.normalMaterial);
+        if (!this.normalVariants.has(key)) this.normalVariants.set(key, this.normalMaterial.clone());
+        this.materialAssignments.push([object, object.material]);
+        // One normal material replaces all material groups, also on cards and chip racks.
+        object.material = this.normalVariants.get(key);
       }
     });
   }
 
+  _restoreVisibility() {
+    super._restoreVisibility();
+    for (const [object, material] of this.materialAssignments) object.material = material;
+    this.materialAssignments.length = 0;
+  }
+
+  _renderOverride(renderer, overrideMaterial, renderTarget, clearColor, clearAlpha) {
+    const oldColor = renderer.getClearColor(new THREE.Color());
+    const oldAlpha = renderer.getClearAlpha(), oldAutoClear = renderer.autoClear;
+    const oldOverride = this.scene.overrideMaterial;
+    try {
+      renderer.setRenderTarget(renderTarget);
+      renderer.autoClear = false;
+      renderer.setClearColor(clearColor, clearAlpha);
+      renderer.clear();
+      // Per-variant normal materials avoid shader-cache churn and duplicate group draws.
+      this.scene.overrideMaterial = null;
+      renderer.render(this.scene, this.camera);
+    } finally {
+      this.scene.overrideMaterial = oldOverride;
+      renderer.autoClear = oldAutoClear;
+      renderer.setClearColor(oldColor, oldAlpha);
+    }
+  }
+
   render(...args) {
+    if (this.sceneBuffer) args[2] = this.sceneBuffer;
+    const readBuffer = args[2];
+    if (readBuffer?.depthTexture) {
+      this.setGBuffer(readBuffer.depthTexture, undefined);
+      this.depthRenderMaterial.uniforms.tDepth.value = readBuffer.depthTexture;
+      return super.render(...args);
+    }
     const previous = this.scene.overrideMaterial;
     const layers = this.camera.layers.mask;
     this.camera.layers.enable(AO_LAYER);
@@ -97,5 +138,11 @@ export class WorldAOPass extends GTAOPass {
       this._restoreVisibility(); this.scene.overrideMaterial = previous;
       this.camera.layers.mask = layers;
     }
+  }
+
+  dispose() {
+    for (const material of this.normalVariants.values()) material.dispose();
+    this.normalVariants.clear();
+    super.dispose();
   }
 }

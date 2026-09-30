@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 /**
  * Kleiner Abschluss-Pass nach dem Bloom: dezente Vignette, feines Filmkorn und optional eine sehr schwache
@@ -59,3 +60,15 @@ export function createGradePass({ vignette = 0.55, grain = 0.022, aberration = 0
 }
 
 export const disposeGradePass = (pass) => pass?.dispose?.();
+
+/** The default smooth vignette can share the tone-mapping draw without another HDR copy. */
+export function createOutputPass(vignette = 0) {
+  const pass = new OutputPass();
+  pass.uniforms.vignette = { value: vignette };
+  pass.material.fragmentShader = pass.material.fragmentShader
+    .replace('uniform sampler2D tDiffuse;', 'uniform sampler2D tDiffuse;\nuniform float vignette;')
+    .replace('gl_FragColor = texture2D( tDiffuse, vUv );',
+      `gl_FragColor = texture2D( tDiffuse, vUv );
+       gl_FragColor.rgb *= clamp(1.0 - vignette * smoothstep(0.25, 0.9, length(vUv - 0.5) * 1.35), 0.0, 1.0);`);
+  return pass;
+}

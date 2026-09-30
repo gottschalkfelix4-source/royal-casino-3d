@@ -11,7 +11,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  * Objekte mit userData.noBatch (auch geerbt von einem Elternobjekt), Objekte in `exclude`.
  * Der Aufrufer markiert alles, was sich bewegt oder später ein-/ausgeblendet wird, mit userData.noBatch = true.
  */
-export function batchStatic(root, { exclude = new Set(), minGroup = 2, cellSize = 8 } = {}) {
+export function batchStatic(root, { exclude = new Set(), minGroup = 2, cellSize = 8, local = false } = {}) {
   const groups = new Map();
   const materialKeys = new Map();
   const materialKey = (m) => {
@@ -30,7 +30,10 @@ export function batchStatic(root, { exclude = new Set(), minGroup = 2, cellSize 
   };
   const excludedSet = new Set(exclude);
   const isExcluded = (obj) => {
-    for (let o = obj; o; o = o.parent) if (o.userData?.noBatch || excludedSet.has(o)) return true;
+    for (let o = obj; o; o = o.parent) {
+      if (!(local && o === root) && (o.userData?.noBatch || excludedSet.has(o))) return true;
+      if (local && o === root) break;
+    }
     return false;
   };
   root.updateMatrixWorld(true);

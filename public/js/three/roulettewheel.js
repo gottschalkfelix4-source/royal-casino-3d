@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { batchStatic } from './batch.js';
 import { makeCanvas, canvasTexture, goldMaterial, woodTexture, woodNormal } from './assets.js';
 
 export const ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
@@ -173,6 +174,9 @@ export function buildRouletteWheel({ ball = true } = {}) {
     ballMesh = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 32, 32), new THREE.MeshPhysicalMaterial({ color: 0xf7f3ea, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.03 }));
     ballMesh.castShadow = true;
   }
+  batchStatic(rotor, { local: true, cellSize: 100 });
+  rotor.userData.noBatch = true;
+  batchStatic(group, { local: true, cellSize: 100 });
   return { group, rotor, ball: ballMesh };
 }
 

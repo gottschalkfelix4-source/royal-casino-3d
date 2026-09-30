@@ -1,6 +1,8 @@
 import { Engine, THREE } from '../three/engine.js';
 import { buildCasino, HALL } from '../three/casino.js';
 import { batchStatic, freezeStaticTransforms } from '../three/batch.js';
+import { splitSharedMaterialVariants } from '../three/material-variants.js';
+import { mergeStaticDraws } from '../three/merge-static-draws.js';
 import { PlanarReflection, applyFloorReflection } from '../three/reflection.js';
 import { createAvatar, floatText } from '../three/avatars.js';
 import { createChip, textSprite, disposeObject } from '../three/assets.js';
@@ -10,7 +12,7 @@ import { sound } from '../sound.js';
 import { rt } from '../realtime.js';
 import { voice } from '../voice.js';
 import { openRewards } from '../rewards.js';
-import { PICK_LAYER, buildStaticAO } from '../three/occlusion.js';
+import { PICK_LAYER } from '../three/occlusion.js';
 
 const EYE = 1.62;
 const LABEL_POS = new THREE.Vector3(); // Zwischenpuffer für die Entfernung der Croupier-Schilder
@@ -99,11 +101,8 @@ class Hall {
     this.hitboxes = this.baseHitboxes;
     // Statische Einrichtung zu wenigen Draw-Calls zusammenfassen (Voraussetzung für Spiegelung + GTAO)
     const batched = batchStatic(engine.scene);
-    if (engine.gtaoPass) {
-      const ao = buildStaticAO(batched.group);
-      engine.scene.add(ao.group);
-      engine.gtaoPass.staticSources = ao.sources;
-    }
+    mergeStaticDraws(batched.group);
+    splitSharedMaterialVariants(engine.scene);
     freezeStaticTransforms(engine.scene);
     console.debug(`Halle: ${batched.removed} statische Meshes in ${batched.meshes} Batches zusammengefasst`);
     // Planare Spiegelung im Marmorboden
@@ -223,6 +222,7 @@ class Hall {
   captureEnvironment() {
     if (!this.engine || this.engine.disposed) return;
     const { renderer, scene } = this.engine;
+    scene.updateMatrixWorld();
     const rt = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
     const pmrem = new THREE.PMREMGenerator(renderer);
     const hidden = [...this.avatars.values()].map((a) => [a.av, a.av.visible]);
@@ -611,6 +611,7 @@ class Hall {
     for (const s of this.casino.stations) {
       const active = this.mode === 'walk' && (s === this.hovered || s === this.nearStation);
       s.ring.material.opacity += ((active ? 0.6 + Math.sin(this.hoverTime * 5) * 0.25 : 0) - s.ring.material.opacity) * 0.15;
+      s.ring.visible = s.ring.material.opacity > 0.001;
       // Schwebende Beschriftungen nur in der Nähe bzw. bei Hover – aus der Ferne stört nichts den Raumeindruck
       const dist = s.label.position.distanceTo(engine.camera.position);
       const want = this.mode === 'walk' && active && dist < 7 ? 0.95 : 0;

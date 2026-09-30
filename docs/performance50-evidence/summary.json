@@ -1,0 +1,26 @@
+[
+  {
+    "scenario": "entrance",
+    "before": 108.87227819320739,
+    "after": 184.45619165503163,
+    "gainPercent": 69.4243885736378
+  },
+  {
+    "scenario": "tour",
+    "before": 124.86706287144197,
+    "after": 212.69150983352804,
+    "gainPercent": 70.334357950348
+  },
+  {
+    "scenario": "blackjack",
+    "before": 149.64931801440034,
+    "after": 252.74546794692395,
+    "gainPercent": 68.8918274406055
+  },
+  {
+    "scenario": "slots",
+    "before": 247.97520247938257,
+    "after": 400.04999062675745,
+    "gainPercent": 61.32661113968396
+  }
+]
