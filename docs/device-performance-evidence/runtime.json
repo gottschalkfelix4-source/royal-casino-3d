@@ -1,0 +1,21 @@
+{
+  "result": {
+    "auto": true,
+    "quality": "high",
+    "scale": 0.5,
+    "effectLevel": 2,
+    "ao": false,
+    "bloom": false,
+    "smaa": false,
+    "msaa": 0,
+    "reflection": false,
+    "reflectionStrength": 0,
+    "scenePreserved": true,
+    "cameraPreserved": true,
+    "gamePreserved": true,
+    "canvasCount": 1,
+    "rebuiltEffectLevel": 0,
+    "rebuiltAO": true
+  },
+  "errors": []
+}

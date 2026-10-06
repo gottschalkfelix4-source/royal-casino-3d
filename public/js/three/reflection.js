@@ -127,7 +127,7 @@ export function applyFloorReflection(material, reflection, { strength = 1.0, blu
   material.onBeforeCompile = (shader) => {
     shader.uniforms.tReflection = { value: reflection.target.texture };
     shader.uniforms.reflectionMatrix = { value: reflection.textureMatrix };
-    shader.uniforms.reflectionStrength = { value: strength };
+    shader.uniforms.reflectionStrength = { value: material.userData.reflection.strength };
     shader.uniforms.reflectionBlur = { value: blur };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nuniform mat4 reflectionMatrix;\nvarying vec4 vReflCoord;')

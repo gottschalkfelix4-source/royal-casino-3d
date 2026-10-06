@@ -39,11 +39,13 @@ document.querySelector('#run').onclick=async()=>{
  assert(textureRegistrySize()===textureCount,'Character disposal damaged shared textures');
  const response=await fetch('/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:`gfx${Date.now()}`,password:'local-qa-only-9437'})});
  const data=await response.json();assert(data.user,'Temporary test account');store.user=data.user;
- for(const quality of ['high','medium','low','high']) {
+ const qualities=['high','medium','low','high'];
+ if(new URLSearchParams(location.search).has('auto'))qualities.push('auto');
+ for(const quality of qualities) {
    setQuality(quality); if(hall.engine)hall.rebuild();else hall.ensure();
    await hall.ready;
    const engine=hall.engine, smaa=engine.smaaPass;
-   assert(!!smaa === (quality!=='low'),'SMAA quality tier');
+   assert(!!smaa === (engine.quality.msaa>0),'SMAA quality tier');
    if(smaa) {
      const passes=engine.composer.passes;
      assert(passes.indexOf(smaa)<passes.findIndex(p=>p.constructor.name==='OutputPass'),'SMAA must run before tone mapping');
@@ -75,7 +77,7 @@ document.querySelector('#run').onclick=async()=>{
    hall.captureEnvironment();await wait(600);
    results.push({quality,afterCycle:{registry:textureRegistrySize(),memory:{...hall.engine.renderer.info.memory},updaters:hall.engine.updaters.size,canvasCount:document.querySelectorAll('.three-canvas').length}});show();
  }
- assert(errors.length===0,'Browser errors');results.push({PASS:true,mounts:68});show();
+ assert(errors.length===0,'Browser errors');results.push({PASS:true,mounts:GAMES.length*qualities.length});show();
  }catch(error){errors.push(error.stack);show();}
 };
 </script></body></html>

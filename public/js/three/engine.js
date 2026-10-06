@@ -12,18 +12,14 @@ import { createGradePass, createOutputPass } from './post.js';
 import { setTextureAnisotropy } from './materialmaps.js';
 import { installLightingShader } from './lighting-shaders.js';
 import { installGraphicStyle } from './graphic-style.js';
+import { getQuality, deviceQuality } from './quality.js';
+export { getQuality, setQuality } from './quality.js';
 
 installLightingShader();
 installGraphicStyle();
 
 export { THREE, Easing };
 
-/** Grafikqualität (localStorage): high | medium | low */
-export function getQuality() {
-  const q = localStorage.getItem('casino.quality');
-  return ['high', 'medium', 'low'].includes(q) ? q : 'high';
-}
-export function setQuality(q) { localStorage.setItem('casino.quality', q); }
 /**
  * dpr: max. Pixeldichte · shadows/shadowMap: Schatten und Auflösung des Hauptlichts · msaa: Multisampling des
  * Szenen-Puffers (zusätzlich SMAA für Hoch/Mittel) · gtao: Umgebungsverdeckung (Ground-Truth Ambient Occlusion) · reflection: Auflösung
@@ -49,8 +45,10 @@ export class Engine {
     } = opts;
     this.container = container;
     this.disposed = false;
-    this.quality = QUALITY[getQuality()];
-    this.adaptive = new AdaptiveResolution();
+    this.automatic = getQuality() === 'auto';
+    this.qualityName = this.automatic ? deviceQuality() : getQuality();
+    this.quality = QUALITY[this.qualityName];
+    this.adaptive = new AdaptiveResolution(this.automatic ? { minScale: 0.5, effects: true } : {});
     this.pixelRatioCap = this.quality.dpr;
     this.adaptiveEnabled = !alpha;
     this.renderInterval = 0;
@@ -58,7 +56,7 @@ export class Engine {
 
     // Nachbearbeitung nur, wenn gewünscht (Halle); transparente Einzelszenen rendern direkt
     const usePost = !alpha && (post || bloom) && this.quality.msaa > 0;
-    this.renderer = new THREE.WebGLRenderer({ antialias: !usePost, powerPreference: 'high-performance', stencil: false, alpha, depth: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: !usePost && this.quality.msaa > 0, powerPreference: 'high-performance', stencil: false, alpha, depth: true });
     if (alpha) this.renderer.setClearColor(0x000000, 0);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.quality.dpr));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -229,16 +227,40 @@ export class Engine {
       this.camera.position.y += (Math.random() - 0.5) * s;
       this.shakeAmount *= 0.88;
     }
+    if (document.hidden) {
+      this.lastRendered = undefined;
+      this.adaptive.reset();
+      return;
+    }
     if (!render) return;
     if (this.renderInterval && now - (this.lastRendered ?? 0) < this.renderInterval) return;
+    // Use actual rendered frame spacing, independent of simulation-only watchdog ticks.
+    const frameMs = this.lastRendered === undefined ? 0 : now - this.lastRendered;
     this.lastRendered = now;
-    if (this.adaptiveEnabled && !document.hidden && !this.renderInterval && this.adaptive.sample(elapsed * 1000)) this.resize();
+    if (this.adaptiveEnabled && !this.renderInterval && this.adaptive.sample(frameMs)) {
+      this.applyAdaptiveEffects();
+      this.resize();
+    }
     this.camera.updateMatrixWorld();
     this.scene.updateMatrixWorld();
     this.preRender?.();
     if (this.gradePass) this.gradePass.uniforms.time.value = now / 1000;
     if (this.composer) this.composer.render();
     else this.renderer.render(this.scene, this.camera);
+  }
+
+  applyAdaptiveEffects() {
+    const level = this.adaptive.effectLevel;
+    if (level >= 1 && this.gtaoPass) this.gtaoPass.enabled = false;
+    if (level >= 2) {
+      if (this.bloomPass) this.bloomPass.enabled = false;
+      if (this.smaaPass) this.smaaPass.enabled = false;
+      if (this.renderPass?.target.samples) {
+        this.renderPass.target.samples = 0;
+        this.renderPass.target.dispose();
+      }
+    }
+    this.onPerformanceChange?.(level);
   }
 
   /** Queue all scene shaders together instead of blocking on each first draw. */

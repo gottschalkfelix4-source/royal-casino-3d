@@ -13,7 +13,7 @@ import { voice } from './voice.js';
 import { openRewards, openNews } from './rewards.js';
 import { getQuality, setQuality } from './three/engine.js';
 
-const QUALITY_LABEL = { high: 'Hoch', medium: 'Mittel', low: 'Niedrig' };
+const QUALITY_LABEL = { auto: 'Auto', high: 'Hoch', medium: 'Mittel', low: 'Niedrig' };
 
 const viewEl = document.getElementById('view');
 const topbar = document.getElementById('topbar');
@@ -33,7 +33,7 @@ function renderTopbar() {
     h('a.brand', { href: '#/' }, h('span.logo', {}, '🎰'), 'ROYAL CASINO'),
     h('nav.nav', {}, navLink('#/', 'Lobby'), u && navLink('#/profile', 'Profil'), u && navLink('#/leaderboard', 'Rangliste')),
     h('div.spacer'),
-    h('button.btn.btn-ghost.btn-sm', { onclick: cycleQuality, title: 'Grafikqualität (Pixeldichte, Schatten)' }, `⚙ ${QUALITY_LABEL[getQuality()]}`),
+    h('button.btn.btn-ghost.btn-sm', { onclick: cycleQuality, title: 'Grafikqualität: Auto passt Auflösung und Effekte an die Leistung deines Geräts an' }, `⚙ ${QUALITY_LABEL[getQuality()]}`),
     h('button.btn.btn-ghost.btn-sm', { onclick: toggleSound, title: 'Sound an/aus' }, sound.enabled ? '🔊' : '🔇'),
   );
   if (u) {
@@ -109,9 +109,11 @@ subscribe(() => {
 });
 
 function cycleQuality() {
-  const order = ['high', 'medium', 'low'];
+  const order = ['auto', 'high', 'medium', 'low'];
   const next = order[(order.indexOf(getQuality()) + 1) % order.length];
   setQuality(next);
+  topbarSignature = '';
+  renderTopbar();
   toast(`Grafikqualität: ${QUALITY_LABEL[next]}`, 'info');
   current?.destroy?.();
   current = null;

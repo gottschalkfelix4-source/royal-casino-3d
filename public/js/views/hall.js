@@ -13,6 +13,7 @@ import { rt } from '../realtime.js';
 import { voice } from '../voice.js';
 import { openRewards } from '../rewards.js';
 import { PICK_LAYER } from '../three/occlusion.js';
+import { budgetAnimation } from '../three/animation-budget.js';
 
 const EYE = 1.62;
 const LABEL_POS = new THREE.Vector3(); // Zwischenpuffer für die Entfernung der Croupier-Schilder
@@ -115,6 +116,20 @@ class Hall {
       engine.preRender = () => { if (this.mode !== 'idle' && this.spectateStation?.mount?.type !== 'screen') this.reflection.update(engine.camera); };
       this.reflection.setSize(engine.renderer.domElement.width, engine.renderer.domElement.height);
     }
+    engine.onPerformanceChange = level => {
+      if (!this.reflection) return;
+      if (level >= 1) {
+        this.reflection.movingInterval = 1000 / 15;
+        this.reflection.idleInterval = 1000 / 5;
+      }
+      if (level >= 2) {
+        this.reflection.enabled = false;
+        const material = this.casino.floor.material;
+        material.userData.reflection.strength = 0;
+        const shader = material.userData.shader;
+        if (shader) shader.uniforms.reflectionStrength.value = 0;
+      }
+    };
     // Eingaben (nur im Modus 'walk' wirksam)
     const canvas = engine.renderer.domElement;
     this.canvas = canvas;
@@ -226,7 +241,8 @@ class Hall {
     if (!this.engine || this.engine.disposed) return;
     const { renderer, scene } = this.engine;
     scene.updateMatrixWorld();
-    const rt = new THREE.WebGLCubeRenderTarget(256, { type: THREE.HalfFloatType });
+    const size = { high: 256, medium: 128, low: 64 }[this.engine.qualityName];
+    const rt = new THREE.WebGLCubeRenderTarget(size, { type: THREE.HalfFloatType });
     const pmrem = new THREE.PMREMGenerator(renderer);
     const hidden = [...this.avatars.values()].map((a) => [a.av, a.av.visible]);
     try {
@@ -490,6 +506,7 @@ class Hall {
       label.userData.baseScale = label.scale.clone();
       label.layers.set(1);
       a = { av, target: new THREE.Vector3(p.x, 0, p.z), ry: p.ry ?? 0, anim: p.anim, seat: null, materials: [...materials.entries()], opacity: 1 };
+      a.animate = budgetAnimation(av, this.engine.camera, dt => av.userData.step(dt, a.moving, a.speed));
       av.position.copy(a.target);
       this.avatars.set(p.id, a);
     }
@@ -538,7 +555,8 @@ class Hall {
     for (const fn of this.casino.animated) fn(dt, t);
     this.frame++;
     // A bounded shadow rate is independent of monitor refresh rate.
-    if (t - (this.lastShadowTime ?? -1) > 1 / 24 && this.mode !== 'idle') {
+    const shadowRate = engine.adaptive.effectLevel >= 1 ? 12 : 24;
+    if (engine.renderer.shadowMap.enabled && t - (this.lastShadowTime ?? -1) > 1 / shadowRate && this.mode !== 'idle') {
       engine.renderer.shadowMap.needsUpdate = true; this.lastShadowTime = t;
     }
 
@@ -671,7 +689,7 @@ class Hall {
         a.av.position.lerp(new THREE.Vector3(a.seat.x, 0, a.seat.z), 0.2);
         a.av.rotation.y += (a.seat.ry - a.av.rotation.y) * 0.2;
         a.av.userData.setPose(a.seat.sit ? 'sit' : 'idle');
-        a.av.userData.step(dt, false);
+        a.moving = false; a.speed = 0;
       } else {
         a.av.userData.setPose('idle');
         const before = a.av.position.clone();
@@ -681,8 +699,11 @@ class Hall {
         let dr = a.ry - a.av.rotation.y;
         dr = Math.atan2(Math.sin(dr), Math.cos(dr));
         a.av.rotation.y += dr * Math.min(1, dt * 10);
-        a.av.userData.step(dt, moved || a.anim === 'walk', travelled / Math.max(dt, 0.001));
+        a.moving = moved || a.anim === 'walk';
+        a.speed = travelled / Math.max(dt, 0.001);
       }
+      // Position smoothing stays per-frame; only distant skeletal poses use a lower cadence.
+      a.animate(dt, t);
     }
   }
 
