@@ -115,9 +115,6 @@ class Hall {
       engine.preRender = () => { if (this.mode !== 'idle' && this.spectateStation?.mount?.type !== 'screen') this.reflection.update(engine.camera); };
       this.reflection.setSize(engine.renderer.domElement.width, engine.renderer.domElement.height);
     }
-    // Echte Spiegelung: die fertige Halle einmal als Cubemap aufnehmen und als Umgebung für Marmor/Gold/Chrom nutzen
-    this.captureTimer = setTimeout(() => this.captureEnvironment(), 300);
-
     // Eingaben (nur im Modus 'walk' wirksam)
     const canvas = engine.renderer.domElement;
     this.canvas = canvas;
@@ -216,7 +213,13 @@ class Hall {
 
     this.hoverTime = 0;
     engine.onUpdate((dt, t) => this.update(dt, t));
-    engine.start();
+    this.ready = Promise.resolve().then(() => engine.warmup()).catch(error => console.warn('Shader-Vorbereitung', error)).then(() => {
+      if (engine.disposed || this.engine !== engine) return;
+      engine.start();
+      // Capture the environment only after shader preparation and the first
+      // frame, rather than competing with initial compilation.
+      this.captureTimer = setTimeout(() => this.captureEnvironment(), 300);
+    });
   }
 
   captureEnvironment() {

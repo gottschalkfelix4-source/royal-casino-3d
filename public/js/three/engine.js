@@ -241,6 +241,24 @@ export class Engine {
     else this.renderer.render(this.scene, this.camera);
   }
 
+  /** Queue all scene shaders together instead of blocking on each first draw. */
+  warmup() {
+    if (this.disposed) return Promise.resolve();
+    if (this.warmupPromise) return this.warmupPromise;
+    const previous = this.renderer.getRenderTarget();
+    try {
+      // The composer draws the scene into linear HDR, not the screen. Match that
+      // target while compiling to avoid warming a second, unused shader variant.
+      this.renderer.setRenderTarget(this.renderPass?.target ?? null);
+      const compilation = this.renderer.compileAsync(this.scene, this.camera);
+      this.warming = true;
+      this.warmupPromise = compilation.finally(() => { this.warming = false; });
+      return this.warmupPromise;
+    } finally {
+      this.renderer.setRenderTarget(previous);
+    }
+  }
+
   start() {
     if (this.running || this.disposed) return;
     this.running = true;
@@ -298,17 +316,24 @@ export class Engine {
   }
 
   dispose() {
+    if (this.disposed) return;
     this.disposed = true;
     this.stop();
     this.resizeObserver.disconnect();
     this.tweener.clear();
     this.updaters.clear();
-    disposeObject(this.scene);
-    this.environmentTarget?.dispose();
-    this.environmentTarget = null;
-    for (const pass of this.composer?.passes ?? []) pass.dispose?.();
-    this.composer?.dispose();
-    this.renderer.dispose();
     this.renderer.domElement.remove();
+    const release = () => {
+      disposeObject(this.scene);
+      this.environmentTarget?.dispose();
+      this.environmentTarget = null;
+      for (const pass of this.composer?.passes ?? []) pass.dispose?.();
+      this.composer?.dispose();
+      this.renderer.dispose();
+    };
+    // Three's async compiler polls material properties. Keep them alive until
+    // it finishes, even when a quality change already removed this canvas.
+    if (this.warming) this.warmupPromise.then(release, release);
+    else release();
   }
 }

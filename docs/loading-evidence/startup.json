@@ -1,0 +1,1600 @@
+{
+  "viewport": [
+    1280,
+    720
+  ],
+  "quality": "high",
+  "downloadMbit": 10,
+  "latencyMs": 100,
+  "softwareGL": true,
+  "results": [
+    {
+      "version": "baseline",
+      "repetition": 0,
+      "browser": "151.0.7922.173",
+      "measurement": {
+        "longTasks": [
+          {
+            "start": 13643.100000000093,
+            "duration": 14189
+          },
+          {
+            "start": 27832.800000000047,
+            "duration": 1887
+          },
+          {
+            "start": 29761.699999999953,
+            "duration": 19914
+          }
+        ],
+        "scene": 27828,
+        "firstFrame": 29761.100000000093,
+        "resources": [
+          {
+            "name": "https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700;800&display=swap",
+            "duration": 5.300000000046566,
+            "encodedBodySize": 0
+          },
+          {
+            "name": "/css/style.css",
+            "duration": 143.30000000004657,
+            "encodedBodySize": 37562
+          },
+          {
+            "name": "/js/app.js",
+            "duration": 124.19999999995343,
+            "encodedBodySize": 11752
+          },
+          {
+            "name": "/js/three/character-assets.js",
+            "duration": 107.30000000004657,
+            "encodedBodySize": 3305
+          },
+          {
+            "name": "/js/three/surface-assets.js",
+            "duration": 112.80000000004657,
+            "encodedBodySize": 1922
+          },
+          {
+            "name": "/js/state.js",
+            "duration": 110.80000000004657,
+            "encodedBodySize": 669
+          },
+          {
+            "name": "/js/api.js",
+            "duration": 110.19999999995343,
+            "encodedBodySize": 792
+          },
+          {
+            "name": "/js/ui.js",
+            "duration": 113.5,
+            "encodedBodySize": 3698
+          },
+          {
+            "name": "/js/sound.js",
+            "duration": 125.30000000004657,
+            "encodedBodySize": 4084
+          },
+          {
+            "name": "/js/games/registry.js",
+            "duration": 214.30000000004657,
+            "encodedBodySize": 2825
+          },
+          {
+            "name": "/js/views/lobby.js",
+            "duration": 220.5,
+            "encodedBodySize": 3685
+          },
+          {
+            "name": "/js/views/profile.js",
+            "duration": 236,
+            "encodedBodySize": 8155
+          },
+          {
+            "name": "/js/realtime.js",
+            "duration": 226.29999999981374,
+            "encodedBodySize": 3755
+          },
+          {
+            "name": "/js/voice.js",
+            "duration": 237.5,
+            "encodedBodySize": 5505
+          },
+          {
+            "name": "/js/views/hall.js",
+            "duration": 261.19999999995343,
+            "encodedBodySize": 36736
+          },
+          {
+            "name": "/js/rewards.js",
+            "duration": 321,
+            "encodedBodySize": 5110
+          },
+          {
+            "name": "/js/three/engine.js",
+            "duration": 349.30000000004657,
+            "encodedBodySize": 14225
+          },
+          {
+            "name": "/vendor/three/build/three.module.js",
+            "duration": 1131.3000000000466,
+            "encodedBodySize": 603113
+          },
+          {
+            "name": "/vendor/three/examples/jsm/loaders/GLTFLoader.js",
+            "duration": 480.89999999990687,
+            "encodedBodySize": 114739
+          },
+          {
+            "name": "/vendor/three/examples/jsm/utils/SkeletonUtils.js",
+            "duration": 263.4000000001397,
+            "encodedBodySize": 11062
+          },
+          {
+            "name": "/js/three/materialmaps.js",
+            "duration": 281.39999999990687,
+            "encodedBodySize": 9916
+          },
+          {
+            "name": "/js/chat.js",
+            "duration": 211.30000000004657,
+            "encodedBodySize": 3336
+          },
+          {
+            "name": "/js/three/casino.js",
+            "duration": 291.5,
+            "encodedBodySize": 37431
+          },
+          {
+            "name": "/js/three/batch.js",
+            "duration": 234.30000000004657,
+            "encodedBodySize": 6908
+          },
+          {
+            "name": "/js/three/material-variants.js",
+            "duration": 238,
+            "encodedBodySize": 1691
+          },
+          {
+            "name": "/js/three/merge-static-draws.js",
+            "duration": 280.0999999998603,
+            "encodedBodySize": 2601
+          },
+          {
+            "name": "/js/three/reflection.js",
+            "duration": 351.60000000009313,
+            "encodedBodySize": 7901
+          },
+          {
+            "name": "/js/three/avatars.js",
+            "duration": 350.30000000004657,
+            "encodedBodySize": 3849
+          },
+          {
+            "name": "/js/three/occlusion.js",
+            "duration": 406.19999999995343,
+            "encodedBodySize": 6496
+          },
+          {
+            "name": "/js/three/assets.js",
+            "duration": 421.0999999998603,
+            "encodedBodySize": 22153
+          },
+          {
+            "name": "/vendor/three/examples/jsm/environments/RoomEnvironment.js",
+            "duration": 348.69999999995343,
+            "encodedBodySize": 4899
+          },
+          {
+            "name": "/js/three/scene-pass.js",
+            "duration": 366.39999999990687,
+            "encodedBodySize": 1188
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/EffectComposer.js",
+            "duration": 376.89999999990687,
+            "encodedBodySize": 8477
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/UnrealBloomPass.js",
+            "duration": 443.80000000004657,
+            "encodedBodySize": 14388
+          },
+          {
+            "name": "/js/three/adaptive.js",
+            "duration": 436.5,
+            "encodedBodySize": 1121
+          },
+          {
+            "name": "/js/three/resources.js",
+            "duration": 450.30000000004657,
+            "encodedBodySize": 863
+          },
+          {
+            "name": "/js/three/tween.js",
+            "duration": 485.4000000001397,
+            "encodedBodySize": 1895
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/SMAAPass.js",
+            "duration": 560.6000000000931,
+            "encodedBodySize": 50379
+          },
+          {
+            "name": "/js/three/post.js",
+            "duration": 547.3000000000466,
+            "encodedBodySize": 2978
+          },
+          {
+            "name": "/js/three/lighting-shaders.js",
+            "duration": 549.5,
+            "encodedBodySize": 707
+          },
+          {
+            "name": "/js/three/graphic-style.js",
+            "duration": 556.6999999999534,
+            "encodedBodySize": 1499
+          },
+          {
+            "name": "/vendor/three/examples/jsm/utils/BufferGeometryUtils.js",
+            "duration": 495.69999999995343,
+            "encodedBodySize": 35539
+          },
+          {
+            "name": "/js/three/lighting-bake.js",
+            "duration": 449.20000000018626,
+            "encodedBodySize": 1968
+          },
+          {
+            "name": "/js/three/animation-budget.js",
+            "duration": 449,
+            "encodedBodySize": 522
+          },
+          {
+            "name": "/js/three/plants.js",
+            "duration": 476.69999999995343,
+            "encodedBodySize": 10216
+          },
+          {
+            "name": "/js/three/roulettewheel.js",
+            "duration": 499.39999999990687,
+            "encodedBodySize": 10778
+          },
+          {
+            "name": "/js/three/roulettelayout.js",
+            "duration": 547.6000000000931,
+            "encodedBodySize": 4445
+          },
+          {
+            "name": "/js/three/textures.js",
+            "duration": 604,
+            "encodedBodySize": 19365
+          },
+          {
+            "name": "/js/three/stations/keno.js",
+            "duration": 614.8000000000466,
+            "encodedBodySize": 2867
+          },
+          {
+            "name": "/js/three/stations/poker3.js",
+            "duration": 653.4000000001397,
+            "encodedBodySize": 1071
+          },
+          {
+            "name": "/js/three/furniture.js",
+            "duration": 668.3000000000466,
+            "encodedBodySize": 44465
+          },
+          {
+            "name": "/js/three/slotmachine.js",
+            "duration": 671.1999999999534,
+            "encodedBodySize": 33085
+          },
+          {
+            "name": "/js/three/stations/war.js",
+            "duration": 705.8000000000466,
+            "encodedBodySize": 662
+          },
+          {
+            "name": "/js/three/stations/scratch.js",
+            "duration": 718.5999999998603,
+            "encodedBodySize": 1453
+          },
+          {
+            "name": "/js/three/stations/derby.js",
+            "duration": 760.7000000001863,
+            "encodedBodySize": 7062
+          },
+          {
+            "name": "/js/three/noise.js",
+            "duration": 778.7000000001863,
+            "encodedBodySize": 5869
+          },
+          {
+            "name": "/js/three/character-motion.js",
+            "duration": 721.3999999999069,
+            "encodedBodySize": 7773
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/GTAOPass.js",
+            "duration": 688.0999999998603,
+            "encodedBodySize": 19890
+          },
+          {
+            "name": "/js/three/surface-material.js",
+            "duration": 680.3000000000466,
+            "encodedBodySize": 1976
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/RenderPass.js",
+            "duration": 658.8999999999069,
+            "encodedBodySize": 4112
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/ShaderPass.js",
+            "duration": 701.5,
+            "encodedBodySize": 3228
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/CopyShader.js",
+            "duration": 716.2000000001863,
+            "encodedBodySize": 729
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/MaskPass.js",
+            "duration": 717.3000000000466,
+            "encodedBodySize": 4694
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/Pass.js",
+            "duration": 669.6999999999534,
+            "encodedBodySize": 4218
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/LuminosityHighPassShader.js",
+            "duration": 673.8999999999069,
+            "encodedBodySize": 1291
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/OutputPass.js",
+            "duration": 471.0999999998603,
+            "encodedBodySize": 4029
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/SMAAShader.js",
+            "duration": 519.3000000000466,
+            "encodedBodySize": 15002
+          },
+          {
+            "name": "/js/three/upholstery.js",
+            "duration": 316.10000000009313,
+            "encodedBodySize": 2624
+          },
+          {
+            "name": "/vendor/three/examples/jsm/geometries/RoundedBoxGeometry.js",
+            "duration": 328.5999999998603,
+            "encodedBodySize": 6476
+          },
+          {
+            "name": "/vendor/three/build/three.core.js",
+            "duration": 1497.9000000001397,
+            "encodedBodySize": 1403455
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/GTAOShader.js",
+            "duration": 229.69999999995343,
+            "encodedBodySize": 11910
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/PoissonDenoiseShader.js",
+            "duration": 242,
+            "encodedBodySize": 6945
+          },
+          {
+            "name": "/vendor/three/examples/jsm/math/SimplexNoise.js",
+            "duration": 305.80000000004657,
+            "encodedBodySize": 15154
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/OutputShader.js",
+            "duration": 160.30000000004657,
+            "encodedBodySize": 1876
+          },
+          {
+            "name": "/assets/characters/man.glb",
+            "duration": 7407.799999999814,
+            "encodedBodySize": 1580172
+          },
+          {
+            "name": "/assets/characters/man-dark.glb",
+            "duration": 8014.5,
+            "encodedBodySize": 1721736
+          },
+          {
+            "name": "/assets/characters/woman.glb",
+            "duration": 8260,
+            "encodedBodySize": 1782420
+          },
+          {
+            "name": "/api/auth/me",
+            "duration": 106,
+            "encodedBodySize": 13
+          },
+          {
+            "name": "/assets/materials/marble_01_Rough.jpg",
+            "duration": 527.1999999999534,
+            "encodedBodySize": 91848
+          },
+          {
+            "name": "/assets/materials/marble_01_Diffuse.jpg",
+            "duration": 1509.3999999999069,
+            "encodedBodySize": 305029
+          },
+          {
+            "name": "/assets/materials/marble_01_nor_gl.jpg",
+            "duration": 718.4000000001397,
+            "encodedBodySize": 110230
+          },
+          {
+            "name": "/assets/materials/wood_table_001_Diffuse.jpg",
+            "duration": 1622.6000000000931,
+            "encodedBodySize": 215573
+          },
+          {
+            "name": "/assets/materials/wood_table_001_Rough.jpg",
+            "duration": 1909.5,
+            "encodedBodySize": 237261
+          },
+          {
+            "name": "/assets/materials/wood_table_001_nor_gl.jpg",
+            "duration": 1840.5,
+            "encodedBodySize": 51927
+          },
+          {
+            "name": "/assets/materials/leather_red_02_coll1.jpg",
+            "duration": 6477.5,
+            "encodedBodySize": 1002834
+          },
+          {
+            "name": "/assets/materials/leather_red_02_Rough.jpg",
+            "duration": 6151.5,
+            "encodedBodySize": 879217
+          },
+          {
+            "name": "/assets/materials/leather_red_02_nor_gl.jpg",
+            "duration": 6939.59999999986,
+            "encodedBodySize": 1033319
+          },
+          {
+            "name": "/assets/materials/fabric_pattern_07_Rough.jpg",
+            "duration": 8344.800000000047,
+            "encodedBodySize": 488744
+          },
+          {
+            "name": "/assets/materials/fabric_pattern_07_nor_gl.jpg",
+            "duration": 10010.199999999953,
+            "encodedBodySize": 828071
+          },
+          {
+            "name": "/assets/characters/young_lightskinned_male_diffuse.webp",
+            "duration": 2152.3000000000466,
+            "encodedBodySize": 483164
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 244.30000000004657,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 626.9000000001397,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/short04_diffuse.webp",
+            "duration": 1767.2000000001863,
+            "encodedBodySize": 257704
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 893.6999999999534,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 1012.8999999999069,
+            "encodedBodySize": 21154
+          },
+          {
+            "name": "/assets/characters/young_darkskinned_male_diffuse.webp",
+            "duration": 1566.5,
+            "encodedBodySize": 275242
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 545.5999999998603,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 776.8000000000466,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/short01_diffuse.webp",
+            "duration": 2211.5,
+            "encodedBodySize": 412652
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 1056,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 1247.5,
+            "encodedBodySize": 21154
+          },
+          {
+            "name": "/assets/characters/young_lightskinned_female_diffuse.webp",
+            "duration": 2281.6999999999534,
+            "encodedBodySize": 467944
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 1248.0999999998603,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 1601.0999999998603,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/ponytail01_diffuse.webp",
+            "duration": 2276.899999999907,
+            "encodedBodySize": 364830
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 1601.8000000000466,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 1780.8000000000466,
+            "encodedBodySize": 21154
+          }
+        ],
+        "fonts": "loaded",
+        "canvasCount": 1
+      },
+      "wireBytes": 15820666,
+      "errors": [],
+      "failedRequests": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700;800&display=swap",
+          "failure": {
+            "errorText": "net::ERR_TUNNEL_CONNECTION_FAILED"
+          }
+        }
+      ]
+    },
+    {
+      "version": "current",
+      "repetition": 0,
+      "browser": "151.0.7922.173",
+      "measurement": {
+        "longTasks": [
+          {
+            "start": 656.6999999999534,
+            "duration": 65
+          },
+          {
+            "start": 9487.399999999907,
+            "duration": 4164
+          },
+          {
+            "start": 13651.59999999986,
+            "duration": 346
+          },
+          {
+            "start": 14000.199999999953,
+            "duration": 4129
+          }
+        ],
+        "scene": 13649,
+        "firstFrame": 18159.09999999986,
+        "resources": [
+          {
+            "name": "/assets/fonts/cinzel-latin-variable.woff2",
+            "duration": 161.10000000009313,
+            "encodedBodySize": 25904
+          },
+          {
+            "name": "/assets/fonts/inter-latin-variable.woff2",
+            "duration": 180,
+            "encodedBodySize": 48256
+          },
+          {
+            "name": "/css/style.css",
+            "duration": 135.89999999990687,
+            "encodedBodySize": 8941
+          },
+          {
+            "name": "/build/app-BRSQ6X47.js",
+            "duration": 128,
+            "encodedBodySize": 6317
+          },
+          {
+            "name": "/build/chunks/chunk-BA4ACLLJ.js",
+            "duration": 371.19999999995343,
+            "encodedBodySize": 308980
+          },
+          {
+            "name": "/assets/characters/man.glb",
+            "duration": 4202.699999999953,
+            "encodedBodySize": 883879
+          },
+          {
+            "name": "/assets/characters/man-dark.glb",
+            "duration": 4571.300000000047,
+            "encodedBodySize": 963242
+          },
+          {
+            "name": "/assets/characters/woman.glb",
+            "duration": 4851.699999999953,
+            "encodedBodySize": 1026157
+          },
+          {
+            "name": "/api/auth/me",
+            "duration": 104.70000000018626,
+            "encodedBodySize": 13
+          },
+          {
+            "name": "/assets/materials/marble_01_Diffuse.jpg",
+            "duration": 1503.3999999999069,
+            "encodedBodySize": 305029
+          },
+          {
+            "name": "/assets/materials/marble_01_Rough.jpg",
+            "duration": 525.6999999999534,
+            "encodedBodySize": 91848
+          },
+          {
+            "name": "/assets/materials/marble_01_nor_gl.jpg",
+            "duration": 717.0999999998603,
+            "encodedBodySize": 110230
+          },
+          {
+            "name": "/assets/materials/wood_table_001_Diffuse.jpg",
+            "duration": 1623.3000000000466,
+            "encodedBodySize": 215573
+          },
+          {
+            "name": "/assets/materials/wood_table_001_Rough.jpg",
+            "duration": 1906.7000000001863,
+            "encodedBodySize": 237261
+          },
+          {
+            "name": "/assets/materials/wood_table_001_nor_gl.jpg",
+            "duration": 1829.0999999998603,
+            "encodedBodySize": 51927
+          },
+          {
+            "name": "/assets/materials/leather_red_02_coll1.jpg",
+            "duration": 6367,
+            "encodedBodySize": 1002834
+          },
+          {
+            "name": "/assets/materials/leather_red_02_Rough.jpg",
+            "duration": 6038.90000000014,
+            "encodedBodySize": 879217
+          },
+          {
+            "name": "/assets/materials/leather_red_02_nor_gl.jpg",
+            "duration": 6745.5,
+            "encodedBodySize": 1033319
+          },
+          {
+            "name": "/assets/materials/fabric_pattern_07_Rough.jpg",
+            "duration": 6502.899999999907,
+            "encodedBodySize": 488744
+          },
+          {
+            "name": "/assets/materials/fabric_pattern_07_nor_gl.jpg",
+            "duration": 8784.700000000186,
+            "encodedBodySize": 828071
+          },
+          {
+            "name": "/assets/characters/young_lightskinned_male_diffuse.webp",
+            "duration": 2567.399999999907,
+            "encodedBodySize": 483164
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 876.5,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 1264.3000000000466,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/short04_diffuse.webp",
+            "duration": 2487.6999999999534,
+            "encodedBodySize": 257704
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 2105.100000000093,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 2302.899999999907,
+            "encodedBodySize": 21154
+          },
+          {
+            "name": "/assets/characters/young_darkskinned_male_diffuse.webp",
+            "duration": 2849.3000000000466,
+            "encodedBodySize": 275242
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 2151.100000000093,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 2222.600000000093,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/short01_diffuse.webp",
+            "duration": 3617.2000000001863,
+            "encodedBodySize": 412652
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 2388.4000000001397,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 2338.5,
+            "encodedBodySize": 21154
+          },
+          {
+            "name": "/assets/characters/young_lightskinned_female_diffuse.webp",
+            "duration": 3521.399999999907,
+            "encodedBodySize": 467944
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 2157.5,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 2417.399999999907,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/ponytail01_diffuse.webp",
+            "duration": 3440.9000000001397,
+            "encodedBodySize": 364830
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 2434.100000000093,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 2613.7999999998137,
+            "encodedBodySize": 21154
+          }
+        ],
+        "fonts": "loaded",
+        "canvasCount": 1
+      },
+      "wireBytes": 11230632,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "version": "current",
+      "repetition": 1,
+      "browser": "151.0.7922.173",
+      "measurement": {
+        "longTasks": [
+          {
+            "start": 9491.800000000047,
+            "duration": 4309
+          },
+          {
+            "start": 13801.399999999907,
+            "duration": 342
+          },
+          {
+            "start": 14147.899999999907,
+            "duration": 4969
+          }
+        ],
+        "scene": 13798.300000000047,
+        "firstFrame": 19144.5,
+        "resources": [
+          {
+            "name": "/assets/fonts/cinzel-latin-variable.woff2",
+            "duration": 160,
+            "encodedBodySize": 25904
+          },
+          {
+            "name": "/assets/fonts/inter-latin-variable.woff2",
+            "duration": 179.19999999995343,
+            "encodedBodySize": 48256
+          },
+          {
+            "name": "/build/app-BRSQ6X47.js",
+            "duration": 127,
+            "encodedBodySize": 6317
+          },
+          {
+            "name": "/css/style.css",
+            "duration": 134,
+            "encodedBodySize": 8941
+          },
+          {
+            "name": "/build/chunks/chunk-BA4ACLLJ.js",
+            "duration": 359.60000000009313,
+            "encodedBodySize": 308980
+          },
+          {
+            "name": "/assets/characters/man.glb",
+            "duration": 4203.800000000047,
+            "encodedBodySize": 883879
+          },
+          {
+            "name": "/assets/characters/man-dark.glb",
+            "duration": 4562.699999999953,
+            "encodedBodySize": 963242
+          },
+          {
+            "name": "/assets/characters/woman.glb",
+            "duration": 4847.699999999953,
+            "encodedBodySize": 1026157
+          },
+          {
+            "name": "/api/auth/me",
+            "duration": 106.89999999990687,
+            "encodedBodySize": 13
+          },
+          {
+            "name": "/assets/materials/marble_01_Rough.jpg",
+            "duration": 525.5999999998603,
+            "encodedBodySize": 91848
+          },
+          {
+            "name": "/assets/materials/marble_01_Diffuse.jpg",
+            "duration": 1508.8999999999069,
+            "encodedBodySize": 305029
+          },
+          {
+            "name": "/assets/materials/marble_01_nor_gl.jpg",
+            "duration": 721.1999999999534,
+            "encodedBodySize": 110230
+          },
+          {
+            "name": "/assets/materials/wood_table_001_Diffuse.jpg",
+            "duration": 1624.3999999999069,
+            "encodedBodySize": 215573
+          },
+          {
+            "name": "/assets/materials/wood_table_001_nor_gl.jpg",
+            "duration": 1841.9000000001397,
+            "encodedBodySize": 51927
+          },
+          {
+            "name": "/assets/materials/wood_table_001_Rough.jpg",
+            "duration": 1914.6000000000931,
+            "encodedBodySize": 237261
+          },
+          {
+            "name": "/assets/materials/leather_red_02_coll1.jpg",
+            "duration": 6373.100000000093,
+            "encodedBodySize": 1002834
+          },
+          {
+            "name": "/assets/materials/leather_red_02_Rough.jpg",
+            "duration": 6054.59999999986,
+            "encodedBodySize": 879217
+          },
+          {
+            "name": "/assets/materials/fabric_pattern_07_Rough.jpg",
+            "duration": 6511.699999999953,
+            "encodedBodySize": 488744
+          },
+          {
+            "name": "/assets/materials/leather_red_02_nor_gl.jpg",
+            "duration": 6758.40000000014,
+            "encodedBodySize": 1033319
+          },
+          {
+            "name": "/assets/materials/fabric_pattern_07_nor_gl.jpg",
+            "duration": 8792.800000000047,
+            "encodedBodySize": 828071
+          },
+          {
+            "name": "/assets/characters/young_lightskinned_male_diffuse.webp",
+            "duration": 2557.399999999907,
+            "encodedBodySize": 483164
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 868.9000000001397,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 1255.1999999999534,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/short04_diffuse.webp",
+            "duration": 2478.7000000001863,
+            "encodedBodySize": 257704
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 2112.6999999999534,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 2307.899999999907,
+            "encodedBodySize": 21154
+          },
+          {
+            "name": "/assets/characters/young_darkskinned_male_diffuse.webp",
+            "duration": 2868.1999999999534,
+            "encodedBodySize": 275242
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 2171.8000000000466,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 2245.5,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/short01_diffuse.webp",
+            "duration": 3628.100000000093,
+            "encodedBodySize": 412652
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 2409.100000000093,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 2371.7000000001863,
+            "encodedBodySize": 21154
+          },
+          {
+            "name": "/assets/characters/young_lightskinned_female_diffuse.webp",
+            "duration": 3521.7999999998137,
+            "encodedBodySize": 467944
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 2168.1999999999534,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 2441.8000000000466,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/ponytail01_diffuse.webp",
+            "duration": 3450.1999999999534,
+            "encodedBodySize": 364830
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 2450.0999999998603,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 2637.7000000001863,
+            "encodedBodySize": 21154
+          }
+        ],
+        "fonts": "loaded",
+        "canvasCount": 1
+      },
+      "wireBytes": 11230632,
+      "errors": [],
+      "failedRequests": []
+    },
+    {
+      "version": "baseline",
+      "repetition": 1,
+      "browser": "151.0.7922.173",
+      "measurement": {
+        "longTasks": [
+          {
+            "start": 13638.40000000014,
+            "duration": 15423
+          },
+          {
+            "start": 29061.90000000014,
+            "duration": 2821
+          },
+          {
+            "start": 31926,
+            "duration": 19658
+          }
+        ],
+        "scene": 29061,
+        "firstFrame": 31925.40000000014,
+        "resources": [
+          {
+            "name": "https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700;800&display=swap",
+            "duration": 5,
+            "encodedBodySize": 0
+          },
+          {
+            "name": "/css/style.css",
+            "duration": 146.60000000009313,
+            "encodedBodySize": 37562
+          },
+          {
+            "name": "/js/app.js",
+            "duration": 123.5999999998603,
+            "encodedBodySize": 11752
+          },
+          {
+            "name": "/js/three/character-assets.js",
+            "duration": 112.60000000009313,
+            "encodedBodySize": 3305
+          },
+          {
+            "name": "/js/three/surface-assets.js",
+            "duration": 114,
+            "encodedBodySize": 1922
+          },
+          {
+            "name": "/js/api.js",
+            "duration": 109.9000000001397,
+            "encodedBodySize": 792
+          },
+          {
+            "name": "/js/state.js",
+            "duration": 109.89999999990687,
+            "encodedBodySize": 669
+          },
+          {
+            "name": "/js/ui.js",
+            "duration": 117.39999999990687,
+            "encodedBodySize": 3698
+          },
+          {
+            "name": "/js/sound.js",
+            "duration": 126.10000000009313,
+            "encodedBodySize": 4084
+          },
+          {
+            "name": "/js/games/registry.js",
+            "duration": 219.10000000009313,
+            "encodedBodySize": 2825
+          },
+          {
+            "name": "/js/views/lobby.js",
+            "duration": 221.30000000004657,
+            "encodedBodySize": 3685
+          },
+          {
+            "name": "/js/views/profile.js",
+            "duration": 235.10000000009313,
+            "encodedBodySize": 8155
+          },
+          {
+            "name": "/js/realtime.js",
+            "duration": 226.4000000001397,
+            "encodedBodySize": 3755
+          },
+          {
+            "name": "/js/views/hall.js",
+            "duration": 263.30000000004657,
+            "encodedBodySize": 36736
+          },
+          {
+            "name": "/js/voice.js",
+            "duration": 239.80000000004657,
+            "encodedBodySize": 5505
+          },
+          {
+            "name": "/js/rewards.js",
+            "duration": 331.69999999995343,
+            "encodedBodySize": 5110
+          },
+          {
+            "name": "/js/three/engine.js",
+            "duration": 357.19999999995343,
+            "encodedBodySize": 14225
+          },
+          {
+            "name": "/js/three/materialmaps.js",
+            "duration": 245.9000000001397,
+            "encodedBodySize": 9916
+          },
+          {
+            "name": "/vendor/three/build/three.module.js",
+            "duration": 1125.7000000001863,
+            "encodedBodySize": 603113
+          },
+          {
+            "name": "/vendor/three/examples/jsm/utils/SkeletonUtils.js",
+            "duration": 275.10000000009313,
+            "encodedBodySize": 11062
+          },
+          {
+            "name": "/vendor/three/examples/jsm/loaders/GLTFLoader.js",
+            "duration": 473.60000000009313,
+            "encodedBodySize": 114739
+          },
+          {
+            "name": "/js/chat.js",
+            "duration": 221.89999999990687,
+            "encodedBodySize": 3336
+          },
+          {
+            "name": "/js/three/casino.js",
+            "duration": 295.20000000018626,
+            "encodedBodySize": 37431
+          },
+          {
+            "name": "/js/three/batch.js",
+            "duration": 222.0999999998603,
+            "encodedBodySize": 6908
+          },
+          {
+            "name": "/js/three/material-variants.js",
+            "duration": 237.5999999998603,
+            "encodedBodySize": 1691
+          },
+          {
+            "name": "/js/three/merge-static-draws.js",
+            "duration": 286.5,
+            "encodedBodySize": 2601
+          },
+          {
+            "name": "/js/three/reflection.js",
+            "duration": 337.69999999995343,
+            "encodedBodySize": 7901
+          },
+          {
+            "name": "/js/three/avatars.js",
+            "duration": 345,
+            "encodedBodySize": 3849
+          },
+          {
+            "name": "/js/three/occlusion.js",
+            "duration": 411.80000000004657,
+            "encodedBodySize": 6496
+          },
+          {
+            "name": "/js/three/assets.js",
+            "duration": 429.4000000001397,
+            "encodedBodySize": 22153
+          },
+          {
+            "name": "/vendor/three/examples/jsm/environments/RoomEnvironment.js",
+            "duration": 344,
+            "encodedBodySize": 4899
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/EffectComposer.js",
+            "duration": 361.9000000001397,
+            "encodedBodySize": 8477
+          },
+          {
+            "name": "/js/three/scene-pass.js",
+            "duration": 358.69999999995343,
+            "encodedBodySize": 1188
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/UnrealBloomPass.js",
+            "duration": 449.19999999995343,
+            "encodedBodySize": 14388
+          },
+          {
+            "name": "/js/three/adaptive.js",
+            "duration": 441.5,
+            "encodedBodySize": 1121
+          },
+          {
+            "name": "/js/three/resources.js",
+            "duration": 446.19999999995343,
+            "encodedBodySize": 863
+          },
+          {
+            "name": "/js/three/tween.js",
+            "duration": 485.69999999995343,
+            "encodedBodySize": 1895
+          },
+          {
+            "name": "/js/three/lighting-shaders.js",
+            "duration": 549,
+            "encodedBodySize": 707
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/SMAAPass.js",
+            "duration": 553,
+            "encodedBodySize": 50379
+          },
+          {
+            "name": "/js/three/post.js",
+            "duration": 555.3000000000466,
+            "encodedBodySize": 2978
+          },
+          {
+            "name": "/js/three/graphic-style.js",
+            "duration": 557.1999999999534,
+            "encodedBodySize": 1499
+          },
+          {
+            "name": "/vendor/three/examples/jsm/utils/BufferGeometryUtils.js",
+            "duration": 513.2000000001863,
+            "encodedBodySize": 35539
+          },
+          {
+            "name": "/js/three/lighting-bake.js",
+            "duration": 449.0999999998603,
+            "encodedBodySize": 1968
+          },
+          {
+            "name": "/js/three/animation-budget.js",
+            "duration": 451.70000000018626,
+            "encodedBodySize": 522
+          },
+          {
+            "name": "/js/three/plants.js",
+            "duration": 479.10000000009313,
+            "encodedBodySize": 10216
+          },
+          {
+            "name": "/js/three/roulettewheel.js",
+            "duration": 480.80000000004657,
+            "encodedBodySize": 10778
+          },
+          {
+            "name": "/js/three/roulettelayout.js",
+            "duration": 548.8000000000466,
+            "encodedBodySize": 4445
+          },
+          {
+            "name": "/js/three/textures.js",
+            "duration": 608.8000000000466,
+            "encodedBodySize": 19365
+          },
+          {
+            "name": "/js/three/furniture.js",
+            "duration": 671.1000000000931,
+            "encodedBodySize": 44465
+          },
+          {
+            "name": "/js/three/slotmachine.js",
+            "duration": 673.8000000000466,
+            "encodedBodySize": 33085
+          },
+          {
+            "name": "/js/three/stations/keno.js",
+            "duration": 598,
+            "encodedBodySize": 2867
+          },
+          {
+            "name": "/js/three/stations/poker3.js",
+            "duration": 654.8000000000466,
+            "encodedBodySize": 1071
+          },
+          {
+            "name": "/js/three/stations/war.js",
+            "duration": 703.3000000000466,
+            "encodedBodySize": 662
+          },
+          {
+            "name": "/js/three/stations/scratch.js",
+            "duration": 713.6000000000931,
+            "encodedBodySize": 1453
+          },
+          {
+            "name": "/js/three/stations/derby.js",
+            "duration": 761.8000000000466,
+            "encodedBodySize": 7062
+          },
+          {
+            "name": "/js/three/noise.js",
+            "duration": 782.8000000000466,
+            "encodedBodySize": 5869
+          },
+          {
+            "name": "/js/three/character-motion.js",
+            "duration": 741,
+            "encodedBodySize": 7773
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/GTAOPass.js",
+            "duration": 685.6999999999534,
+            "encodedBodySize": 19890
+          },
+          {
+            "name": "/js/three/surface-material.js",
+            "duration": 674.4000000001397,
+            "encodedBodySize": 1976
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/RenderPass.js",
+            "duration": 663.1999999999534,
+            "encodedBodySize": 4112
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/ShaderPass.js",
+            "duration": 713.1999999999534,
+            "encodedBodySize": 3228
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/CopyShader.js",
+            "duration": 729.5,
+            "encodedBodySize": 729
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/MaskPass.js",
+            "duration": 737.0999999998603,
+            "encodedBodySize": 4694
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/Pass.js",
+            "duration": 662,
+            "encodedBodySize": 4218
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/LuminosityHighPassShader.js",
+            "duration": 666.6000000000931,
+            "encodedBodySize": 1291
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/SMAAShader.js",
+            "duration": 439.5,
+            "encodedBodySize": 15002
+          },
+          {
+            "name": "/vendor/three/examples/jsm/postprocessing/OutputPass.js",
+            "duration": 480.5999999998603,
+            "encodedBodySize": 4029
+          },
+          {
+            "name": "/js/three/upholstery.js",
+            "duration": 312,
+            "encodedBodySize": 2624
+          },
+          {
+            "name": "/vendor/three/examples/jsm/geometries/RoundedBoxGeometry.js",
+            "duration": 327.5,
+            "encodedBodySize": 6476
+          },
+          {
+            "name": "/vendor/three/build/three.core.js",
+            "duration": 1494.9000000001397,
+            "encodedBodySize": 1403455
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/GTAOShader.js",
+            "duration": 230.69999999995343,
+            "encodedBodySize": 11910
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/PoissonDenoiseShader.js",
+            "duration": 242.5,
+            "encodedBodySize": 6945
+          },
+          {
+            "name": "/vendor/three/examples/jsm/math/SimplexNoise.js",
+            "duration": 299.80000000004657,
+            "encodedBodySize": 15154
+          },
+          {
+            "name": "/vendor/three/examples/jsm/shaders/OutputShader.js",
+            "duration": 120.5999999998603,
+            "encodedBodySize": 1876
+          },
+          {
+            "name": "/assets/characters/man.glb",
+            "duration": 7407.800000000047,
+            "encodedBodySize": 1580172
+          },
+          {
+            "name": "/assets/characters/man-dark.glb",
+            "duration": 8014.699999999953,
+            "encodedBodySize": 1721736
+          },
+          {
+            "name": "/assets/characters/woman.glb",
+            "duration": 8259.899999999907,
+            "encodedBodySize": 1782420
+          },
+          {
+            "name": "/api/auth/me",
+            "duration": 103.0999999998603,
+            "encodedBodySize": 13
+          },
+          {
+            "name": "/assets/materials/marble_01_Rough.jpg",
+            "duration": 527.3999999999069,
+            "encodedBodySize": 91848
+          },
+          {
+            "name": "/assets/materials/marble_01_Diffuse.jpg",
+            "duration": 1506.6999999999534,
+            "encodedBodySize": 305029
+          },
+          {
+            "name": "/assets/materials/marble_01_nor_gl.jpg",
+            "duration": 715.5999999998603,
+            "encodedBodySize": 110230
+          },
+          {
+            "name": "/assets/materials/wood_table_001_Diffuse.jpg",
+            "duration": 1625.5,
+            "encodedBodySize": 215573
+          },
+          {
+            "name": "/assets/materials/wood_table_001_Rough.jpg",
+            "duration": 1908.9000000001397,
+            "encodedBodySize": 237261
+          },
+          {
+            "name": "/assets/materials/wood_table_001_nor_gl.jpg",
+            "duration": 1837.6999999999534,
+            "encodedBodySize": 51927
+          },
+          {
+            "name": "/assets/materials/leather_red_02_Rough.jpg",
+            "duration": 6149.5,
+            "encodedBodySize": 879217
+          },
+          {
+            "name": "/assets/materials/leather_red_02_coll1.jpg",
+            "duration": 6478.199999999953,
+            "encodedBodySize": 1002834
+          },
+          {
+            "name": "/assets/materials/leather_red_02_nor_gl.jpg",
+            "duration": 6938.40000000014,
+            "encodedBodySize": 1033319
+          },
+          {
+            "name": "/assets/materials/fabric_pattern_07_Rough.jpg",
+            "duration": 8341.600000000093,
+            "encodedBodySize": 488744
+          },
+          {
+            "name": "/assets/materials/fabric_pattern_07_nor_gl.jpg",
+            "duration": 10011.90000000014,
+            "encodedBodySize": 828071
+          },
+          {
+            "name": "/assets/characters/young_lightskinned_male_diffuse.webp",
+            "duration": 2151.5,
+            "encodedBodySize": 483164
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 246.69999999995343,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 626.6999999999534,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/short04_diffuse.webp",
+            "duration": 1761.1999999999534,
+            "encodedBodySize": 257704
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 892.8000000000466,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 1009.6999999999534,
+            "encodedBodySize": 21154
+          },
+          {
+            "name": "/assets/characters/young_darkskinned_male_diffuse.webp",
+            "duration": 1569.5,
+            "encodedBodySize": 275242
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 541.1000000000931,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 778.6999999999534,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/short01_diffuse.webp",
+            "duration": 2212.3000000000466,
+            "encodedBodySize": 412652
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 1059.1999999999534,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 1247.5,
+            "encodedBodySize": 21154
+          },
+          {
+            "name": "/assets/characters/young_lightskinned_female_diffuse.webp",
+            "duration": 2282.899999999907,
+            "encodedBodySize": 467944
+          },
+          {
+            "name": "/assets/characters/male_elegantsuit01_diffuse.webp",
+            "duration": 1248.1000000000931,
+            "encodedBodySize": 29590
+          },
+          {
+            "name": "/assets/characters/shoes03_diffuse.webp",
+            "duration": 1601.1000000000931,
+            "encodedBodySize": 58878
+          },
+          {
+            "name": "/assets/characters/ponytail01_diffuse.webp",
+            "duration": 2275,
+            "encodedBodySize": 364830
+          },
+          {
+            "name": "/assets/characters/eyebrow001.webp",
+            "duration": 1603,
+            "encodedBodySize": 36968
+          },
+          {
+            "name": "/assets/characters/brown_eye.webp",
+            "duration": 1780.6999999999534,
+            "encodedBodySize": 21154
+          }
+        ],
+        "fonts": "loaded",
+        "canvasCount": 1
+      },
+      "wireBytes": 15820666,
+      "errors": [],
+      "failedRequests": [
+        {
+          "url": "https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700;800&display=swap",
+          "failure": {
+            "errorText": "net::ERR_TUNNEL_CONNECTION_FAILED"
+          }
+        }
+      ]
+    }
+  ]
+}

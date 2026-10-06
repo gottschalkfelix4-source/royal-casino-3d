@@ -21,6 +21,7 @@ let current = null; // aktuelle Ansicht mit destroy()
 let balanceEl = null;
 let shownBalance = 0;
 let topbarSignature = '';
+let startupReady = false;
 
 // ---------- Topbar ----------
 function renderTopbar() {
@@ -213,6 +214,7 @@ async function refreshUser() {
 }
 
 async function route() {
+  if (!startupReady) return;
   const hash = location.hash || '#/';
   if (current) {
     current.destroy?.();
@@ -260,16 +262,26 @@ async function route() {
 window.addEventListener('hashchange', route);
 
 (async function init() {
+  renderTopbar();
   // Alle Beschriftungen der 3D-Welt (Neon, Filz, Karten, Automaten) werden einmalig auf Canvas gebacken.
   // Ohne dieses Warten entscheidet der Browser-Cache darüber, ob Cinzel oder die Ersatzschrift in den
   // Texturen landet – die Halle sähe beim ersten Besuch anders aus als beim Neuladen.
-  const fonts = Promise.all([document.fonts?.ready ?? Promise.resolve(), preloadMaterials(), preloadCharacters().then(result => { if (!result.available) toast('Figuren konnten nicht geladen werden. Bitte lade die Seite neu.', 'error'); })]);
+  // Load the display face explicitly: fonts.ready only waits for fonts already
+  // used by the HTML, not the heavier weights first used by canvas labels.
+  const fonts = Promise.all([
+    Promise.all([document.fonts.load('900 16px Cinzel'), document.fonts.load('400 16px Inter')])
+      .catch(error => console.warn('Lokale Schriftarten konnten nicht geladen werden.', error)),
+    preloadMaterials(), preloadCharacters().then(result => { if (!result.available) toast('Figuren konnten nicht geladen werden. Bitte lade die Seite neu.', 'error'); }),
+  ]);
   try {
-    const [{ user }] = await Promise.all([api.get('/auth/me'), fonts]);
-    setUser(user);
+    await Promise.all([api.get('/auth/me').then(({ user }) => setUser(user)), fonts]);
   } catch (e) {
     toast(e.message, 'error');
     await fonts;
   }
-  route();
+  startupReady = true;
+  // Give the browser a paint before the expensive scene construction starts.
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await route();
+  window.__casinoReady = hall.ready;
 })();

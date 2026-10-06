@@ -7,12 +7,16 @@ Kein echtes Geld – reines Unterhaltungsprojekt.
 
 ```bash
 npm install
+npm run build
 npm start
 ```
 
 Dann im Browser öffnen: http://localhost:3000
 
-- `npm run dev` startet den Server mit automatischem Neustart bei Änderungen.
+- `npm run dev` startet den Server mit automatischem Neustart und baut die Browser-Dateien bei Änderungen neu.
+- `npm run build` bündelt/minifiziert die Browser-Module nach `public/build/`; Spiele bleiben separat nachgeladen.
+  Für den Produktionsstart vorher ausführen. Ohne Build funktioniert der Server weiterhin mit den Quellmodulen.
+  Docker baut diese Dateien automatisch; das Laufzeit-Image benötigt keine Build-Werkzeuge.
 - `npm test` prüft Grafikressourcen, Figuren, Animationen und Geometrien.
 - `npm run test:graphics` startet die lokale Grafikprüfung mit temporärer Datenbank: `/__review.html` (Halle), `/__characters.html` (Figuren) und `/__qa.html` (Spielwechsel).
 - `node scripts/smoke.js` führt einen End-to-End-Test aller API-Endpunkte gegen eine temporäre Datenbank aus.
@@ -23,6 +27,9 @@ Dann im Browser öffnen: http://localhost:3000
 - Port ändern: `PORT=8080 npm start`, Datenverzeichnis: `CASINO_DATA_DIR=/pfad`.
 
 Voraussetzung: Node.js ≥ 22.13 (nutzt das eingebaute `node:sqlite`, keine nativen Abhängigkeiten).
+
+Messungen und technische Details zur verkürzten Browser-Ladezeit stehen in
+[docs/loading-performance.md](docs/loading-performance.md).
 
 ## Spiele
 

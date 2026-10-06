@@ -6,9 +6,8 @@
   <title>Royal Casino 3D</title>
   <meta name="description" content="Online-Casino mit 3D-Spielen und virtuellem Spielgeld">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎰</text></svg>">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="preload" href="/assets/fonts/cinzel-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/inter-latin-variable.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">
     {
@@ -22,7 +21,7 @@
 <body>
   <div id="app">
     <header id="topbar" class="topbar"></header>
-    <main id="view" class="view"></main>
+    <main id="view" class="view"><div class="loading" role="status"><div class="spinner"></div>Casino wird geladen…</div></main>
   </div>
   <div id="modal-root"></div>
   <div id="toasts" class="toasts"></div>

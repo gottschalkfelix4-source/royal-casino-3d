@@ -11,7 +11,9 @@ export function makeCanvas(w, h) {
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
-  return { canvas, ctx: canvas.getContext('2d') };
+  // Generated texture canvases are read back for grain/normal/roughness maps and
+  // uploaded only once. A CPU backing avoids expensive GPU readback stalls.
+  return { canvas, ctx: canvas.getContext('2d', { willReadFrequently: true }) };
 }
 
 export function canvasTexture(canvas, { repeat = null, anisotropy = getTextureAnisotropy() } = {}) {

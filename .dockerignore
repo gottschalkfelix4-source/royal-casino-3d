@@ -4,7 +4,9 @@ data
 .claude
 .github
 unraid
-scripts
+scripts/*
+!scripts/build.js
+public/build
 docs
 tests
 README.md

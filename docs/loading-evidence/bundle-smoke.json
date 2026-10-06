@@ -1,0 +1,23 @@
+{
+  "mounts": [
+    "slots",
+    "roulette",
+    "blackjack",
+    "videopoker",
+    "baccarat",
+    "dice",
+    "plinko",
+    "crash",
+    "mines",
+    "coinflip",
+    "wheel",
+    "hilo",
+    "keno",
+    "poker3",
+    "war",
+    "scratch",
+    "derby"
+  ],
+  "errors": [],
+  "httpFailures": []
+}
